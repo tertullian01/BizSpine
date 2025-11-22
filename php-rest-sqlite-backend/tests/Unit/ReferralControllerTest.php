@@ -32,10 +32,11 @@ class ReferralControllerTest extends DatabaseTestCase
         $response = $controller->getMyReferral($request, $response, []);
         $body = json_decode($response->getBody()->__toString());
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals($this->userId, $body->user_id);
-        $this->assertStringStartsWith('REF-', $body->referral_code);
-        $this->assertEquals(0, $body->times_used);
-        $this->assertEquals(0, $body->points_balance);
+        $this->assertTrue($body->success);
+        $this->assertEquals($this->userId, $body->data->user_id);
+        $this->assertStringStartsWith('REF-', $body->data->referral_code);
+        $this->assertEquals(0, $body->data->times_used);
+        $this->assertEquals(0, $body->data->points_balance);
     }
 
     public function testValidateReferralCodeSuccess()
@@ -80,8 +81,9 @@ class ReferralControllerTest extends DatabaseTestCase
         $response = $controller->redeemPoints($request, $response, []);
         $body = json_decode($response->getBody()->__toString());
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals(50, $body->points_redeemed);
-        $this->assertEquals(150, $body->new_balance);
+        $this->assertTrue($body->success);
+        $this->assertEquals(50, $body->data->points_redeemed);
+        $this->assertEquals(150, $body->data->new_balance);
 // Verify database was updated
         $stmt = self::$db->query("SELECT points_balance, points_redeemed FROM user_referrals WHERE user_id = {$this->userId}");
         $referral = $stmt->fetch(\PDO::FETCH_ASSOC);

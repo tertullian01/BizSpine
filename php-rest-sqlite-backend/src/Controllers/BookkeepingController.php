@@ -5,17 +5,20 @@ namespace App\Controllers;
 use App\Services\Config;
 use App\Exceptions\ValidationException;
 use App\Services\Database;
+use App\Services\FileUploadService;
 use App\Services\Validator;
 use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Respect\Validation\Validator as v;
 
-class BookkeepingController
+class BookkeepingController extends ApiController
 {
     private PDO $db;
     private Validator $validator;
-    public function __construct(PDO $db = null)
+    private FileUploadService $fileUploadService;
+
+    public function __construct(PDO $db = null, ?FileUploadService $fileUploadService = null)
     {
         if ($db) {
             $this->db = $db;
@@ -23,6 +26,7 @@ class BookkeepingController
             $this->db = Database::get(Config::get('database.database_path'));
         }
         $this->validator = new Validator();
+        $this->fileUploadService = $fileUploadService ?? new FileUploadService(new \App\Services\Logger());
     }
 
     // ========== INCOME METHODS ==========
@@ -39,8 +43,7 @@ ORDER BY i.payment_date DESC
 SQL;
         $stmt = $this->db->query($sql);
         $income = $stmt->fetchAll(PDO::FETCH_CLASS, 'App\Models\Income');
-        $response->getBody()->write(json_encode($income));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $income);
     }
 
     public function getIncomeById(Request $request, Response $response, array $args): Response
@@ -58,12 +61,10 @@ SQL;
         $stmt->execute([':id' => $id]);
         $income = $stmt->fetchObject('App\Models\Income');
         if (!$income) {
-            $response->getBody()->write(json_encode(['error' => 'Income record not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Income record not found', 404);
         }
 
-        $response->getBody()->write(json_encode($income));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $income);
     }
 
     public function createIncome(Request $request, Response $response): Response
@@ -97,8 +98,7 @@ SQL;
         $checkStmt = $this->db->prepare('SELECT id FROM income WHERE id = :id');
         $checkStmt->execute([':id' => $id]);
         if (!$checkStmt->fetch()) {
-            $response->getBody()->write(json_encode(['error' => 'Income record not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Income record not found', 404);
         }
 
         $stmt = $this->db->prepare('DELETE FROM income WHERE id = :id');
@@ -120,8 +120,7 @@ ORDER BY e.expense_date DESC
 SQL;
         $stmt = $this->db->query($sql);
         $expenses = $stmt->fetchAll(PDO::FETCH_CLASS, 'App\Models\Expense');
-        $response->getBody()->write(json_encode($expenses));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $expenses);
     }
 
     public function getExpensesByCategory(Request $request, Response $response, array $args): Response
@@ -144,8 +143,7 @@ SQL;
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':category' => $category]);
         $expenses = $stmt->fetchAll(PDO::FETCH_CLASS, 'App\Models\Expense');
-        $response->getBody()->write(json_encode($expenses));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $expenses);
     }
 
     public function getExpenseById(Request $request, Response $response, array $args): Response
@@ -163,12 +161,10 @@ SQL;
         $stmt->execute([':id' => $id]);
         $expense = $stmt->fetchObject('App\Models\Expense');
         if (!$expense) {
-            $response->getBody()->write(json_encode(['error' => 'Expense record not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Expense record not found', 404);
         }
 
-        $response->getBody()->write(json_encode($expense));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $expense);
     }
 
     public function createExpense(Request $request, Response $response): Response
@@ -262,8 +258,7 @@ SQL;
         $checkStmt = $this->db->prepare('SELECT id FROM expenses WHERE id = :id');
         $checkStmt->execute([':id' => $id]);
         if (!$checkStmt->fetch()) {
-            $response->getBody()->write(json_encode(['error' => 'Expense record not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Expense record not found', 404);
         }
 
         $stmt = $this->db->prepare('DELETE FROM expenses WHERE id = :id');
@@ -290,7 +285,45 @@ SQL;
             'profit' => $profit,
             'expenses_by_category' => $expensesByCategory,
         ];
-        $response->getBody()->write(json_encode($summary));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $summary);
+    }
+
+    /**
+     * Upload receipt image for expense
+     */
+    public function uploadReceipt(Request $request, Response $response, array $args): Response
+    {
+        $uploadedFiles = $request->getUploadedFiles();
+
+        if (!isset($uploadedFiles['receipt'])) {
+            return $this->error($response, 'No receipt uploaded', 400);
+        }
+
+        $receipt = $uploadedFiles['receipt'];
+
+        try {
+            $result = $this->fileUploadService->uploadFile($receipt, 'receipt', [
+                'allowed_extensions' => ['jpg', 'jpeg', 'png', 'gif', 'pdf'],
+                'allowed_mime_types' => ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'],
+                'max_file_size' => 5 * 1024 * 1024, // 5MB for receipts
+                'create_thumbnails' => false // No thumbnails for receipts
+            ]);
+
+            // Optionally save receipt URL to expense
+            $expenseId = (int)$args['id'];
+            $stmt = $this->db->prepare('UPDATE expenses SET receipt_image_url = :url WHERE id = :id');
+            $stmt->execute([
+                ':url' => $result['url'],
+                ':id' => $expenseId
+            ]);
+
+            return $this->success($response, [
+                'message' => 'Receipt uploaded successfully',
+                'file' => $result
+            ]);
+
+        } catch (\Exception $e) {
+            return $this->error($response, 'Upload failed: ' . $e->getMessage(), 400);
+        }
     }
 }

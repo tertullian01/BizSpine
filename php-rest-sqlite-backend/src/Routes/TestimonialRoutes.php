@@ -22,6 +22,7 @@ class TestimonialRoutes
             $group->delete('/{id}', [TestimonialController::class, 'delete']);
             $group->post('/{id}/publish', [TestimonialController::class, 'publish']);
             $group->post('/{id}/unpublish', [TestimonialController::class, 'unpublish']);
+            $group->post('/{id}/upload-photo', [TestimonialController::class, 'uploadPhoto']);
         })->add(AuthMiddleware::class);
     }
 }

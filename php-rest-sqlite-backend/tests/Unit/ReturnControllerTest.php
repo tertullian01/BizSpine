@@ -53,9 +53,10 @@ class ReturnControllerTest extends DatabaseTestCase
         $response = $controller->create($request, $response, []);
         $body = json_decode($response->getBody()->__toString(), true);
         $this->assertEquals(201, $response->getStatusCode());
-        $this->assertEquals('requested', $body['status']);
-        $this->assertEquals(50.00, $body['refund_amount']);
-        $this->assertStringStartsWith('RET-', $body['return_number']);
+        $this->assertTrue($body['success']);
+        $this->assertEquals('requested', $body['data']['status']);
+        $this->assertEquals(50.00, $body['data']['refund_amount']);
+        $this->assertStringStartsWith('RET-', $body['data']['return_number']);
     }
 
     public function testApproveReturn()
@@ -70,7 +71,8 @@ class ReturnControllerTest extends DatabaseTestCase
         $response = $controller->approve($request, $response, ['id' => $returnId]);
         $body = json_decode($response->getBody()->__toString(), true);
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('approved', $body['status']);
+        $this->assertTrue($body['success']);
+        $this->assertEquals('approved', $body['data']['status']);
 // Verify inventory was restored
         $stmt = self::$db->query("SELECT quantity FROM inventory WHERE product_id = {$this->productId}");
         $this->assertEquals(51, $stmt->fetchColumn());
@@ -93,8 +95,9 @@ class ReturnControllerTest extends DatabaseTestCase
         $response = $controller->processRefund($request, $response, ['id' => $returnId]);
         $body = json_decode($response->getBody()->__toString(), true);
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('completed', $body['status']);
-        $this->assertEquals('Credit Card', $body['refund_method']);
+        $this->assertTrue($body['success']);
+        $this->assertEquals('completed', $body['data']['status']);
+        $this->assertEquals('Credit Card', $body['data']['refund_method']);
 // Verify expense was created
         $stmt = self::$db->query("SELECT COUNT(*) FROM expenses WHERE category = 'Refund'");
         $this->assertEquals(1, $stmt->fetchColumn());

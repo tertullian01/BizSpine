@@ -29,9 +29,10 @@ class StoreControllerTest extends DatabaseTestCase
         $data = json_decode($body);
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertStringContainsString('application/json', $response->getHeaderLine('Content-Type'));
-        $this->assertCount(2, $data);
-        $this->assertEquals('Siedlung', $data[0]->name);
-        $this->assertEquals('USA', $data[1]->name);
+        $this->assertTrue($data->success);
+        $this->assertCount(2, $data->data);
+        $this->assertEquals('Siedlung', $data->data[0]->name);
+        $this->assertEquals('USA', $data->data[1]->name);
     }
 
     public function testGetStoreById()
@@ -47,8 +48,9 @@ class StoreControllerTest extends DatabaseTestCase
         $data = json_decode($body);
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertStringContainsString('application/json', $response->getHeaderLine('Content-Type'));
-        $this->assertEquals('Siedlung', $data->name);
-        $this->assertEquals('Siedlung store location', $data->description);
+        $this->assertTrue($data->success);
+        $this->assertEquals('Siedlung', $data->data->name);
+        $this->assertEquals('Siedlung store location', $data->data->description);
     }
 
     public function testGetStoreByIdNotFound()
@@ -58,10 +60,11 @@ class StoreControllerTest extends DatabaseTestCase
         $response = $this->createResponse();
         $response = $controller->getById($request, $response, ['id' => 999]);
         $body = (string) $response->getBody();
-        $data = json_decode($body, true);
+        $data = json_decode($body);
         $this->assertEquals(404, $response->getStatusCode());
         $this->assertStringContainsString('application/json', $response->getHeaderLine('Content-Type'));
-        $this->assertEquals('Store not found', $data['error']);
+        $this->assertFalse($data->success);
+        $this->assertEquals('Store not found', $data->error);
     }
 
     public function testCreateStoreWithValidName()
@@ -80,8 +83,9 @@ class StoreControllerTest extends DatabaseTestCase
         $data = json_decode($body);
         $this->assertEquals(201, $response->getStatusCode());
         $this->assertStringContainsString('application/json', $response->getHeaderLine('Content-Type'));
-        $this->assertEquals('Siedlung', $data->name);
-        $this->assertEquals('Siedlung store location', $data->description);
+        $this->assertTrue($data->success);
+        $this->assertEquals('Siedlung', $data->data->name);
+        $this->assertEquals('Siedlung store location', $data->data->description);
         $stmt = self::$db->query("SELECT COUNT(*) FROM stores WHERE name = 'Siedlung'");
         $this->assertEquals(1, $stmt->fetchColumn());
     }
@@ -99,6 +103,7 @@ class StoreControllerTest extends DatabaseTestCase
         $data = json_decode($body);
         $this->assertEquals(400, $response->getStatusCode());
         $this->assertStringContainsString('application/json', $response->getHeaderLine('Content-Type'));
+        $this->assertFalse($data->success);
         $this->assertEquals('Store name must be either "Siedlung" or "USA"', $data->error);
     }
 
@@ -114,6 +119,7 @@ class StoreControllerTest extends DatabaseTestCase
         $data = json_decode($body);
         $this->assertEquals(400, $response->getStatusCode());
         $this->assertStringContainsString('application/json', $response->getHeaderLine('Content-Type'));
+        $this->assertFalse($data->success);
         $this->assertEquals('Name is required', $data->error);
     }
 
@@ -132,6 +138,7 @@ class StoreControllerTest extends DatabaseTestCase
         $data = json_decode($body);
         $this->assertEquals(409, $response->getStatusCode());
         $this->assertStringContainsString('application/json', $response->getHeaderLine('Content-Type'));
+        $this->assertFalse($data->success);
         $this->assertEquals('Store with this name already exists', $data->error);
     }
 
@@ -151,9 +158,10 @@ class StoreControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body);
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Siedlung', $data->name);
-        $this->assertEquals('Updated description', $data->description);
-        $this->assertEquals('456 New St', $data->address);
+        $this->assertTrue($data->success);
+        $this->assertEquals('Siedlung', $data->data->name);
+        $this->assertEquals('Updated description', $data->data->description);
+        $this->assertEquals('456 New St', $data->data->address);
         $stmt = self::$db->query("SELECT description FROM stores WHERE id = $id");
         $this->assertEquals('Updated description', $stmt->fetchColumn());
     }
@@ -230,7 +238,8 @@ class StoreControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body);
         $this->assertEquals(201, $response->getStatusCode());
-        $this->assertEquals('USA', $data->name);
-        $this->assertEquals('USA store location', $data->description);
+        $this->assertTrue($data->success);
+        $this->assertEquals('USA', $data->data->name);
+        $this->assertEquals('USA store location', $data->data->description);
     }
 }

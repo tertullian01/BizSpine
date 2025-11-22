@@ -37,8 +37,9 @@ class AuthControllerTest extends DatabaseTestCase
 // Assert the response is correct
         $this->assertEquals(201, $response->getStatusCode());
         $this->assertEquals('application/json', $response->getHeaderLine('Content-Type'));
-        $this->assertEquals('User created', $body['message']);
-        $this->assertEquals('test@example.com', $body['email']);
+        $this->assertTrue($body['success']);
+        $this->assertEquals('User created', $body['data']['message']);
+        $this->assertEquals('test@example.com', $body['data']['email']);
 // Assert that the user was actually inserted into the database
         $stmt = self::$db->query("SELECT COUNT(*) FROM users WHERE email = 'test@example.com'");
         $this->assertEquals(1, $stmt->fetchColumn());
@@ -60,9 +61,10 @@ class AuthControllerTest extends DatabaseTestCase
         $body = json_decode($response->getBody()->__toString(), true);
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertEquals('application/json', $response->getHeaderLine('Content-Type'));
+        $this->assertTrue($body['success']);
 // Assert that we received an access token
-        $this->assertArrayHasKey('access_token', $body);
-        $this->assertNotEmpty($body['access_token']);
+        $this->assertArrayHasKey('access_token', $body['data']);
+        $this->assertNotEmpty($body['data']['access_token']);
     }
 
     public function testPasswordValidation()

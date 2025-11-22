@@ -7,7 +7,7 @@ use App\Services\PaginationService;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
-class TaxController
+class TaxController extends ApiController
 {
     private PaginationService $paginationService;
 
@@ -30,8 +30,7 @@ class TaxController
 
         $result = $this->paginationService->formatPaginatedResponse($rates, $total, $pagination['page'], $pagination['limit']);
 
-        $response->getBody()->write(json_encode($result));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $result);
     }
 
     public function getDefault(Request $request, Response $response): Response
@@ -42,12 +41,10 @@ class TaxController
                       ->where('is_active', '=', 1)
                       ->first();
         if (!$rate) {
-            $response->getBody()->write(json_encode(['error' => 'No default tax rate configured']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'No default tax rate configured', 404);
         }
 
-        $response->getBody()->write(json_encode($rate));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $rate);
     }
 
     public function getByRegion(Request $request, Response $response, array $args): Response
@@ -63,8 +60,7 @@ class TaxController
             return $this->getDefault($request, $response);
         }
 
-        $response->getBody()->write(json_encode($rate));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $rate);
     }
 
     public function calculateTax(float $amount, ?string $region = null): array
@@ -96,8 +92,7 @@ class TaxController
     {
         $body = $request->getParsedBody();
         if (empty($body['name']) || !isset($body['rate'])) {
-            $response->getBody()->write(json_encode(['error' => 'name and rate are required']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, 'name and rate are required', 400);
         }
 
         try {
@@ -110,11 +105,9 @@ class TaxController
                 'description' => $body['description'] ?? null,
             ]);
             $rate->save();
-            $response->getBody()->write(json_encode($rate));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+            return $this->success($response, $rate, 201);
         } catch (\Exception $e) {
-            $response->getBody()->write(json_encode(['error' => 'Database error: ' . $e->getMessage()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
         }
     }
 }

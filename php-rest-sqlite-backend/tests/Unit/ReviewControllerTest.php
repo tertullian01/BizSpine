@@ -86,9 +86,10 @@ class ReviewControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body, true);
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertCount(1, $data['data']);
+        $this->assertTrue($data['success']);
+        $this->assertCount(1, $data['data']['data']);
         // Only published review
-        $this->assertEquals('Published review', $data['data'][0]['review_text']);
+        $this->assertEquals('Published review', $data['data']['data'][0]['review_text']);
     }
 
     public function testPublishReview()

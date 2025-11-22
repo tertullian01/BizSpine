@@ -31,11 +31,12 @@ class TestimonialControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body);
         $this->assertEquals(201, $response->getStatusCode());
-        $this->assertEquals('John Doe', $data->customer_name);
-        $this->assertEquals('john@example.com', $data->customer_email);
-        $this->assertEquals('35-44', $data->age_range);
-        $this->assertEquals('Great service and products!', $data->testimonial_text);
-        $this->assertEquals(0, $data->published);
+        $this->assertTrue($data->success);
+        $this->assertEquals('John Doe', $data->data->customer_name);
+        $this->assertEquals('john@example.com', $data->data->customer_email);
+        $this->assertEquals('35-44', $data->data->age_range);
+        $this->assertEquals('Great service and products!', $data->data->testimonial_text);
+        $this->assertEquals(0, $data->data->published);
 // Default false
     }
 
@@ -52,6 +53,7 @@ class TestimonialControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body);
         $this->assertEquals(400, $response->getStatusCode());
+        $this->assertFalse($data->success);
         $this->assertEquals('Invalid email format', $data->error);
     }
 
@@ -69,6 +71,7 @@ class TestimonialControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body);
         $this->assertEquals(400, $response->getStatusCode());
+        $this->assertFalse($data->success);
         $this->assertStringContainsString('Invalid age range', $data->error);
     }
 
@@ -84,9 +87,10 @@ class TestimonialControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body);
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertCount(1, $data->data);
+        $this->assertTrue($data->success);
+        $this->assertCount(1, $data->data->data);
         // Only published testimonial
-        $this->assertEquals('Published testimonial', $data->data[0]->testimonial_text);
+        $this->assertEquals('Published testimonial', $data->data->data[0]->testimonial_text);
     }
 
     public function testGetAllAdminTestimonials()
@@ -101,7 +105,8 @@ class TestimonialControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body);
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertCount(2, $data->data);
+        $this->assertTrue($data->success);
+        $this->assertCount(2, $data->data->data);
         // Both testimonials
     }
 
@@ -116,7 +121,8 @@ class TestimonialControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body);
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals(1, $data->published);
+        $this->assertTrue($data->success);
+        $this->assertEquals(1, $data->data->published);
     }
 
     public function testUnpublishTestimonial()
@@ -130,7 +136,8 @@ class TestimonialControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body);
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals(0, $data->published);
+        $this->assertTrue($data->success);
+        $this->assertEquals(0, $data->data->published);
     }
 
     public function testDeleteTestimonial()

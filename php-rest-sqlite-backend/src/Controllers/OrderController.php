@@ -11,7 +11,7 @@ use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Respect\Validation\Validator as v;
 
-class OrderController
+class OrderController extends ApiController
 {
     private PDO $db;
     private Validator $validator;
@@ -61,8 +61,7 @@ SQL;
 
         $result = $this->paginationService->formatPaginatedResponse($orders, $total, $page, $limit);
 
-        $response->getBody()->write(json_encode($result));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $result);
     }
 
     public function getMyOrders(Request $request, Response $response): Response
@@ -89,8 +88,7 @@ SQL;
             $order->items = $this->getOrderItems($order->id);
         }
 
-        $response->getBody()->write(json_encode($orders));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $orders);
     }
 
     public function getById(Request $request, Response $response, array $args): Response
@@ -108,13 +106,11 @@ SQL;
         $stmt->execute([':id' => $id]);
         $order = $stmt->fetchObject('App\Models\Order');
         if (!$order) {
-            $response->getBody()->write(json_encode(['error' => 'Order not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Order not found', 404);
         }
 
         $order->items = $this->getOrderItems($order->id);
-        $response->getBody()->write(json_encode($order));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $order);
     }
 
     private function getOrderItems(int $orderId): array
@@ -139,33 +135,27 @@ SQL;
         $body = $request->getParsedBody();
         $userId = $request->getAttribute('user_id');
         if (!$userId) {
-            $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+            return $this->error($response, 'Unauthorized', 401);
         }
 
         // Custom validation for order creation
         if (!isset($body['shipping_address']) || empty(trim($body['shipping_address']))) {
-            $response->getBody()->write(json_encode(['error' => 'Shipping Address is required']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, 'Shipping Address is required', 400);
         }
 
         if (!isset($body['items']) || !is_array($body['items']) || empty($body['items'])) {
-            $response->getBody()->write(json_encode(['error' => 'Items are required']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, 'Items are required', 400);
         }
 
         foreach ($body['items'] as $index => $item) {
             if (!isset($item['product_id']) || !is_numeric($item['product_id'])) {
-                $response->getBody()->write(json_encode(['error' => 'Product ID is required for all items']));
-                return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+                return $this->error($response, 'Product ID is required for all items', 400);
             }
             if (!isset($item['store_id']) || !is_numeric($item['store_id'])) {
-                $response->getBody()->write(json_encode(['error' => 'Store ID is required for all items']));
-                return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+                return $this->error($response, 'Store ID is required for all items', 400);
             }
             if (!isset($item['quantity']) || !is_numeric($item['quantity']) || $item['quantity'] <= 0) {
-                $response->getBody()->write(json_encode(['error' => 'Valid quantity is required for all items']));
-                return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+                return $this->error($response, 'Valid quantity is required for all items', 400);
             }
         }
 
@@ -315,8 +305,7 @@ SQL;
             return $this->getById($request, $response->withStatus(201), ['id' => $orderId]);
         } catch (\Exception $e) {
             $this->db->rollBack();
-            $response->getBody()->write(json_encode(['error' => $e->getMessage()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, $e->getMessage(), 400);
         }
     }
 

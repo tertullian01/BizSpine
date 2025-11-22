@@ -36,10 +36,11 @@ class InventoryControllerTest extends DatabaseTestCase
         $data = json_decode($body, true);
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertStringContainsString('application/json', $response->getHeaderLine('Content-Type'));
-        $this->assertCount(1, $data['data']);
-        $this->assertEquals(100, $data['data'][0]['quantity']);
-        $this->assertEquals('Test Product', $data['data'][0]['product_name']);
-        $this->assertEquals('Siedlung', $data['data'][0]['store_name']);
+        $this->assertTrue($data['success']);
+        $this->assertCount(1, $data['data']['data']);
+        $this->assertEquals(100, $data['data']['data'][0]['quantity']);
+        $this->assertEquals('Test Product', $data['data']['data'][0]['product_name']);
+        $this->assertEquals('Siedlung', $data['data']['data'][0]['store_name']);
     }
 
     public function testGetInventoryById()
@@ -53,9 +54,10 @@ class InventoryControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body, true);
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals(50, $data['quantity']);
-        $this->assertEquals($this->productId, $data['product_id']);
-        $this->assertEquals($this->storeId, $data['store_id']);
+        $this->assertTrue($data['success']);
+        $this->assertEquals(50, $data['data']['quantity']);
+        $this->assertEquals($this->productId, $data['data']['product_id']);
+        $this->assertEquals($this->storeId, $data['data']['store_id']);
     }
 
     public function testGetInventoryByIdNotFound()
@@ -80,8 +82,9 @@ class InventoryControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body, true);
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertCount(1, $data);
-        $this->assertEquals(75, $data[0]['quantity']);
+        $this->assertTrue($data['success']);
+        $this->assertCount(1, $data['data']);
+        $this->assertEquals(75, $data['data'][0]['quantity']);
     }
 
     public function testGetInventoryByStore()
@@ -94,8 +97,9 @@ class InventoryControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body, true);
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertCount(1, $data);
-        $this->assertEquals(60, $data[0]['quantity']);
+        $this->assertTrue($data['success']);
+        $this->assertCount(1, $data['data']);
+        $this->assertEquals(60, $data['data'][0]['quantity']);
     }
 
     public function testGetLowStock()
@@ -109,9 +113,10 @@ class InventoryControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body, true);
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertCount(1, $data);
-        $this->assertEquals(5, $data[0]['quantity']);
-        $this->assertEquals(10, $data[0]['min_quantity']);
+        $this->assertTrue($data['success']);
+        $this->assertCount(1, $data['data']);
+        $this->assertEquals(5, $data['data'][0]['quantity']);
+        $this->assertEquals(10, $data['data'][0]['min_quantity']);
     }
 
     public function testCreateInventory()
@@ -129,9 +134,10 @@ class InventoryControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body, true);
         $this->assertEquals(201, $response->getStatusCode());
-        $this->assertEquals(100, $data['quantity']);
-        $this->assertEquals(20, $data['min_quantity']);
-        $this->assertEquals(500, $data['max_quantity']);
+        $this->assertTrue($data['success']);
+        $this->assertEquals(100, $data['data']['quantity']);
+        $this->assertEquals(20, $data['data']['min_quantity']);
+        $this->assertEquals(500, $data['data']['max_quantity']);
     }
 
     public function testCreateInventoryMissingFields()

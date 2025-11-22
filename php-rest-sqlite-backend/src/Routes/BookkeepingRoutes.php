@@ -22,6 +22,7 @@ class BookkeepingRoutes
             $group->post('/expenses', [BookkeepingController::class, 'createExpense']);
             $group->put('/expenses/{id}', [BookkeepingController::class, 'updateExpense']);
             $group->delete('/expenses/{id}', [BookkeepingController::class, 'deleteExpense']);
+            $group->post('/expenses/{id}/upload-receipt', [BookkeepingController::class, 'uploadReceipt']);
             $group->get('/summary', [BookkeepingController::class, 'getSummary']);
         })->add(AuthMiddleware::class);
     }

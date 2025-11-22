@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Exceptions\ValidationException;
 use App\Models\Testimonial;
 use App\Services\Database;
+use App\Services\FileUploadService;
 use App\Services\PaginationService;
 use App\Services\Validator;
 use PDO;
@@ -12,13 +13,14 @@ use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Respect\Validation\Validator as v;
 
-class TestimonialController
+class TestimonialController extends ApiController
 {
     private PDO $db;
     private Validator $validator;
     private PaginationService $paginationService;
+    private FileUploadService $fileUploadService;
 
-    public function __construct(PDO $db = null, PaginationService $paginationService = null)
+    public function __construct(PDO $db = null, PaginationService $paginationService = null, ?FileUploadService $fileUploadService = null)
     {
         if ($db) {
             $this->db = $db;
@@ -29,6 +31,7 @@ class TestimonialController
         }
         $this->validator = new Validator();
         $this->paginationService = $paginationService ?? new PaginationService();
+        $this->fileUploadService = $fileUploadService ?? new FileUploadService(new \App\Services\Logger());
     }
 
     public function getAll(Request $request, Response $response): Response
@@ -45,8 +48,7 @@ class TestimonialController
 
         $result = $this->paginationService->formatPaginatedResponse($testimonials, $total, $pagination['page'], $pagination['limit']);
 
-        $response->getBody()->write(json_encode($result));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $result);
     }
 
     public function getAllAdmin(Request $request, Response $response): Response
@@ -62,8 +64,7 @@ class TestimonialController
 
         $result = $this->paginationService->formatPaginatedResponse($testimonials, $total, $pagination['page'], $pagination['limit']);
 
-        $response->getBody()->write(json_encode($result));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $result);
     }
 
     public function getById(Request $request, Response $response, array $args): Response
@@ -73,12 +74,10 @@ class TestimonialController
         $stmt->execute([':id' => $id]);
         $testimonial = $stmt->fetchObject('App\Models\Testimonial');
         if (!$testimonial) {
-            $response->getBody()->write(json_encode(['error' => 'Testimonial not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Testimonial not found', 404);
         }
 
-        $response->getBody()->write(json_encode($testimonial));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $testimonial);
     }
 
     public function create(Request $request, Response $response): Response
@@ -87,28 +86,23 @@ class TestimonialController
         $validAgeRanges = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
 // Custom validation for testimonial creation
         if (!isset($body['customer_name']) || empty(trim($body['customer_name']))) {
-            $response->getBody()->write(json_encode(['error' => 'Customer Name is required']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, 'Customer Name is required', 400);
         }
 
         if (!isset($body['customer_email']) || empty(trim($body['customer_email']))) {
-            $response->getBody()->write(json_encode(['error' => 'Customer Email is required']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, 'Customer Email is required', 400);
         }
 
         if (!filter_var($body['customer_email'], FILTER_VALIDATE_EMAIL)) {
-            $response->getBody()->write(json_encode(['error' => 'Invalid email format']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, 'Invalid email format', 400);
         }
 
         if (!isset($body['testimonial_text']) || empty(trim($body['testimonial_text']))) {
-            $response->getBody()->write(json_encode(['error' => 'Testimonial Text is required']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, 'Testimonial Text is required', 400);
         }
 
         if (isset($body['age_range']) && !in_array($body['age_range'], $validAgeRanges)) {
-            $response->getBody()->write(json_encode(['error' => 'Invalid age range']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, 'Invalid age range', 400);
         }
 
         try {
@@ -129,8 +123,7 @@ SQL;
             $id = (int)$this->db->lastInsertId();
             return $this->getById($request, $response->withStatus(201), ['id' => $id]);
         } catch (\PDOException $e) {
-            $response->getBody()->write(json_encode(['error' => 'Database error: ' . $e->getMessage()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
         }
     }
 
@@ -141,8 +134,7 @@ SQL;
         $checkStmt = $this->db->prepare('SELECT id FROM testimonials WHERE id = :id');
         $checkStmt->execute([':id' => $id]);
         if (!$checkStmt->fetch()) {
-            $response->getBody()->write(json_encode(['error' => 'Testimonial not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Testimonial not found', 404);
         }
 
         $validAgeRanges = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
@@ -153,8 +145,7 @@ SQL;
                 'image_url' => v::optional(v::url()->setName('Image URL')),
             ]);
         } catch (ValidationException $e) {
-            $response->getBody()->write(json_encode(['error' => $e->getFirstError()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, $e->getFirstError(), 400);
         }
 
         $updates = [];
@@ -195,8 +186,7 @@ SQL;
             $stmt->execute($params);
             return $this->getById($request, $response, ['id' => $id]);
         } catch (\PDOException $e) {
-            $response->getBody()->write(json_encode(['error' => 'Database error: ' . $e->getMessage()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
         }
     }
 
@@ -206,8 +196,7 @@ SQL;
         $checkStmt = $this->db->prepare('SELECT id FROM testimonials WHERE id = :id');
         $checkStmt->execute([':id' => $id]);
         if (!$checkStmt->fetch()) {
-            $response->getBody()->write(json_encode(['error' => 'Testimonial not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Testimonial not found', 404);
         }
 
         $stmt = $this->db->prepare('UPDATE testimonials SET published = 1, updated_at = datetime("now") WHERE id = :id');
@@ -221,8 +210,7 @@ SQL;
         $checkStmt = $this->db->prepare('SELECT id FROM testimonials WHERE id = :id');
         $checkStmt->execute([':id' => $id]);
         if (!$checkStmt->fetch()) {
-            $response->getBody()->write(json_encode(['error' => 'Testimonial not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Testimonial not found', 404);
         }
 
         $stmt = $this->db->prepare('UPDATE testimonials SET published = 0, updated_at = datetime("now") WHERE id = :id');
@@ -236,12 +224,51 @@ SQL;
         $checkStmt = $this->db->prepare('SELECT id FROM testimonials WHERE id = :id');
         $checkStmt->execute([':id' => $id]);
         if (!$checkStmt->fetch()) {
-            $response->getBody()->write(json_encode(['error' => 'Testimonial not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Testimonial not found', 404);
         }
 
         $stmt = $this->db->prepare('DELETE FROM testimonials WHERE id = :id');
         $stmt->execute([':id' => $id]);
         return $response->withStatus(204);
+    }
+
+    /**
+     * Upload customer photo for testimonial
+     */
+    public function uploadPhoto(Request $request, Response $response, array $args): Response
+    {
+        $uploadedFiles = $request->getUploadedFiles();
+
+        if (!isset($uploadedFiles['photo'])) {
+            return $this->error($response, 'No photo uploaded', 400);
+        }
+
+        $photo = $uploadedFiles['photo'];
+
+        try {
+            $result = $this->fileUploadService->uploadFile($photo, 'photo', [
+                'allowed_extensions' => ['jpg', 'jpeg', 'png'],
+                'allowed_mime_types' => ['image/jpeg', 'image/png'],
+                'max_file_size' => 2 * 1024 * 1024, // 2MB for photos
+                'create_thumbnails' => true,
+                'thumbnail_size' => [100, 100]
+            ]);
+
+            // Save photo URL to testimonial
+            $testimonialId = (int)$args['id'];
+            $stmt = $this->db->prepare('UPDATE testimonials SET image_url = :url WHERE id = :id');
+            $stmt->execute([
+                ':url' => $result['url'],
+                ':id' => $testimonialId
+            ]);
+
+            return $this->success($response, [
+                'message' => 'Photo uploaded successfully',
+                'file' => $result
+            ]);
+
+        } catch (\Exception $e) {
+            return $this->error($response, 'Upload failed: ' . $e->getMessage(), 400);
+        }
     }
 }

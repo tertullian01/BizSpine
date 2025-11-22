@@ -11,7 +11,7 @@ use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Respect\Validation\Validator as v;
 
-class ReviewController
+class ReviewController extends ApiController
 {
     private PDO $db;
     private Validator $validator;
@@ -61,8 +61,7 @@ SQL;
 
         $result = $this->paginationService->formatPaginatedResponse($reviews, $total, $page, $limit);
 
-        $response->getBody()->write(json_encode($result));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $result);
     }
 
     public function getByProduct(Request $request, Response $response, array $args): Response

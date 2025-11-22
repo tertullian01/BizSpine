@@ -17,5 +17,6 @@ class StoreRoutes
         $app->post('/stores', [StoreController::class, 'create'])->add(AuthMiddleware::class);
         $app->put('/stores/{id}', [StoreController::class, 'update'])->add(AuthMiddleware::class);
         $app->delete('/stores/{id}', [StoreController::class, 'delete'])->add(AuthMiddleware::class);
+        $app->post('/stores/{id}/upload-logo', [StoreController::class, 'uploadLogo'])->add(AuthMiddleware::class);
     }
 }

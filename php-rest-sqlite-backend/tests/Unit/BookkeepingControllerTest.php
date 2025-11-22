@@ -36,8 +36,9 @@ class BookkeepingControllerTest extends DatabaseTestCase
         $response = $controller->createIncome($request, $response, []);
         $body = json_decode($response->getBody()->__toString(), true);
         $this->assertEquals(201, $response->getStatusCode());
-        $this->assertEquals(100.00, $body['amount']);
-        $this->assertEquals('Credit Card', $body['payment_method']);
+        $this->assertTrue($body['success']);
+        $this->assertEquals(100.00, $body['data']['amount']);
+        $this->assertEquals('Credit Card', $body['data']['payment_method']);
     }
 
     public function testCreateExpense()
@@ -55,9 +56,10 @@ class BookkeepingControllerTest extends DatabaseTestCase
         $response = $controller->createExpense($request, $response, []);
         $body = json_decode($response->getBody()->__toString(), true);
         $this->assertEquals(201, $response->getStatusCode());
-        $this->assertEquals('Office Supplies Inc', $body['vendor']);
-        $this->assertEquals('Supplies', $body['category']);
-        $this->assertEquals(50.00, $body['amount']);
+        $this->assertTrue($body['success']);
+        $this->assertEquals('Office Supplies Inc', $body['data']['vendor']);
+        $this->assertEquals('Supplies', $body['data']['category']);
+        $this->assertEquals(50.00, $body['data']['amount']);
     }
 
     public function testGetAllIncome()
@@ -69,8 +71,9 @@ class BookkeepingControllerTest extends DatabaseTestCase
         $response = $controller->getAllIncome($request, $response, []);
         $body = json_decode($response->getBody()->__toString(), true);
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertCount(1, $body);
-        $this->assertEquals(100.00, $body[0]['amount']);
+        $this->assertTrue($body['success']);
+        $this->assertCount(1, $body['data']);
+        $this->assertEquals(100.00, $body['data'][0]['amount']);
     }
 
     public function testGetAllExpenses()
@@ -82,9 +85,10 @@ class BookkeepingControllerTest extends DatabaseTestCase
         $response = $controller->getAllExpenses($request, $response, []);
         $body = json_decode($response->getBody()->__toString(), true);
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertCount(1, $body);
-        $this->assertEquals(15.00, $body[0]['amount']);
-        $this->assertEquals('Shipping', $body[0]['category']);
+        $this->assertTrue($body['success']);
+        $this->assertCount(1, $body['data']);
+        $this->assertEquals(15.00, $body['data'][0]['amount']);
+        $this->assertEquals('Shipping', $body['data'][0]['category']);
     }
 
     public function testGetSummary()
@@ -100,10 +104,11 @@ class BookkeepingControllerTest extends DatabaseTestCase
         $response = $controller->getSummary($request, $response, []);
         $body = json_decode($response->getBody()->__toString(), true);
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals(800.00, $body['total_income']);
-        $this->assertEquals(150.00, $body['total_expenses']);
-        $this->assertEquals(650.00, $body['profit']);
-        $this->assertCount(2, $body['expenses_by_category']);
+        $this->assertTrue($body['success']);
+        $this->assertEquals(800.00, $body['data']['total_income']);
+        $this->assertEquals(150.00, $body['data']['total_expenses']);
+        $this->assertEquals(650.00, $body['data']['profit']);
+        $this->assertCount(2, $body['data']['expenses_by_category']);
     }
 
     public function testDeleteExpense()

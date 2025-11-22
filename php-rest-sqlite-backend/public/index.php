@@ -40,10 +40,19 @@ $container->singleton(Config::class, fn() => $config);
 // Bind other services
 $container->bind(\App\Services\Validator::class, fn($c) => new \App\Services\Validator());
 $container->bind(\App\Services\CacheableProductService::class, fn($c) => new \App\Services\CacheableProductService());
+$container->bind(\App\Services\FileUploadService::class, fn($c) => new \App\Services\FileUploadService(
+    $c->get(\App\Services\Logger::class),
+    $config->get('file_upload', [])
+));
 $container->bind(\App\Services\PaginationService::class, fn($c) => new \App\Services\PaginationService());
 $container->bind(\App\Services\Logger::class, fn($c) => new \App\Services\Logger());
 $container->bind(\App\Services\DatabasePool::class, fn($c) => new \App\Services\DatabasePool('sqlite:' . $dbPath, 5));
 $container->bind(\App\Services\Metrics::class, fn($c) => new \App\Services\Metrics($c->get(\App\Services\Logger::class)));
+
+// Bind controllers with dependencies
+$container->bind(\App\Controllers\StoreController::class, fn($c) => new \App\Controllers\StoreController($c->get(\App\Services\FileUploadService::class)));
+$container->bind(\App\Controllers\BookkeepingController::class, fn($c) => new \App\Controllers\BookkeepingController(null, $c->get(\App\Services\FileUploadService::class)));
+$container->bind(\App\Controllers\TestimonialController::class, fn($c) => new \App\Controllers\TestimonialController(null, null, $c->get(\App\Services\FileUploadService::class)));
 
 // Add Metrics Middleware (must be first to measure all requests)
 $app->add(new \App\Middleware\MetricsMiddleware($container->get(\App\Services\Metrics::class)));
@@ -64,6 +73,13 @@ $app->add(new \App\Middleware\SecurityHeadersMiddleware([
     'X-XSS-Protection' => '1; mode=block',
     'Strict-Transport-Security' => 'max-age=31536000',
 ]));
+
+// Add File Upload Middleware
+$app->add(new \App\Middleware\FileUploadMiddleware(
+    $container->get(\App\Services\FileUploadService::class),
+    $container->get(\App\Services\Logger::class),
+    $config->get('file_upload_middleware', [])
+));
 
 // Load app routes
 require __DIR__ . '/../src/Routes/api.php';

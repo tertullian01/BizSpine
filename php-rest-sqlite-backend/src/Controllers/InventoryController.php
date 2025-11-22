@@ -14,7 +14,7 @@ use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Respect\Validation\Validator as v;
 
-class InventoryController
+class InventoryController extends ApiController
 {
     private PDO $db;
     private Validator $validator;
@@ -63,8 +63,7 @@ SQL;
 
         $result = $this->paginationService->formatPaginatedResponse($inventory, $total, $page, $limit);
 
-        $response->getBody()->write(json_encode($result));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $result);
     }
 
     public function getById(Request $request, Response $response, array $args): Response
@@ -72,55 +71,47 @@ SQL;
         $id = (int)$args['id'];
         $inventory = Inventory::find($id);
         if (!$inventory) {
-            $response->getBody()->write(json_encode(['error' => 'Inventory record not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Inventory record not found', 404);
         }
 
-        $response->getBody()->write(json_encode($inventory));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $inventory);
     }
 
     public function getByProduct(Request $request, Response $response, array $args): Response
     {
         $productId = (int)$args['id'];
         $inventory = Inventory::findByProduct($productId);
-        $response->getBody()->write(json_encode($inventory));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $inventory);
     }
 
     public function getByStore(Request $request, Response $response, array $args): Response
     {
         $storeId = (int)$args['id'];
         $inventory = Inventory::findByStore($storeId);
-        $response->getBody()->write(json_encode($inventory));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $inventory);
     }
 
     public function getLowStock(Request $request, Response $response): Response
     {
         $inventory = Inventory::findLowStock();
-        $response->getBody()->write(json_encode($inventory));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $inventory);
     }
 
     public function create(Request $request, Response $response): Response
     {
         $body = $request->getParsedBody();
         if (!isset($body['product_id']) || !isset($body['store_id'])) {
-            $response->getBody()->write(json_encode(['error' => 'product_id and store_id are required']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, 'product_id and store_id are required', 400);
         }
 
         // Verify product exists
         if (!Product::find((int)$body['product_id'])) {
-            $response->getBody()->write(json_encode(['error' => 'Product not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Product not found', 404);
         }
 
         // Verify store exists
         if (!Store::find((int)$body['store_id'])) {
-            $response->getBody()->write(json_encode(['error' => 'Store not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Store not found', 404);
         }
 
         $inventory = new Inventory();
@@ -132,8 +123,7 @@ SQL;
         $inventory->save();
 // Fetch the full record with names for the response
         $newInventory = Inventory::find($inventory->id);
-        $response->getBody()->write(json_encode($newInventory));
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+        return $this->success($response, $newInventory, 201);
     }
 
     public function update(Request $request, Response $response, array $args): Response
@@ -142,8 +132,7 @@ SQL;
         $body = $request->getParsedBody();
         $inventory = Inventory::find($id);
         if (!$inventory) {
-            $response->getBody()->write(json_encode(['error' => 'Inventory record not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Inventory record not found', 404);
         }
 
         $updates = [];
@@ -172,8 +161,7 @@ SQL;
         $inventory->save();
 // Fetch the full record with names for the response
         $updatedInventory = Inventory::find($inventory->id);
-        $response->getBody()->write(json_encode($updatedInventory));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $updatedInventory);
     }
 
     public function adjustQuantity(Request $request, Response $response, array $args): Response
@@ -185,26 +173,22 @@ SQL;
                 'adjustment' => v::notOptional(v::intVal())->setName('Adjustment'),
             ]);
         } catch (ValidationException $e) {
-            $response->getBody()->write(json_encode(['error' => $e->getFirstError()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, $e->getFirstError(), 400);
         }
 
         $adjustment = (int)$body['adjustment'];
         $inventory = Inventory::find($id);
         if (!$inventory) {
-            $response->getBody()->write(json_encode(['error' => 'Inventory record not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Inventory record not found', 404);
         }
 
         if (($inventory->quantity + $adjustment) < 0) {
-            $response->getBody()->write(json_encode(['error' => 'Adjustment would result in negative quantity']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, 'Adjustment would result in negative quantity', 400);
         }
 
         $inventory->adjustQuantity($adjustment);
         $updatedInventory = Inventory::find($inventory->id);
-        $response->getBody()->write(json_encode($updatedInventory));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $updatedInventory);
     }
 
     public function delete(Request $request, Response $response, array $args): Response

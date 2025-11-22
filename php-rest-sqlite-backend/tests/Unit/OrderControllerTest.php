@@ -47,10 +47,11 @@ class OrderControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body, true);
         $this->assertEquals(201, $response->getStatusCode());
-        $this->assertEquals('123 Test St, Test City', $data['shipping_address']);
-        $this->assertEquals(59.98, $data['subtotal']);
+        $this->assertTrue($data['success']);
+        $this->assertEquals('123 Test St, Test City', $data['data']['shipping_address']);
+        $this->assertEquals(59.98, $data['data']['subtotal']);
 // 2 * 29.99
-        $this->assertCount(1, $data['items']);
+        $this->assertCount(1, $data['data']['items']);
 // Verify inventory was reduced
         $stmt = self::$db->query("SELECT quantity FROM inventory WHERE product_id = {$this->productId}");
         $this->assertEquals(98, $stmt->fetchColumn());
@@ -75,6 +76,7 @@ class OrderControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body, true);
         $this->assertEquals(400, $response->getStatusCode());
+        $this->assertFalse($data['success']);
         $this->assertStringContainsString('Insufficient inventory', $data['error']);
     }
 
@@ -90,8 +92,9 @@ class OrderControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body, true);
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertCount(1, $data);
-        $this->assertEquals('ORD-001', $data[0]['order_number']);
+        $this->assertTrue($data['success']);
+        $this->assertCount(1, $data['data']);
+        $this->assertEquals('ORD-001', $data['data'][0]['order_number']);
     }
 
     public function testCancelOrder()
@@ -110,7 +113,8 @@ class OrderControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body, true);
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('cancelled', $data['fulfillment_status']);
+        $this->assertTrue($data['success']);
+        $this->assertEquals('cancelled', $data['data']['fulfillment_status']);
 // Verify inventory was restored
         $stmt = self::$db->query("SELECT quantity FROM inventory WHERE product_id = {$this->productId}");
         $this->assertEquals(100, $stmt->fetchColumn());

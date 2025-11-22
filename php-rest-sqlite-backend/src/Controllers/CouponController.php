@@ -11,7 +11,7 @@ use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Respect\Validation\Validator as v;
 
-class CouponController
+class CouponController extends ApiController
 {
     private PDO $db;
     private Validator $validator;
@@ -29,8 +29,7 @@ class CouponController
     {
         $stmt = $this->db->query('SELECT * FROM coupons ORDER BY created_at DESC');
         $coupons = $stmt->fetchAll(PDO::FETCH_CLASS, 'App\Models\Coupon');
-        $response->getBody()->write(json_encode($coupons));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $coupons);
     }
 
     public function getById(Request $request, Response $response, array $args): Response
@@ -40,12 +39,10 @@ class CouponController
         $stmt->execute([':id' => $id]);
         $coupon = $stmt->fetchObject('App\Models\Coupon');
         if (!$coupon) {
-            $response->getBody()->write(json_encode(['error' => 'Coupon not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Coupon not found', 404);
         }
 
-        $response->getBody()->write(json_encode($coupon));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $coupon);
     }
 
     public function create(Request $request, Response $response): Response
@@ -79,11 +76,9 @@ SQL;
             return $this->getById($request, $response->withStatus(201), ['id' => $id]);
         } catch (\PDOException $e) {
             if (strpos($e->getMessage(), 'UNIQUE constraint failed') !== false) {
-                $response->getBody()->write(json_encode(['error' => 'Coupon code already exists']));
-                return $response->withHeader('Content-Type', 'application/json')->withStatus(409);
+                return $this->error($response, 'Coupon code already exists', 409);
             } else {
-                $response->getBody()->write(json_encode(['error' => 'Database error: ' . $e->getMessage()]));
-                return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+                return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
             }
         }
     }
@@ -94,8 +89,7 @@ SQL;
         $checkStmt = $this->db->prepare('SELECT id FROM coupons WHERE id = :id');
         $checkStmt->execute([':id' => $id]);
         if (!$checkStmt->fetch()) {
-            $response->getBody()->write(json_encode(['error' => 'Coupon not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Coupon not found', 404);
         }
 
         $stmt = $this->db->prepare('DELETE FROM coupons WHERE id = :id');
@@ -106,7 +100,7 @@ SQL;
     public function getUsageReport(Request $request, Response $response): Response
     {
         $sql = <<<'SQL'
-SELECT 
+SELECT
     cu.*,
     c.code as coupon_code,
     u.email as user_email,
@@ -119,8 +113,7 @@ ORDER BY cu.used_at DESC
 SQL;
         $stmt = $this->db->query($sql);
         $usage = $stmt->fetchAll(PDO::FETCH_CLASS, 'App\Models\CouponUsage');
-        $response->getBody()->write(json_encode($usage));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $usage);
     }
 
     public function validateCoupon(string $code, float $orderTotal, int $userId, int $orderId): array

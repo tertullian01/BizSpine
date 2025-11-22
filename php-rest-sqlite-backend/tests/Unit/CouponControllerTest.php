@@ -34,9 +34,10 @@ class CouponControllerTest extends DatabaseTestCase
         $response = $controller->create($request, $response, []);
         $body = json_decode($response->getBody()->__toString(), true);
         $this->assertEquals(201, $response->getStatusCode());
-        $this->assertEquals('SAVE20', $body['code']);
-        $this->assertEquals('percentage', $body['discount_type']);
-        $this->assertEquals(20, $body['discount_value']);
+        $this->assertTrue($body['success']);
+        $this->assertEquals('SAVE20', $body['data']['code']);
+        $this->assertEquals('percentage', $body['data']['discount_type']);
+        $this->assertEquals(20, $body['data']['discount_value']);
     }
 
     public function testValidateCouponPercentage()

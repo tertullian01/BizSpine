@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Models\Product;
 use App\Services\CacheableProductService;
 use App\Services\Logger;
+use App\Middleware\FileUploadMiddleware;
 use App\Services\PaginationService;
 use OpenApi\Annotations as OA;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -54,7 +55,7 @@ use Respect\Validation\Exceptions\NestedValidationException;
  *     @OA\Property(property="prev_page", type="integer", nullable=true, example=null)
  * )
  */
-class ProductController
+class ProductController extends ApiController
 {
     private CacheableProductService $cacheableProductService;
     private Logger $logger;
@@ -113,8 +114,7 @@ class ProductController
 
         $result = $this->paginationService->formatPaginatedResponse($products, $total, $page, $limit);
 
-        $response->getBody()->write(json_encode($result));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $result);
     }
 
     /**
@@ -146,12 +146,10 @@ class ProductController
         $product = $this->cacheableProductService->getProduct($id);
 
         if (!$product) {
-            $response->getBody()->write(json_encode(['error' => 'Product not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Product not found', 404);
         }
 
-        $response->getBody()->write(json_encode($product));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $product);
     }
 
     /**
@@ -191,8 +189,7 @@ class ProductController
             $validator->assert($data);
             // Process valid data
         } catch (NestedValidationException $e) {
-            $response->getBody()->write(json_encode(['errors' => $e->getMessages()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, $e->getMessages(), 400);
         }
 
         $product = new Product();
@@ -210,8 +207,7 @@ class ProductController
             'user_id' => $request->getAttribute('user_id')
         ]);
 
-        $response->getBody()->write(json_encode($product));
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+        return $this->success($response, $product, 201);
     }
 
     public function update(Request $request, Response $response, array $args): Response
@@ -225,14 +221,12 @@ class ProductController
         try {
             $validator->assert($data);
         } catch (NestedValidationException $e) {
-            $response->getBody()->write(json_encode(['errors' => $e->getMessages()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, $e->getMessages(), 400);
         }
 
         $product = Product::find($id);
         if (!$product) {
-            $response->getBody()->write(json_encode(['error' => 'Product not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Product not found', 404);
         }
 
         $product->name = $data['name'];
@@ -247,8 +241,7 @@ class ProductController
         // Invalidate cache
         $this->cacheableProductService->invalidateProduct($id);
 
-        $response->getBody()->write(json_encode($product));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $product);
     }
 
     public function delete(Request $request, Response $response, array $args): Response
@@ -262,5 +255,50 @@ class ProductController
         }
 
         return $response->withStatus(204);
+    }
+
+    /**
+     * Upload product image
+     */
+    public function uploadImage(Request $request, Response $response, array $args): Response
+    {
+        $uploadedFiles = $request->getUploadedFiles();
+
+        if (!isset($uploadedFiles['image'])) {
+            return $this->error($response, 'No image uploaded', 400);
+        }
+
+        $image = $uploadedFiles['image'];
+
+        // Get the file upload service from middleware
+        $fileUploadService = FileUploadMiddleware::getFileUploadService($request);
+
+        try {
+            $result = $fileUploadService->uploadFile($image, 'image', [
+                'allowed_extensions' => ['jpg', 'jpeg', 'png', 'gif'],
+                'allowed_mime_types' => ['image/jpeg', 'image/png', 'image/gif'],
+                'max_file_size' => 2 * 1024 * 1024, // 2MB for images
+                'create_thumbnails' => true,
+                'thumbnail_size' => [200, 200]
+            ]);
+
+            // Optionally save image URL to product
+            $productId = (int)$args['id'];
+            $product = Product::find($productId);
+            if ($product) {
+                // Assuming you add an image_url column to products table
+                // $product->image_url = $result['url'];
+                // $product->save();
+                // $this->cacheableProductService->invalidateProduct($productId);
+            }
+
+            return $this->success($response, [
+                'message' => 'Image uploaded successfully',
+                'file' => $result
+            ]);
+
+        } catch (\Exception $e) {
+            return $this->error($response, 'Upload failed: ' . $e->getMessage(), 400);
+        }
     }
 }

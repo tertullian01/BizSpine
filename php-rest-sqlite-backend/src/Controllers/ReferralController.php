@@ -7,15 +7,14 @@ use App\Models\ReferralUsage;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
-class ReferralController
+class ReferralController extends ApiController
 {
     private const POINTS_PER_REFERRAL = 100;
     public function getMyReferral(Request $request, Response $response): Response
     {
         $userId = $request->getAttribute('user_id');
         if (!$userId) {
-            $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+            return $this->error($response, 'Unauthorized', 401);
         }
 
         $sql = <<<'SQL'
@@ -32,16 +31,14 @@ SQL;
             $referral = UserReferral::createForUser($userId);
         }
 
-        $response->getBody()->write(json_encode($referral));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $referral);
     }
 
     public function getMyReferralUsage(Request $request, Response $response): Response
     {
         $userId = $request->getAttribute('user_id');
         if (!$userId) {
-            $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+            return $this->error($response, 'Unauthorized', 401);
         }
 
         $sql = <<<'SQL'
@@ -58,8 +55,7 @@ WHERE ru.referrer_user_id = :user_id
 ORDER BY ru.used_at DESC
 SQL;
         $usage = ReferralUsage::fetchAll($sql, [':user_id' => $userId]);
-        $response->getBody()->write(json_encode($usage));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $usage);
     }
 
     public function redeemPoints(Request $request, Response $response): Response
@@ -67,33 +63,28 @@ SQL;
         $userId = $request->getAttribute('user_id');
         $body = $request->getParsedBody();
         if (!$userId) {
-            $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+            return $this->error($response, 'Unauthorized', 401);
         }
 
         if (!isset($body['points']) || $body['points'] <= 0) {
-            $response->getBody()->write(json_encode(['error' => 'Valid points amount is required']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, 'Valid points amount is required', 400);
         }
 
         $pointsToRedeem = (int)$body['points'];
         try {
             $referral = UserReferral::fetchOne('SELECT * FROM user_referrals WHERE user_id = :user_id', [':user_id' => $userId]);
             if (!$referral) {
-                $response->getBody()->write(json_encode(['error' => 'Referral account not found']));
-                return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+                return $this->error($response, 'Referral account not found', 404);
             }
 
             $referral->redeemPoints($pointsToRedeem);
-            $response->getBody()->write(json_encode([
+            return $this->success($response, [
                 'message' => 'Points redeemed successfully',
                 'points_redeemed' => $pointsToRedeem,
                 'new_balance' => $referral->points_balance,
-            ]));
-            return $response->withHeader('Content-Type', 'application/json');
+            ]);
         } catch (\Exception $e) {
-            $response->getBody()->write(json_encode(['error' => $e->getMessage()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, $e->getMessage(), 400);
         }
     }
 

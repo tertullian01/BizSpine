@@ -11,7 +11,7 @@ use App\Models\Expense;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
-class ReturnController
+class ReturnController extends ApiController
 {
     public function getAll(Request $request, Response $response): Response
     {
@@ -30,8 +30,7 @@ SQL;
             $return->items = $return->getItems();
         }
 
-        $response->getBody()->write(json_encode($returns));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $returns);
     }
 
     public function getById(Request $request, Response $response, array $args): Response
@@ -49,13 +48,11 @@ WHERE r.id = :id
 SQL;
         $return = OrderReturn::fetchOne($sql, [':id' => $id]);
         if (!$return) {
-            $response->getBody()->write(json_encode(['error' => 'Return not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Return not found', 404);
         }
 
         $return->items = $return->getItems();
-        $response->getBody()->write(json_encode($return));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $return);
     }
 
     public function create(Request $request, Response $response): Response
@@ -63,16 +60,14 @@ SQL;
         $body = $request->getParsedBody();
         $userId = $request->getAttribute('user_id');
         if (!$userId) {
-            $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+            return $this->error($response, 'Unauthorized', 401);
         }
 
         try {
             $return = OrderReturn::createReturn($body, $userId);
             return $this->getById($request, $response->withStatus(201), ['id' => $return->id]);
         } catch (\Exception $e) {
-            $response->getBody()->write(json_encode(['error' => $e->getMessage()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, $e->getMessage(), 400);
         }
     }
 
@@ -88,8 +83,7 @@ SQL;
             $return->approve();
             return $this->getById($request, $response, ['id' => $id]);
         } catch (\Exception $e) {
-            $response->getBody()->write(json_encode(['error' => $e->getMessage()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, $e->getMessage(), 400);
         }
     }
 
@@ -106,8 +100,7 @@ SQL;
             $return->processRefund($body);
             return $this->getById($request, $response, ['id' => $id]);
         } catch (\Exception $e) {
-            $response->getBody()->write(json_encode(['error' => $e->getMessage()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, $e->getMessage(), 400);
         }
     }
 }

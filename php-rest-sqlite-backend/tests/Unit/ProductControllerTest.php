@@ -42,12 +42,13 @@ class ProductControllerTest extends DatabaseTestCase
 
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertStringContainsString('application/json', $response->getHeaderLine('Content-Type'));
-        // Now returns paginated response
-        $this->assertArrayHasKey('data', $data);
-        $this->assertArrayHasKey('pagination', $data);
-        $this->assertCount(2, $data['data']);
-        $this->assertEquals('Product 1', $data['data'][0]['name']);
-        $this->assertEquals('Product 2', $data['data'][1]['name']);
+        $this->assertTrue($data['success']);
+        // Now returns paginated response in data
+        $this->assertArrayHasKey('data', $data['data']);
+        $this->assertArrayHasKey('pagination', $data['data']);
+        $this->assertCount(2, $data['data']['data']);
+        $this->assertEquals('Product 1', $data['data']['data'][0]['name']);
+        $this->assertEquals('Product 2', $data['data']['data'][1]['name']);
     }
 
     public function testGetProductById()
@@ -66,7 +67,8 @@ class ProductControllerTest extends DatabaseTestCase
 
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertStringContainsString('application/json', $response->getHeaderLine('Content-Type'));
-        $this->assertEquals('Product 1', $data->name);
+        $this->assertTrue($data->success);
+        $this->assertEquals('Product 1', $data->data->name);
     }
 
     public function testGetProductByIdNotFound()
@@ -81,6 +83,7 @@ class ProductControllerTest extends DatabaseTestCase
 
         $this->assertEquals(404, $response->getStatusCode());
         $this->assertStringContainsString('application/json', $response->getHeaderLine('Content-Type'));
+        $this->assertFalse($data['success']);
         $this->assertEquals('Product not found', $data['error']);
     }
 
@@ -99,8 +102,9 @@ class ProductControllerTest extends DatabaseTestCase
 
         $this->assertEquals(201, $response->getStatusCode());
         $this->assertStringContainsString('application/json', $response->getHeaderLine('Content-Type'));
-        $this->assertEquals('New Product', $data->name);
-        $this->assertEquals(15.99, $data->cost);
+        $this->assertTrue($data->success);
+        $this->assertEquals('New Product', $data->data->name);
+        $this->assertEquals(15.99, $data->data->cost);
 
         $stmt = self::$db->query("SELECT COUNT(*) FROM products WHERE name = 'New Product'");
         $this->assertEquals(1, $stmt->fetchColumn());
@@ -123,8 +127,9 @@ class ProductControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body);
 
-        $this->assertEquals('Updated Product', $data->name);
-        $this->assertEquals(25.99, $data->cost);
+        $this->assertTrue($data->success);
+        $this->assertEquals('Updated Product', $data->data->name);
+        $this->assertEquals(25.99, $data->data->cost);
 
         $stmt = self::$db->query("SELECT name FROM products WHERE id = $id");
         $this->assertEquals('Updated Product', $stmt->fetchColumn());

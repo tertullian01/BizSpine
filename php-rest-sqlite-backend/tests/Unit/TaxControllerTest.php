@@ -28,7 +28,8 @@ class TaxControllerTest extends DatabaseTestCase
         $response = $controller->getAll($request, $response, []);
         $body = json_decode($response->getBody()->__toString());
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertCount(2, $body->data);
+        $this->assertTrue($body->success);
+        $this->assertCount(2, $body->data->data);
     }
 
     public function testGetDefaultTaxRate()
@@ -39,9 +40,10 @@ class TaxControllerTest extends DatabaseTestCase
         $response = $controller->getDefault($request, $response, []);
         $body = json_decode($response->getBody()->__toString());
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Default Tax', $body->name);
-        $this->assertEquals(19.0, $body->rate);
-        $this->assertEquals(1, $body->is_default);
+        $this->assertTrue($body->success);
+        $this->assertEquals('Default Tax', $body->data->name);
+        $this->assertEquals(19.0, $body->data->rate);
+        $this->assertEquals(1, $body->data->is_default);
     }
 
     public function testCalculateTaxWithDefaultRate()
@@ -74,8 +76,9 @@ class TaxControllerTest extends DatabaseTestCase
         $response = $controller->create($request, $response, []);
         $body = json_decode($response->getBody()->__toString());
         $this->assertEquals(201, $response->getStatusCode());
-        $this->assertEquals('UK VAT', $body->name);
-        $this->assertEquals(20.0, $body->rate);
-        $this->assertEquals('UK', $body->region);
+        $this->assertTrue($body->success);
+        $this->assertEquals('UK VAT', $body->data->name);
+        $this->assertEquals(20.0, $body->data->rate);
+        $this->assertEquals('UK', $body->data->region);
     }
 }

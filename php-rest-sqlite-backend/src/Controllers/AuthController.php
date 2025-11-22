@@ -11,7 +11,7 @@ use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Respect\Validation\Validator as v;
 
-class AuthController
+class AuthController extends ApiController
 {
     private array $config;
     private PDO $db;
@@ -41,12 +41,9 @@ class AuthController
         $stmt = $this->db->prepare('INSERT INTO users (email, password_hash, created_at) VALUES (:e,:p,datetime("now"))');
         try {
             $stmt->execute([':e' => $email, ':p' => $hash]);
-            $response->getBody()->write(json_encode(['message' => 'User created', 'email' => $email]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+            return $this->success($response, ['message' => 'User created', 'email' => $email], 201);
         } catch (\PDOException $ex) {
-            $response->getBody()->write(json_encode(['error' => 'User already exists']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(409);
-        // This could be handled by the error handler too
+            return $this->error($response, 'User already exists', 409);
         }
     }
 
@@ -77,8 +74,7 @@ class AuthController
             'role' => $user['role'] ?? 'customer',
         ];
         $token = JWT::encode($payload, $this->config['jwt']['secret'] ?? 'dev', 'HS256');
-        $response->getBody()->write(json_encode(['access_token' => $token]));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, ['access_token' => $token]);
     }
 
     public function logout(Request $request, Response $response): Response
@@ -88,8 +84,7 @@ class AuthController
             throw new ValidationException('Missing user_id');
         }
         // Mark refresh tokens as revoked for this user (optional implementation)
-        $response->getBody()->write(json_encode(['message' => 'Logged out successfully']));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, ['message' => 'Logged out successfully']);
     }
 
     public function refresh(Request $request, Response $response): Response
@@ -107,19 +102,16 @@ class AuthController
             'sub' => (string)$userId,
         ];
         $token = JWT::encode($payload, $this->config['jwt']['secret'] ?? 'dev', 'HS256');
-        $response->getBody()->write(json_encode(['access_token' => $token]));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, ['access_token' => $token]);
     }
 
     public function oauthRedirect(Request $request, Response $response): Response
     {
-        $response->getBody()->write(json_encode(['error' => 'Not implemented']));
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(501);
+        return $this->error($response, 'Not implemented', 501);
     }
 
     public function oauthCallback(Request $request, Response $response): Response
     {
-        $response->getBody()->write(json_encode(['error' => 'Not implemented']));
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(501);
+        return $this->error($response, 'Not implemented', 501);
     }
 }

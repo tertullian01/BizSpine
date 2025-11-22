@@ -21,4 +21,24 @@ return [
         'access_exp' => 900,
         'refresh_exp' => 604800,
     ],
+    'file_upload' => [
+        'max_file_size' => 5 * 1024 * 1024, // 5MB
+        'allowed_extensions' => ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx'],
+        'allowed_mime_types' => [
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ],
+        'upload_path' => __DIR__ . '/../../uploads/',
+        'create_thumbnails' => true,
+        'thumbnail_size' => [150, 150],
+        'secure_filename' => true,
+    ],
+    'file_upload_middleware' => [
+        'max_files' => 10,
+        'allowed_fields' => [], // Empty array means all fields allowed
+    ],
 ];
