@@ -14,10 +14,10 @@ class CouponRoutes
     {
         $app->group('/coupons', function ($group) {
             $group->get('', [CouponController::class, 'getAll']);
+            $group->get('/usage-report', [CouponController::class, 'getUsageReport']);
             $group->get('/{id}', [CouponController::class, 'getById']);
             $group->post('', [CouponController::class, 'create']);
             $group->delete('/{id}', [CouponController::class, 'delete']);
-            $group->get('/usage-report', [CouponController::class, 'getUsageReport']);
         })->add(AuthMiddleware::class);
     }
 }

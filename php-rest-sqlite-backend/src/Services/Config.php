@@ -6,35 +6,46 @@ use Dotenv\Dotenv;
 
 class Config
 {
-    private static ?array $config = null;
+    private static ?Config $instance = null;
+    private array $config;
 
-    private static function load(): void
+    private function __construct()
     {
-        if (self::$config === null) {
-            // Load .env file from the project root
-            $dotenv = Dotenv::createImmutable(__DIR__ . '/../../');
-            $dotenv->load();
-
-            // Load the base configuration file
-            $configPath = __DIR__ . '/../../protected/config/config.php';
-            if (!file_exists($configPath)) {
-                throw new \Exception("Configuration file not found at: {$configPath}");
-            }
-            $config = require $configPath;
-
-            // Override with environment-specific values if they exist
-            $config['database']['database_path'] = $_ENV['DB_DATABASE'] ?? $config['database']['database_path'];
-            $config['jwt']['secret'] = $_ENV['JWT_SECRET'] ?? $config['jwt']['secret'];
-
-            self::$config = $config;
-        }
+        $this->load();
     }
 
-    public static function get(string $key, $default = null)
+    public static function getInstance(): Config
     {
-        self::load();
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    private function load(): void
+    {
+        // Load .env file from the project root
+        $dotenv = Dotenv::createImmutable(__DIR__ . '/../../');
+        $dotenv->load();
+
+        // Load the base configuration file
+        $configPath = __DIR__ . '/../../protected/config/config.php';
+        if (!file_exists($configPath)) {
+            throw new \Exception("Configuration file not found at: {$configPath}");
+        }
+        $config = require $configPath;
+
+        // Override with environment-specific values if they exist
+        $config['database']['database_path'] = $_ENV['DB_DATABASE'] ?? $config['database']['database_path'];
+        $config['jwt']['secret'] = $_ENV['JWT_SECRET'] ?? $config['jwt']['secret'];
+
+        $this->config = $config;
+    }
+
+    public function get(string $key, $default = null)
+    {
         $keys = explode('.', $key);
-        $value = self::$config;
+        $value = $this->config;
 
         foreach ($keys as $k) {
             if (!isset($value[$k])) {
@@ -46,11 +57,10 @@ class Config
         return $value;
     }
 
-    public static function set(string $key, $value): void
+    public function set(string $key, $value): void
     {
-        self::load();
         $keys = explode('.', $key);
-        $array = &self::$config;
+        $array = &$this->config;
         while (count($keys) > 1) {
             $k = array_shift($keys);
             if (!isset($array[$k]) || !is_array($array[$k])) {
