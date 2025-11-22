@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Firebase\JWT\JWT;
@@ -17,7 +18,7 @@ class User extends BaseModel
         if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             throw new \Exception('Invalid email format.');
         }
-        
+
         if (strlen($password) < 8) {
             throw new \Exception('Password must be at least 8 characters.');
         }
@@ -28,7 +29,7 @@ class User extends BaseModel
         }
 
         $hash = password_hash($password, PASSWORD_DEFAULT);
-        
+
         $user = new User([
             'email' => $email,
             'password_hash' => $hash,

@@ -47,6 +47,7 @@ SQL
     // Create index for faster lookups
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_inventory_product ON inventory(product_id);');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_inventory_store ON inventory(store_id);');
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_inventory_product_store ON inventory(product_id, store_id);');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_inventory_low_stock ON inventory(quantity, min_quantity);');
 
     echo "Indexes created successfully.\n";

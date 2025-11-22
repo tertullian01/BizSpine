@@ -1,10 +1,10 @@
 <?php
+
 namespace App\Models;
 
 class Coupon extends BaseModel
 {
     protected static string $tableName = 'coupons';
-
     public function validate(float $subtotal, int $userId): array
     {
         if (!$this->id) {
@@ -61,7 +61,6 @@ class Coupon extends BaseModel
             'used_at' => date('Y-m-d H:i:s'),
         ]);
         $usage->save();
-
         $this->times_used++;
         $this->save();
     }

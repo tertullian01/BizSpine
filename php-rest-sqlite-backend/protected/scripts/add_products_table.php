@@ -20,5 +20,10 @@ CREATE TABLE IF NOT EXISTS products (
 
 $db->exec($sql);
 
+// Create indexes for better performance
+$db->exec('CREATE INDEX IF NOT EXISTS idx_products_type ON products(type);');
+$db->exec('CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);');
+
 echo "Products table created successfully.\n";
+echo "Indexes created successfully.\n";
 

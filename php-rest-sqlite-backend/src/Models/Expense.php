@@ -1,13 +1,12 @@
 <?php
+
 namespace App\Models;
 
 class Expense extends BaseModel
 {
     protected static string $tableName = 'expenses';
-    
-    // Additional properties for joined data
+// Additional properties for joined data
     public ?string $order_number;
-
     public static function getTotalExpenses(): float
     {
         $stmt = self::$db->query('SELECT COALESCE(SUM(amount), 0) as total FROM expenses');

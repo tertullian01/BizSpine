@@ -1,10 +1,10 @@
 <?php
+
 namespace App\Models;
 
 class TaxRate extends BaseModel
 {
     protected static string $tableName = 'tax_rates';
-
     public static function calculateTax(float $taxableAmount, ?string $region): array
     {
         $taxRate = null;
@@ -18,16 +18,15 @@ class TaxRate extends BaseModel
 
         if (!$taxRate) {
             return [
-                'tax_rate' => 0,
-                'tax_amount' => 0,
-                'total_with_tax' => $taxableAmount,
+            'tax_rate' => 0,
+            'tax_amount' => 0,
+            'total_with_tax' => $taxableAmount,
             ];
         }
 
         $rate = $taxRate->rate / 100;
         $taxAmount = $taxableAmount * $rate;
         $totalWithTax = $taxableAmount + $taxAmount;
-
         return [
             'tax_rate' => $taxRate->rate,
             'tax_amount' => $taxAmount,

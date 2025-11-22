@@ -1,16 +1,34 @@
 <?php
+
 namespace App\Controllers;
 
-use App\Models\Coupon;
-use App\Models\CouponUsage;
+use App\Services\Config;
+use App\Exceptions\ValidationException;
+use App\Services\Database;
+use App\Services\Validator;
+use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
+use Respect\Validation\Validator as v;
 
 class CouponController
 {
+    private PDO $db;
+    private Validator $validator;
+    public function __construct(PDO $db = null)
+    {
+        if ($db) {
+            $this->db = $db;
+        } else {
+            $this->db = Database::get(Config::get('database.database_path'));
+        }
+        $this->validator = new Validator();
+    }
+
     public function getAll(Request $request, Response $response): Response
     {
-        $coupons = Coupon::findAll();
+        $stmt = $this->db->query('SELECT * FROM coupons ORDER BY created_at DESC');
+        $coupons = $stmt->fetchAll(PDO::FETCH_CLASS, 'App\Models\Coupon');
         $response->getBody()->write(json_encode($coupons));
         return $response->withHeader('Content-Type', 'application/json');
     }
@@ -18,13 +36,14 @@ class CouponController
     public function getById(Request $request, Response $response, array $args): Response
     {
         $id = (int)$args['id'];
-        $coupon = Coupon::find($id);
-        
+        $stmt = $this->db->prepare('SELECT * FROM coupons WHERE id = :id');
+        $stmt->execute([':id' => $id]);
+        $coupon = $stmt->fetchObject('App\Models\Coupon');
         if (!$coupon) {
             $response->getBody()->write(json_encode(['error' => 'Coupon not found']));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
         }
-        
+
         $response->getBody()->write(json_encode($coupon));
         return $response->withHeader('Content-Type', 'application/json');
     }
@@ -32,34 +51,33 @@ class CouponController
     public function create(Request $request, Response $response): Response
     {
         $body = $request->getParsedBody();
-        
-        if (empty($body['code']) || empty($body['discount_type']) || !isset($body['discount_value'])) {
-            $response->getBody()->write(json_encode(['error' => 'code, discount_type, and discount_value are required']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
-        }
-        
-        if (!in_array($body['discount_type'], ['percentage', 'fixed'])) {
-            $response->getBody()->write(json_encode(['error' => 'discount_type must be "percentage" or "fixed"']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
-        }
-        
+        $this->validator->validate($body, [
+            'code' => v::notEmpty()->setName('Code'),
+            'discount_type' => v::notEmpty()->in(['percentage', 'fixed'])->setName('Discount Type'),
+            'discount_value' => v::notEmpty()->floatVal()->positive()->setName('Discount Value'),
+        ]);
         try {
-            $coupon = new Coupon([
-                'code' => strtoupper($body['code']),
-                'discount_type' => $body['discount_type'],
-                'discount_value' => (float)$body['discount_value'],
-                'min_purchase_amount' => $body['min_purchase_amount'] ?? 0,
-                'max_uses' => $body['max_uses'] ?? null,
-                'valid_from' => $body['valid_from'] ?? null,
-                'valid_until' => $body['valid_until'] ?? null,
-                'is_active' => $body['is_active'] ?? 1,
-                'description' => $body['description'] ?? null,
+            $sql = <<<'SQL'
+INSERT INTO coupons 
+    (code, discount_type, discount_value, min_purchase_amount, max_uses, valid_from, valid_until, is_active, description, created_at, updated_at) 
+VALUES 
+    (:code, :discount_type, :discount_value, :min_purchase, :max_uses, :valid_from, :valid_until, :is_active, :description, datetime("now"), datetime("now"))
+SQL;
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([
+                ':code' => strtoupper($body['code']),
+                ':discount_type' => $body['discount_type'],
+                ':discount_value' => (float)$body['discount_value'],
+                ':min_purchase' => $body['min_purchase_amount'] ?? 0,
+                ':max_uses' => $body['max_uses'] ?? null,
+                ':valid_from' => $body['valid_from'] ?? null,
+                ':valid_until' => $body['valid_until'] ?? null,
+                ':is_active' => $body['is_active'] ?? 1,
+                ':description' => $body['description'] ?? null,
             ]);
-            $coupon->save();
-            
-            return $this->getById($request, $response->withStatus(201), ['id' => $coupon->id]);
-            
-        } catch (\Exception $e) {
+            $id = (int)$this->db->lastInsertId();
+            return $this->getById($request, $response->withStatus(201), ['id' => $id]);
+        } catch (\PDOException $e) {
             if (strpos($e->getMessage(), 'UNIQUE constraint failed') !== false) {
                 $response->getBody()->write(json_encode(['error' => 'Coupon code already exists']));
                 return $response->withHeader('Content-Type', 'application/json')->withStatus(409);
@@ -73,14 +91,15 @@ class CouponController
     public function delete(Request $request, Response $response, array $args): Response
     {
         $id = (int)$args['id'];
-        $coupon = Coupon::find($id);
-        if (!$coupon) {
+        $checkStmt = $this->db->prepare('SELECT id FROM coupons WHERE id = :id');
+        $checkStmt->execute([':id' => $id]);
+        if (!$checkStmt->fetch()) {
             $response->getBody()->write(json_encode(['error' => 'Coupon not found']));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
         }
-        
-        $coupon->delete();
-        
+
+        $stmt = $this->db->prepare('DELETE FROM coupons WHERE id = :id');
+        $stmt->execute([':id' => $id]);
         return $response->withStatus(204);
     }
 
@@ -98,26 +117,65 @@ LEFT JOIN users u ON cu.user_id = u.id
 LEFT JOIN orders o ON cu.order_id = o.id
 ORDER BY cu.used_at DESC
 SQL;
-        
-        $usage = CouponUsage::fetchAll($sql);
+        $stmt = $this->db->query($sql);
+        $usage = $stmt->fetchAll(PDO::FETCH_CLASS, 'App\Models\CouponUsage');
         $response->getBody()->write(json_encode($usage));
         return $response->withHeader('Content-Type', 'application/json');
     }
 
     public function validateCoupon(string $code, float $orderTotal, int $userId, int $orderId): array
     {
-        $coupon = Coupon::fetchOne('SELECT * FROM coupons WHERE code = :code', [':code' => strtoupper($code)]);
-        
+        $stmt = $this->db->prepare('SELECT * FROM coupons WHERE code = :code AND is_active = 1');
+        $stmt->execute([':code' => strtoupper($code)]);
+        $coupon = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$coupon) {
             return ['valid' => false, 'error' => 'Invalid or inactive coupon code'];
         }
 
-        $validationResult = $coupon->validate($orderTotal, $userId);
-
-        if ($validationResult['valid']) {
-            $coupon->recordUsage($userId, $orderId, $validationResult['discount_amount']);
+        // Check validity dates
+        $now = date('Y-m-d H:i:s');
+        if ($coupon['valid_from'] && $now < $coupon['valid_from']) {
+            return ['valid' => false, 'error' => 'Coupon not yet valid'];
+        }
+        if ($coupon['valid_until'] && $now > $coupon['valid_until']) {
+            return ['valid' => false, 'error' => 'Coupon has expired'];
         }
 
-        return $validationResult;
+        // Check max uses
+        if ($coupon['max_uses'] && $coupon['times_used'] >= $coupon['max_uses']) {
+            return ['valid' => false, 'error' => 'Coupon usage limit reached'];
+        }
+
+        // Check minimum purchase
+        if ($orderTotal < $coupon['min_purchase_amount']) {
+            return ['valid' => false, 'error' => "Minimum purchase of {$coupon['min_purchase_amount']} required"];
+        }
+
+        // Calculate discount
+        $discountAmount = 0;
+        if ($coupon['discount_type'] === 'percentage') {
+            $discountAmount = $orderTotal * ($coupon['discount_value'] / 100);
+        } else {
+            $discountAmount = $coupon['discount_value'];
+        }
+
+        // Record usage
+        try {
+            $usageSql = 'INSERT INTO coupon_usage (coupon_id, user_id, order_id, discount_amount, used_at) VALUES (:coupon_id, :user_id, :order_id, :discount, datetime("now"))';
+            $usageStmt = $this->db->prepare($usageSql);
+            $usageStmt->execute([
+                ':coupon_id' => $coupon['id'],
+                ':user_id' => $userId,
+                ':order_id' => $orderId,
+                ':discount' => $discountAmount,
+            ]);
+// Update coupon times_used
+            $updateSql = 'UPDATE coupons SET times_used = times_used + 1, updated_at = datetime("now") WHERE id = :id';
+            $updateStmt = $this->db->prepare($updateSql);
+            $updateStmt->execute([':id' => $coupon['id']]);
+            return ['valid' => true, 'discount_amount' => $discountAmount, 'coupon_id' => $coupon['id']];
+        } catch (\Exception $e) {
+            return ['valid' => false, 'error' => 'Error applying coupon: ' . $e->getMessage()];
+        }
     }
 }

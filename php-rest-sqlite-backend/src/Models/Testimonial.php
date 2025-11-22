@@ -1,10 +1,10 @@
 <?php
+
 namespace App\Models;
 
 class Testimonial extends BaseModel
 {
     protected static string $tableName = 'testimonials';
-
     public function publish(): void
     {
         $this->published = 1;

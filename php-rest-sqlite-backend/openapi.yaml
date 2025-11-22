@@ -1,0 +1,2318 @@
+openapi: 3.0.3
+info:
+  title: Small Business Web Backend API
+  description: |
+    A comprehensive REST API for small business management built with Slim Framework 4.0 and SQLite.
+
+    ## Features
+    - Product and inventory management
+    - Order processing and fulfillment
+    - Customer testimonials and reviews
+    - User authentication and authorization
+    - Coupon and discount system
+    - Referral program
+    - Tax rate management
+    - Return and refund processing
+    - Bookkeeping and financial reporting
+
+    ## Authentication
+    Most endpoints require JWT authentication. Include the token in the Authorization header:
+    ```
+    Authorization: Bearer <your-jwt-token>
+    ```
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+  - url: https://api.smallbusiness.com
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+paths:
+  # Health Check
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Check if the API is running and database is accessible
+      tags:
+        - Health
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "healthy"
+                timestamp: "2025-11-22T05:44:47Z"
+                database: "connected"
+
+  # Authentication
+  /auth/register:
+    post:
+      summary: Register a new user
+      description: Create a new user account with email and password
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              email: "user@example.com"
+              password: "securepassword123"
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/login:
+    post:
+      summary: User login
+      description: Authenticate user and return JWT token
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: "user@example.com"
+              password: "securepassword123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/logout:
+    post:
+      summary: User logout
+      description: Invalidate the current session
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /auth/refresh:
+    post:
+      summary: Refresh access token
+      description: Generate a new access token using existing session
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+
+  # Products
+  /products:
+    get:
+      summary: Get all products
+      description: Retrieve a list of all products with basic information
+      tags:
+        - Products
+      responses:
+        '200':
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductSummary'
+    post:
+      summary: Create a new product
+      description: Add a new product to the catalog
+      tags:
+        - Products
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreateRequest'
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /products/{id}:
+    get:
+      summary: Get product by ID
+      description: Retrieve detailed information about a specific product
+      tags:
+        - Products
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Product ID
+      responses:
+        '200':
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update product
+      description: Modify an existing product's information
+      tags:
+        - Products
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Product ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductUpdateRequest'
+      responses:
+        '200':
+          description: Product updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete product
+      description: Remove a product from the catalog
+      tags:
+        - Products
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Product ID
+      responses:
+        '204':
+          description: Product deleted successfully
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Stores
+  /stores:
+    get:
+      summary: Get all stores
+      description: Retrieve a list of all store locations
+      tags:
+        - Stores
+      responses:
+        '200':
+          description: List of stores
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Store'
+    post:
+      summary: Create a new store
+      description: Add a new store location
+      tags:
+        - Stores
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoreCreateRequest'
+      responses:
+        '201':
+          description: Store created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Store'
+
+  /stores/{id}:
+    get:
+      summary: Get store by ID
+      description: Retrieve detailed information about a specific store
+      tags:
+        - Stores
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Store ID
+      responses:
+        '200':
+          description: Store details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Store'
+    put:
+      summary: Update store
+      description: Modify store information
+      tags:
+        - Stores
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Store ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoreUpdateRequest'
+      responses:
+        '200':
+          description: Store updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Store'
+    delete:
+      summary: Delete store
+      description: Remove a store location
+      tags:
+        - Stores
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Store ID
+      responses:
+        '204':
+          description: Store deleted successfully
+
+  # Inventory
+  /inventory:
+    get:
+      summary: Get all inventory items
+      description: Retrieve inventory levels for all products across all stores
+      tags:
+        - Inventory
+      responses:
+        '200':
+          description: List of inventory items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InventoryItem'
+    post:
+      summary: Create inventory item
+      description: Add inventory for a product at a specific store
+      tags:
+        - Inventory
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryCreateRequest'
+      responses:
+        '201':
+          description: Inventory item created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+
+  /inventory/{id}:
+    get:
+      summary: Get inventory item by ID
+      description: Retrieve inventory information for a specific item
+      tags:
+        - Inventory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Inventory item ID
+      responses:
+        '200':
+          description: Inventory item details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+    put:
+      summary: Update inventory item
+      description: Modify inventory quantity or settings
+      tags:
+        - Inventory
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Inventory item ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryUpdateRequest'
+      responses:
+        '200':
+          description: Inventory updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+    delete:
+      summary: Delete inventory item
+      description: Remove inventory tracking for a product-store combination
+      tags:
+        - Inventory
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Inventory item ID
+      responses:
+        '204':
+          description: Inventory item deleted
+
+  /inventory/low-stock:
+    get:
+      summary: Get low stock items
+      description: Retrieve inventory items that are below minimum stock levels
+      tags:
+        - Inventory
+      responses:
+        '200':
+          description: List of low stock items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InventoryItem'
+
+  # Orders
+  /orders:
+    get:
+      summary: Get all orders (admin)
+      description: Retrieve all orders (requires admin privileges)
+      tags:
+        - Orders
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of all orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+    post:
+      summary: Create a new order
+      description: Place a new order with items
+      tags:
+        - Orders
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreateRequest'
+      responses:
+        '201':
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  /orders/my:
+    get:
+      summary: Get my orders
+      description: Retrieve orders placed by the authenticated user
+      tags:
+        - Orders
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of user's orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+
+  /orders/{id}:
+    get:
+      summary: Get order by ID
+      description: Retrieve detailed information about a specific order
+      tags:
+        - Orders
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Order ID
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+    put:
+      summary: Update order
+      description: Modify order information (admin only)
+      tags:
+        - Orders
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Order ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderUpdateRequest'
+      responses:
+        '200':
+          description: Order updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  /orders/{id}/cancel:
+    post:
+      summary: Cancel order
+      description: Cancel an order and restore inventory
+      tags:
+        - Orders
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Order ID
+      responses:
+        '200':
+          description: Order cancelled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  # Tax Rates
+  /tax-rates:
+    get:
+      summary: Get all tax rates
+      description: Retrieve all configured tax rates
+      tags:
+        - Tax
+      responses:
+        '200':
+          description: List of tax rates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaxRate'
+    post:
+      summary: Create tax rate
+      description: Add a new tax rate configuration
+      tags:
+        - Tax
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaxRateCreateRequest'
+      responses:
+        '201':
+          description: Tax rate created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxRate'
+
+  /tax-rates/default:
+    get:
+      summary: Get default tax rate
+      description: Retrieve the default tax rate configuration
+      tags:
+        - Tax
+      responses:
+        '200':
+          description: Default tax rate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxRate'
+
+  # Testimonials
+  /testimonials:
+    get:
+      summary: Get published testimonials
+      description: Retrieve all published customer testimonials
+      tags:
+        - Testimonials
+      responses:
+        '200':
+          description: List of published testimonials
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Testimonial'
+    post:
+      summary: Create testimonial
+      description: Submit a new customer testimonial
+      tags:
+        - Testimonials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestimonialCreateRequest'
+      responses:
+        '201':
+          description: Testimonial submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Testimonial'
+
+  # Reviews
+  /reviews:
+    get:
+      summary: Get all published reviews
+      description: Retrieve all published product reviews
+      tags:
+        - Reviews
+      responses:
+        '200':
+          description: List of published reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Review'
+    post:
+      summary: Create review
+      description: Submit a new product review
+      tags:
+        - Reviews
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewCreateRequest'
+      responses:
+        '201':
+          description: Review created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+
+  /reviews/my:
+    get:
+      summary: Get my reviews
+      description: Retrieve reviews submitted by the authenticated user
+      tags:
+        - Reviews
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of user's reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Review'
+
+  /reviews/{id}:
+    get:
+      summary: Get review by ID
+      description: Retrieve a specific review
+      tags:
+        - Reviews
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Review ID
+      responses:
+        '200':
+          description: Review details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+    put:
+      summary: Update review
+      description: Modify a review (owner only)
+      tags:
+        - Reviews
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Review ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewUpdateRequest'
+      responses:
+        '200':
+          description: Review updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+    delete:
+      summary: Delete review
+      description: Remove a review (owner only)
+      tags:
+        - Reviews
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Review ID
+      responses:
+        '204':
+          description: Review deleted
+
+  /reviews/product/{id}:
+    get:
+      summary: Get reviews for product
+      description: Retrieve all reviews for a specific product
+      tags:
+        - Reviews
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Product ID
+      responses:
+        '200':
+          description: List of product reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Review'
+
+  # Bookkeeping
+  /bookkeeping/income:
+    get:
+      summary: Get all income records
+      description: Retrieve all income transactions
+      tags:
+        - Bookkeeping
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of income records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Income'
+    post:
+      summary: Create income record
+      description: Add a new income transaction
+      tags:
+        - Bookkeeping
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncomeCreateRequest'
+      responses:
+        '201':
+          description: Income record created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Income'
+
+  /bookkeeping/expenses:
+    get:
+      summary: Get all expense records
+      description: Retrieve all expense transactions
+      tags:
+        - Bookkeeping
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of expense records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Expense'
+    post:
+      summary: Create expense record
+      description: Add a new expense transaction
+      tags:
+        - Bookkeeping
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenseCreateRequest'
+      responses:
+        '201':
+          description: Expense record created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+
+  /bookkeeping/summary:
+    get:
+      summary: Get financial summary
+      description: Retrieve profit/loss summary and expense breakdown
+      tags:
+        - Bookkeeping
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Financial summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialSummary'
+
+  # Referrals
+  /referrals/my:
+    get:
+      summary: Get my referral info
+      description: Retrieve user's referral code and statistics
+      tags:
+        - Referrals
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Referral information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferralInfo'
+
+  /referrals/my/usage:
+    get:
+      summary: Get my referral usage
+      description: Retrieve history of referral code usage
+      tags:
+        - Referrals
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Referral usage history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReferralUsage'
+
+  /referrals/redeem:
+    post:
+      summary: Redeem referral points
+      description: Redeem accumulated referral points
+      tags:
+        - Referrals
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RedeemPointsRequest'
+      responses:
+        '200':
+          description: Points redeemed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RedeemPointsResponse'
+
+  # Coupons
+  /coupons:
+    get:
+      summary: Get all coupons
+      description: Retrieve all coupon codes and configurations
+      tags:
+        - Coupons
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of coupons
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Coupon'
+    post:
+      summary: Create coupon
+      description: Add a new coupon code
+      tags:
+        - Coupons
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CouponCreateRequest'
+      responses:
+        '201':
+          description: Coupon created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Coupon'
+
+  /coupons/{id}:
+    get:
+      summary: Get coupon by ID
+      description: Retrieve specific coupon details
+      tags:
+        - Coupons
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Coupon ID
+      responses:
+        '200':
+          description: Coupon details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Coupon'
+    delete:
+      summary: Delete coupon
+      description: Remove a coupon code
+      tags:
+        - Coupons
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Coupon ID
+      responses:
+        '204':
+          description: Coupon deleted
+
+  /coupons/usage-report:
+    get:
+      summary: Get coupon usage report
+      description: Retrieve usage statistics for all coupons
+      tags:
+        - Coupons
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Coupon usage report
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CouponUsageReport'
+
+  # Returns
+  /returns:
+    get:
+      summary: Get all returns
+      description: Retrieve all return requests
+      tags:
+        - Returns
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of return requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Return'
+    post:
+      summary: Create return request
+      description: Submit a new return request
+      tags:
+        - Returns
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReturnCreateRequest'
+      responses:
+        '201':
+          description: Return request created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Return'
+
+  /returns/{id}:
+    get:
+      summary: Get return by ID
+      description: Retrieve specific return request details
+      tags:
+        - Returns
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Return ID
+      responses:
+        '200':
+          description: Return details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Return'
+
+  /returns/{id}/approve:
+    post:
+      summary: Approve return
+      description: Approve a return request and restore inventory
+      tags:
+        - Returns
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Return ID
+      responses:
+        '200':
+          description: Return approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Return'
+
+  /returns/{id}/refund:
+    post:
+      summary: Process refund
+      description: Process refund for an approved return
+      tags:
+        - Returns
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Return ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefundRequest'
+      responses:
+        '200':
+          description: Refund processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Return'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Authorization header using the Bearer scheme
+
+  schemas:
+    # Common Response Schemas
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+      required:
+        - error
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Success message
+      required:
+        - message
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        database:
+          type: string
+          enum: [connected, disconnected]
+      required:
+        - status
+        - timestamp
+        - database
+
+    # Authentication Schemas
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: User email address
+        password:
+          type: string
+          minLength: 8
+          description: User password (minimum 8 characters)
+      required:
+        - email
+        - password
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: User email address
+        password:
+          type: string
+          description: User password
+      required:
+        - email
+        - password
+
+    AuthSuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Success message
+        email:
+          type: string
+          format: email
+          description: Registered email address
+      required:
+        - message
+        - email
+
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT access token
+        token_type:
+          type: string
+          default: Bearer
+        expires_in:
+          type: integer
+          description: Token expiration time in seconds
+      required:
+        - access_token
+
+    # Product Schemas
+    ProductSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Product ID
+        name:
+          type: string
+          description: Product name
+        type:
+          type: string
+          description: Product type/category
+        cost:
+          type: number
+          format: float
+          description: Product cost
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - name
+
+    Product:
+      allOf:
+        - $ref: '#/components/schemas/ProductSummary'
+        - type: object
+          properties:
+            description:
+              type: string
+              description: Product description
+            featured_ingredients:
+              type: string
+              description: Key ingredients
+            all_ingredients:
+              type: string
+              description: Complete ingredient list
+            size:
+              type: string
+              description: Product size/package
+
+    ProductCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Product name
+        type:
+          type: string
+          description: Product type/category
+        description:
+          type: string
+          description: Product description
+        cost:
+          type: number
+          format: float
+          description: Product cost
+        featured_ingredients:
+          type: string
+          description: Key ingredients
+        all_ingredients:
+          type: string
+          description: Complete ingredient list
+        size:
+          type: string
+          description: Product size/package
+      required:
+        - name
+
+    ProductUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Product name
+        type:
+          type: string
+          description: Product type/category
+        description:
+          type: string
+          description: Product description
+        cost:
+          type: number
+          format: float
+          description: Product cost
+        featured_ingredients:
+          type: string
+          description: Key ingredients
+        all_ingredients:
+          type: string
+          description: Complete ingredient list
+        size:
+          type: string
+          description: Product size/package
+
+    # Store Schemas
+    Store:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Store ID
+        name:
+          type: string
+          description: Store name
+        description:
+          type: string
+          description: Store description
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - name
+
+    StoreCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Store name
+        description:
+          type: string
+          description: Store description
+      required:
+        - name
+
+    StoreUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Store name
+        description:
+          type: string
+          description: Store description
+
+    # Inventory Schemas
+    InventoryItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Inventory item ID
+        product_id:
+          type: integer
+          description: Product ID
+        store_id:
+          type: integer
+          description: Store ID
+        quantity:
+          type: integer
+          description: Current stock quantity
+        min_quantity:
+          type: integer
+          description: Minimum stock level
+        product_name:
+          type: string
+          description: Product name
+        store_name:
+          type: string
+          description: Store name
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - product_id
+        - store_id
+        - quantity
+
+    InventoryCreateRequest:
+      type: object
+      properties:
+        product_id:
+          type: integer
+          description: Product ID
+        store_id:
+          type: integer
+          description: Store ID
+        quantity:
+          type: integer
+          description: Initial stock quantity
+        min_quantity:
+          type: integer
+          default: 0
+          description: Minimum stock level
+      required:
+        - product_id
+        - store_id
+
+    InventoryUpdateRequest:
+      type: object
+      properties:
+        quantity:
+          type: integer
+          description: New stock quantity
+        min_quantity:
+          type: integer
+          description: Minimum stock level
+
+    # Order Schemas
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Order ID
+        user_id:
+          type: integer
+          description: User ID
+        order_number:
+          type: string
+          description: Unique order number
+        order_date:
+          type: string
+          format: date-time
+          description: Order creation date
+        fulfillment_status:
+          type: string
+          enum: [pending, processing, shipped, delivered, cancelled]
+          description: Order fulfillment status
+        shipping_address:
+          type: string
+          description: Shipping address
+        phone_number:
+          type: string
+          description: Contact phone number
+        subtotal:
+          type: number
+          format: float
+          description: Order subtotal
+        discount_amount:
+          type: number
+          format: float
+          description: Total discount applied
+        total:
+          type: number
+          format: float
+          description: Final order total
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+          description: Order items
+      required:
+        - id
+        - user_id
+        - order_number
+        - fulfillment_status
+
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Order item ID
+        product_name:
+          type: string
+          description: Product name
+        store_name:
+          type: string
+          description: Store name
+        quantity:
+          type: integer
+          description: Ordered quantity
+        unit_price:
+          type: number
+          format: float
+          description: Price per unit
+        subtotal:
+          type: number
+          format: float
+          description: Item subtotal
+      required:
+        - id
+        - quantity
+        - unit_price
+        - subtotal
+
+    OrderCreateRequest:
+      type: object
+      properties:
+        shipping_address:
+          type: string
+          description: Shipping address
+        phone_number:
+          type: string
+          description: Contact phone number
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id:
+                type: integer
+                description: Product ID
+              store_id:
+                type: integer
+                description: Store ID
+              quantity:
+                type: integer
+                description: Quantity to order
+            required:
+              - product_id
+              - store_id
+              - quantity
+          description: Order items
+      required:
+        - shipping_address
+        - items
+
+    OrderUpdateRequest:
+      type: object
+      properties:
+        fulfillment_status:
+          type: string
+          enum: [pending, processing, shipped, delivered, cancelled]
+          description: New fulfillment status
+        shipping_address:
+          type: string
+          description: Updated shipping address
+
+    # Tax Schemas
+    TaxRate:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Tax rate ID
+        name:
+          type: string
+          description: Tax rate name
+        rate:
+          type: number
+          format: float
+          description: Tax rate percentage
+        region:
+          type: string
+          description: Geographic region
+        is_default:
+          type: boolean
+          description: Whether this is the default tax rate
+        description:
+          type: string
+          description: Tax rate description
+      required:
+        - id
+        - name
+        - rate
+
+    TaxRateCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Tax rate name
+        rate:
+          type: number
+          format: float
+          description: Tax rate percentage
+        region:
+          type: string
+          description: Geographic region
+        is_default:
+          type: boolean
+          default: false
+          description: Whether this is the default tax rate
+        description:
+          type: string
+          description: Tax rate description
+      required:
+        - name
+        - rate
+
+    # Testimonial Schemas
+    Testimonial:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Testimonial ID
+        customer_name:
+          type: string
+          description: Customer name
+        customer_email:
+          type: string
+          format: email
+          description: Customer email
+        testimonial_text:
+          type: string
+          description: Testimonial content
+        age_range:
+          type: string
+          description: Customer age range
+        published:
+          type: boolean
+          description: Whether testimonial is published
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+      required:
+        - id
+        - customer_name
+        - testimonial_text
+
+    TestimonialCreateRequest:
+      type: object
+      properties:
+        customer_name:
+          type: string
+          description: Customer name
+        customer_email:
+          type: string
+          format: email
+          description: Customer email
+        testimonial_text:
+          type: string
+          description: Testimonial content
+        age_range:
+          type: string
+          description: Customer age range
+      required:
+        - customer_name
+        - testimonial_text
+
+    # Review Schemas
+    Review:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Review ID
+        user_id:
+          type: integer
+          description: User ID
+        product_id:
+          type: integer
+          description: Product ID
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Rating (1-5 stars)
+        title:
+          type: string
+          description: Review title
+        comment:
+          type: string
+          description: Review comment
+        published:
+          type: boolean
+          description: Whether review is published
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - user_id
+        - product_id
+        - rating
+
+    ReviewCreateRequest:
+      type: object
+      properties:
+        product_id:
+          type: integer
+          description: Product ID being reviewed
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Rating (1-5 stars)
+        title:
+          type: string
+          description: Review title
+        comment:
+          type: string
+          description: Review comment
+      required:
+        - product_id
+        - rating
+
+    ReviewUpdateRequest:
+      type: object
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Rating (1-5 stars)
+        title:
+          type: string
+          description: Review title
+        comment:
+          type: string
+          description: Review comment
+
+    # Bookkeeping Schemas
+    Income:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Income record ID
+        order_id:
+          type: integer
+          description: Associated order ID
+        amount:
+          type: number
+          format: float
+          description: Income amount
+        payment_method:
+          type: string
+          description: Payment method
+        payment_date:
+          type: string
+          format: date-time
+          description: Payment date
+        description:
+          type: string
+          description: Income description
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+      required:
+        - id
+        - amount
+
+    IncomeCreateRequest:
+      type: object
+      properties:
+        order_id:
+          type: integer
+          description: Associated order ID
+        amount:
+          type: number
+          format: float
+          description: Income amount
+        payment_method:
+          type: string
+          description: Payment method
+        payment_date:
+          type: string
+          format: date-time
+          description: Payment date
+        description:
+          type: string
+          description: Income description
+      required:
+        - amount
+
+    Expense:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Expense record ID
+        order_id:
+          type: integer
+          description: Associated order ID
+        vendor:
+          type: string
+          description: Vendor/supplier name
+        category:
+          type: string
+          description: Expense category
+        amount:
+          type: number
+          format: float
+          description: Expense amount
+        expense_date:
+          type: string
+          format: date-time
+          description: Expense date
+        description:
+          type: string
+          description: Expense description
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+      required:
+        - id
+        - category
+        - amount
+
+    ExpenseCreateRequest:
+      type: object
+      properties:
+        order_id:
+          type: integer
+          description: Associated order ID
+        vendor:
+          type: string
+          description: Vendor/supplier name
+        category:
+          type: string
+          description: Expense category
+        amount:
+          type: number
+          format: float
+          description: Expense amount
+        expense_date:
+          type: string
+          format: date-time
+          description: Expense date
+        description:
+          type: string
+          description: Expense description
+      required:
+        - category
+        - amount
+
+    FinancialSummary:
+      type: object
+      properties:
+        total_income:
+          type: number
+          format: float
+          description: Total income amount
+        total_expenses:
+          type: number
+          format: float
+          description: Total expenses amount
+        profit:
+          type: number
+          format: float
+          description: Net profit (income - expenses)
+        expenses_by_category:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+                description: Expense category
+              total:
+                type: number
+                format: float
+                description: Total for category
+          description: Expense breakdown by category
+      required:
+        - total_income
+        - total_expenses
+        - profit
+        - expenses_by_category
+
+    # Referral Schemas
+    ReferralInfo:
+      type: object
+      properties:
+        user_id:
+          type: integer
+          description: User ID
+        referral_code:
+          type: string
+          description: Unique referral code
+        times_used:
+          type: integer
+          description: Number of times code was used
+        points_earned:
+          type: integer
+          description: Total points earned
+        points_redeemed:
+          type: integer
+          description: Points already redeemed
+        points_balance:
+          type: integer
+          description: Available points balance
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+      required:
+        - user_id
+        - referral_code
+        - times_used
+        - points_earned
+        - points_redeemed
+        - points_balance
+
+    ReferralUsage:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Usage record ID
+        referrer_user_id:
+          type: integer
+          description: Referrer user ID
+        referred_user_id:
+          type: integer
+          description: Referred user ID
+        referral_code:
+          type: string
+          description: Referral code used
+        order_id:
+          type: integer
+          description: Associated order ID
+        points_awarded:
+          type: integer
+          description: Points awarded for this usage
+        used_at:
+          type: string
+          format: date-time
+          description: Usage timestamp
+      required:
+        - id
+        - referrer_user_id
+        - referred_user_id
+        - referral_code
+
+    RedeemPointsRequest:
+      type: object
+      properties:
+        points:
+          type: integer
+          minimum: 1
+          description: Number of points to redeem
+      required:
+        - points
+
+    RedeemPointsResponse:
+      type: object
+      properties:
+        points_redeemed:
+          type: integer
+          description: Points successfully redeemed
+        new_balance:
+          type: integer
+          description: Remaining points balance
+      required:
+        - points_redeemed
+        - new_balance
+
+    # Coupon Schemas
+    Coupon:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Coupon ID
+        code:
+          type: string
+          description: Coupon code
+        discount_type:
+          type: string
+          enum: [percentage, fixed]
+          description: Type of discount
+        discount_value:
+          type: number
+          format: float
+          description: Discount value (percentage or fixed amount)
+        min_purchase_amount:
+          type: number
+          format: float
+          description: Minimum purchase amount required
+        max_uses:
+          type: integer
+          description: Maximum number of uses
+        times_used:
+          type: integer
+          description: Current usage count
+        valid_from:
+          type: string
+          format: date-time
+          description: Start validity date
+        valid_until:
+          type: string
+          format: date-time
+          description: End validity date
+        is_active:
+          type: boolean
+          description: Whether coupon is active
+        description:
+          type: string
+          description: Coupon description
+      required:
+        - id
+        - code
+        - discount_type
+        - discount_value
+
+    CouponCreateRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Coupon code
+        discount_type:
+          type: string
+          enum: [percentage, fixed]
+          description: Type of discount
+        discount_value:
+          type: number
+          format: float
+          description: Discount value
+        min_purchase_amount:
+          type: number
+          format: float
+          default: 0
+          description: Minimum purchase amount
+        max_uses:
+          type: integer
+          description: Maximum uses
+        valid_from:
+          type: string
+          format: date-time
+          description: Start validity date
+        valid_until:
+          type: string
+          format: date-time
+          description: End validity date
+        description:
+          type: string
+          description: Coupon description
+      required:
+        - code
+        - discount_type
+        - discount_value
+
+    CouponUsageReport:
+      type: object
+      properties:
+        coupon_id:
+          type: integer
+          description: Coupon ID
+        code:
+          type: string
+          description: Coupon code
+        times_used:
+          type: integer
+          description: Total usage count
+        total_discount:
+          type: number
+          format: float
+          description: Total discount amount given
+        last_used:
+          type: string
+          format: date-time
+          description: Last usage date
+      required:
+        - coupon_id
+        - code
+        - times_used
+        - total_discount
+
+    # Return Schemas
+    Return:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Return ID
+        order_id:
+          type: integer
+          description: Associated order ID
+        user_id:
+          type: integer
+          description: User who requested return
+        return_number:
+          type: string
+          description: Unique return number
+        status:
+          type: string
+          enum: [requested, approved, completed, rejected]
+          description: Return status
+        reason:
+          type: string
+          description: Return reason
+        refund_amount:
+          type: number
+          format: float
+          description: Total refund amount
+        refund_method:
+          type: string
+          description: Refund payment method
+        refund_date:
+          type: string
+          format: date-time
+          description: Refund processing date
+        notes:
+          type: string
+          description: Additional notes
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - order_id
+        - user_id
+        - return_number
+        - status
+
+    ReturnCreateRequest:
+      type: object
+      properties:
+        order_id:
+          type: integer
+          description: Order ID to return items from
+        reason:
+          type: string
+          description: Return reason
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              order_item_id:
+                type: integer
+                description: Order item ID to return
+              quantity:
+                type: integer
+                description: Quantity to return
+              reason:
+                type: string
+                description: Item-specific return reason
+            required:
+              - order_item_id
+              - quantity
+          description: Items to return
+      required:
+        - order_id
+        - reason
+        - items
+
+    RefundRequest:
+      type: object
+      properties:
+        refund_method:
+          type: string
+          description: Refund payment method
+        notes:
+          type: string
+          description: Refund processing notes
+      required:
+        - refund_method
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Products
+    description: Product catalog management
+  - name: Stores
+    description: Store location management
+  - name: Inventory
+    description: Inventory and stock management
+  - name: Orders
+    description: Order processing and management
+  - name: Tax
+    description: Tax rate configuration
+  - name: Testimonials
+    description: Customer testimonials
+  - name: Reviews
+    description: Product reviews and ratings
+  - name: Bookkeeping
+    description: Financial records and reporting
+  - name: Referrals
+    description: Referral program management
+  - name: Coupons
+    description: Coupon and discount management
+  - name: Returns
+    description: Return and refund processing

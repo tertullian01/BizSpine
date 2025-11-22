@@ -1,14 +1,15 @@
 <?php
+
 namespace App\Models;
 
 class OrderReturn extends BaseModel
 {
     protected static string $tableName = 'returns';
-    
-    // Additional properties for joined data
+// Additional properties for joined data
     public ?string $order_number;
     public ?string $user_email;
-    public ?array $items; // Return items
+    public ?array $items;
+// Return items
 
     public function getItems(): array
     {
@@ -25,56 +26,50 @@ class OrderReturn extends BaseModel
         }
 
         self::$db->beginTransaction();
-
         try {
-            // Verify order exists and belongs to user
+        // Verify order exists and belongs to user
             $order = Order::fetchOne('SELECT * FROM orders WHERE id = :id AND user_id = :user_id', [':id' => $body['order_id'], ':user_id' => $userId]);
-            
             if (!$order) {
                 throw new \Exception('Order not found or does not belong to user');
             }
-            
+
             if (!in_array($order->fulfillment_status, ['delivered', 'shipped'])) {
                 throw new \Exception('Can only return delivered or shipped orders');
             }
-            
+
             // Generate return number
             $returnNumber = 'RET-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
-            
-            // Calculate total refund
+        // Calculate total refund
             $totalRefund = 0;
             $validatedItems = [];
-            
             foreach ($body['items'] as $item) {
                 if (empty($item['order_item_id']) || empty($item['quantity'])) {
                     throw new \Exception('Each item must have order_item_id and quantity');
                 }
-                
-                // Get order item details
+
+            // Get order item details
                 $orderItem = OrderItem::fetchOne('SELECT * FROM order_items WHERE id = :id AND order_id = :order_id', [':id' => $item['order_item_id'], ':order_id' => $body['order_id']]);
-                
                 if (!$orderItem) {
                     throw new \Exception("Order item {$item['order_item_id']} not found");
                 }
-                
+
                 $returnQty = (int)$item['quantity'];
                 if ($returnQty > $orderItem->quantity) {
                     throw new \Exception("Cannot return more than ordered quantity");
                 }
-                
+
                 $refundAmount = ($orderItem->unit_price * $returnQty);
                 $totalRefund += $refundAmount;
-                
                 $validatedItems[] = [
-                    'order_item_id' => $item['order_item_id'],
-                    'product_id' => $orderItem->product_id,
-                    'store_id' => $orderItem->store_id,
-                    'quantity' => $returnQty,
-                    'refund_amount' => $refundAmount,
-                    'reason' => $item['reason'] ?? null,
+                'order_item_id' => $item['order_item_id'],
+                'product_id' => $orderItem->product_id,
+                'store_id' => $orderItem->store_id,
+                'quantity' => $returnQty,
+                'refund_amount' => $refundAmount,
+                'reason' => $item['reason'] ?? null,
                 ];
             }
-            
+
             // Create return
             $return = new OrderReturn([
                 'order_id' => $body['order_id'],
@@ -86,25 +81,22 @@ class OrderReturn extends BaseModel
                 'notes' => $body['notes'] ?? null,
             ]);
             $return->save();
-            
-            // Create return items
+        // Create return items
             foreach ($validatedItems as $item) {
                 $returnItem = new ReturnItem([
                     'return_id' => $return->id,
                     'order_item_id' => $item['order_item_id'],
                     'product_id' => $item['product_id'],
-                    'store_id' => $item['store_id'],
-                    'quantity' => $item['quantity'],
-                    'refund_amount' => $item['refund_amount'],
-                    'reason' => $item['reason'],
+                            'store_id' => $item['store_id'],
+                            'quantity' => $item['quantity'],
+                            'refund_amount' => $item['refund_amount'],
+                            'reason' => $item['reason'],
                 ]);
                 $returnItem->save();
             }
-            
-            self::$db->commit();
-            
+
+                    self::$db->commit();
             return $return;
-            
         } catch (\Exception $e) {
             self::$db->rollBack();
             throw $e;
@@ -118,25 +110,21 @@ class OrderReturn extends BaseModel
         }
 
         self::$db->beginTransaction();
-
         try {
-            // Get return items
+        // Get return items
             $items = $this->getItems();
-            
-            // Restore inventory
+        // Restore inventory
             foreach ($items as $item) {
                 $inventory = Inventory::fetchOne('SELECT * FROM inventory WHERE product_id = :product_id AND store_id = :store_id', [':product_id' => $item->product_id, ':store_id' => $item->store_id]);
                 if ($inventory) {
                     $inventory->adjustQuantity($item->quantity);
                 }
             }
-            
+
             // Update return status
             $this->status = 'approved';
             $this->save();
-            
             self::$db->commit();
-            
         } catch (\Exception $e) {
             self::$db->rollBack();
             throw $e;
@@ -150,15 +138,13 @@ class OrderReturn extends BaseModel
         }
 
         self::$db->beginTransaction();
-
         try {
-            // Update return with refund info
+        // Update return with refund info
             $this->status = 'completed';
             $this->refund_method = $body['refund_method'] ?? 'Original Payment Method';
             $this->refund_date = date('Y-m-d H:i:s');
             $this->save();
-            
-            // Create expense record for refund
+        // Create expense record for refund
             $expense = new Expense([
                 'order_id' => $this->order_id,
                 'category' => 'Refund',
@@ -168,9 +154,7 @@ class OrderReturn extends BaseModel
                 'notes' => $body['notes'] ?? null,
             ]);
             $expense->save();
-            
             self::$db->commit();
-            
         } catch (\Exception $e) {
             self::$db->rollBack();
             throw $e;

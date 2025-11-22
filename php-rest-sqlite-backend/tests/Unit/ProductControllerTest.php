@@ -1,8 +1,12 @@
 <?php
+
 namespace Tests\Unit;
 
 use Tests\DatabaseTestCase;
 use App\Controllers\ProductController;
+use App\Services\CacheableProductService;
+use App\Services\Logger;
+use App\Services\PaginationService;
 
 /**
  * @runInSeparateProcess
@@ -10,9 +14,16 @@ use App\Controllers\ProductController;
  */
 class ProductControllerTest extends DatabaseTestCase
 {
+    private CacheableProductService $cacheableProductService;
+    private Logger $logger;
+    private PaginationService $paginationService;
+
     protected function setUp(): void
     {
         parent::setUp();
+        $this->cacheableProductService = new CacheableProductService();
+        $this->logger = new Logger('test', 'php://memory');
+        $this->paginationService = new PaginationService();
     }
 
     public function testGetAllProducts()
@@ -21,19 +32,22 @@ class ProductControllerTest extends DatabaseTestCase
         self::$db->exec("INSERT INTO products (name, cost) VALUES ('Product 1', 10.99)");
         self::$db->exec("INSERT INTO products (name, cost) VALUES ('Product 2', 20.99)");
 
-        $controller = new ProductController();
+        $controller = new ProductController($this->cacheableProductService, $this->logger, $this->paginationService);
         $request = $this->createRequest('GET', '/products');
         $response = $this->createResponse();
 
         $response = $controller->getAll($request, $response);
         $body = (string) $response->getBody();
-        $data = json_decode($body);
+        $data = json_decode($body, true);
 
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertStringContainsString('application/json', $response->getHeaderLine('Content-Type'));
-        $this->assertCount(2, $data);
-        $this->assertEquals('Product 1', $data[0]->name);
-        $this->assertEquals('Product 2', $data[1]->name);
+        // Now returns paginated response
+        $this->assertArrayHasKey('data', $data);
+        $this->assertArrayHasKey('pagination', $data);
+        $this->assertCount(2, $data['data']);
+        $this->assertEquals('Product 1', $data['data'][0]['name']);
+        $this->assertEquals('Product 2', $data['data'][1]['name']);
     }
 
     public function testGetProductById()
@@ -42,7 +56,7 @@ class ProductControllerTest extends DatabaseTestCase
         self::$db->exec("INSERT INTO products (name, cost) VALUES ('Product 1', 10.99)");
         $id = (int)self::$db->lastInsertId();
 
-        $controller = new ProductController();
+        $controller = new ProductController($this->cacheableProductService, $this->logger, $this->paginationService);
         $request = $this->createRequest('GET', "/products/$id");
         $response = $this->createResponse();
 
@@ -57,7 +71,7 @@ class ProductControllerTest extends DatabaseTestCase
 
     public function testGetProductByIdNotFound()
     {
-        $controller = new ProductController();
+        $controller = new ProductController($this->cacheableProductService, $this->logger, $this->paginationService);
         $request = $this->createRequest('GET', '/products/999');
         $response = $this->createResponse();
 
@@ -72,7 +86,7 @@ class ProductControllerTest extends DatabaseTestCase
 
     public function testCreateProduct()
     {
-        $controller = new ProductController();
+        $controller = new ProductController($this->cacheableProductService, $this->logger, $this->paginationService);
         $request = $this->createRequestWithBody('POST', '/products', [
             'name' => 'New Product',
             'cost' => 15.99,
@@ -98,7 +112,7 @@ class ProductControllerTest extends DatabaseTestCase
         self::$db->exec("INSERT INTO products (name, cost) VALUES ('Product 1', 10.99)");
         $id = (int)self::$db->lastInsertId();
 
-        $controller = new ProductController();
+        $controller = new ProductController($this->cacheableProductService, $this->logger, $this->paginationService);
         $request = $this->createRequestWithBody('PUT', "/products/$id", [
             'name' => 'Updated Product',
             'cost' => 25.99,
@@ -122,7 +136,7 @@ class ProductControllerTest extends DatabaseTestCase
         self::$db->exec("INSERT INTO products (name, cost) VALUES ('Product 1', 10.99)");
         $id = (int)self::$db->lastInsertId();
 
-        $controller = new ProductController();
+        $controller = new ProductController($this->cacheableProductService, $this->logger, $this->paginationService);
         $request = $this->createRequest('DELETE', "/products/$id");
         $response = $this->createResponse();
 

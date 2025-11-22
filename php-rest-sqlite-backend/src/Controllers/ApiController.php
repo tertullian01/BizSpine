@@ -13,7 +13,7 @@ class ApiController
         $id = (int)$args['id'];
         $user = new User();
         $data = $user->find($id);
-        
+
         if (!$data) {
             $response->getBody()->write(json_encode(['error' => 'User not found']));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(404);

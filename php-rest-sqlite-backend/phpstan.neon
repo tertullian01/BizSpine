@@ -1,0 +1,32 @@
+parameters:
+    level: 4
+    paths:
+        - src/
+        - tests/
+    excludePaths:
+        - tests/bootstrap.php
+        - tests/ExampleTest.php
+    treatPhpDocTypesAsCertain: false
+
+    # Ignore common framework and library issues
+    ignoreErrors:
+        # PSR-7/PSR-15 HTTP interfaces
+        - '#Call to an undefined method Psr\\Http\\Message\\.*::.*#'
+
+        # PDO database operations
+        - '#Call to an undefined method PDO::.*#'
+        - '#Call to an undefined method PDOStatement::.*#'
+
+        # External libraries
+        - '#Call to an undefined method Firebase\\JWT\\JWT::.*#'
+        - '#Call to an undefined method Respect\\Validation\\Validator::.*#'
+
+        # PHPUnit test methods
+        - '#Call to an undefined method PHPUnit\\Framework\\TestCase::.*#'
+        - '#Call to an undefined method Tests\\TestCase::.*#'
+
+        # Slim framework methods
+        - '#Call to an undefined method Slim\\App::.*#'
+
+        # PHP built-in functions (common ones)
+        - '#Call to an undefined function (time|date|strtotime|json_encode|json_decode|password_hash|password_verify|filter_var|trim|strlen|count|array_key_exists|in_array|array_merge)#'

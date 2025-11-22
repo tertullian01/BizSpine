@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use PDO;
@@ -8,9 +9,7 @@ class Inventory extends BaseModel
     // Properties from JOINs
     public ?string $product_name = null;
     public ?string $store_name = null;
-
     protected static string $tableName = 'inventory';
-
     private static function getSelectQuery(): string
     {
         return <<<'SQL'

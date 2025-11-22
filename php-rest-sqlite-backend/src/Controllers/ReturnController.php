@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Controllers;
 
 use App\Models\OrderReturn;
@@ -24,13 +25,11 @@ LEFT JOIN orders o ON r.order_id = o.id
 LEFT JOIN users u ON r.user_id = u.id
 ORDER BY r.created_at DESC
 SQL;
-        
         $returns = OrderReturn::fetchAll($sql);
-        
         foreach ($returns as $return) {
             $return->items = $return->getItems();
         }
-        
+
         $response->getBody()->write(json_encode($returns));
         return $response->withHeader('Content-Type', 'application/json');
     }
@@ -48,16 +47,13 @@ LEFT JOIN orders o ON r.order_id = o.id
 LEFT JOIN users u ON r.user_id = u.id
 WHERE r.id = :id
 SQL;
-        
         $return = OrderReturn::fetchOne($sql, [':id' => $id]);
-        
         if (!$return) {
             $response->getBody()->write(json_encode(['error' => 'Return not found']));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
         }
-        
+
         $return->items = $return->getItems();
-        
         $response->getBody()->write(json_encode($return));
         return $response->withHeader('Content-Type', 'application/json');
     }
@@ -66,12 +62,11 @@ SQL;
     {
         $body = $request->getParsedBody();
         $userId = $request->getAttribute('user_id');
-        
         if (!$userId) {
             $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
         }
-        
+
         try {
             $return = OrderReturn::createReturn($body, $userId);
             return $this->getById($request, $response->withStatus(201), ['id' => $return->id]);
@@ -84,18 +79,14 @@ SQL;
     public function approve(Request $request, Response $response, array $args): Response
     {
         $id = (int)$args['id'];
-        
         try {
             $return = OrderReturn::find($id);
-            
             if (!$return) {
                 throw new \Exception('Return not found');
             }
-            
+
             $return->approve();
-            
             return $this->getById($request, $response, ['id' => $id]);
-            
         } catch (\Exception $e) {
             $response->getBody()->write(json_encode(['error' => $e->getMessage()]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
@@ -106,18 +97,14 @@ SQL;
     {
         $id = (int)$args['id'];
         $body = $request->getParsedBody();
-        
         try {
             $return = OrderReturn::find($id);
-            
             if (!$return) {
                 throw new \Exception('Return not found');
             }
-            
+
             $return->processRefund($body);
-            
             return $this->getById($request, $response, ['id' => $id]);
-            
         } catch (\Exception $e) {
             $response->getBody()->write(json_encode(['error' => $e->getMessage()]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(400);

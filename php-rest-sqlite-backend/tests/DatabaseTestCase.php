@@ -7,6 +7,7 @@ use Phinx\Config\Config;
 use Phinx\Migration\Manager;
 use Symfony\Component\Console\Input\StringInput;
 use Symfony\Component\Console\Output\NullOutput;
+use App\Services\Config as AppConfig;
 use App\Models\BaseModel;
 
 class DatabaseTestCase extends TestCase
@@ -19,6 +20,9 @@ class DatabaseTestCase extends TestCase
         parent::setUp();
 
         if (self::$db === null) {
+            // Set the database path for the testing environment
+            AppConfig::set('database.database_path', __DIR__ . '/../protected/database/testing.db');
+
             $dbDir = __DIR__ . '/../protected/database';
             $dbPath = $dbDir . '/testing.db';
 
@@ -40,7 +44,7 @@ class DatabaseTestCase extends TestCase
                 // Use the Phinx Manager to run migrations programmatically
                 $config = new Config($configArray);
                 $manager = new Manager($config, new StringInput(''), new NullOutput());
-                
+
                 // Migrate the database for the 'testing' environment
                 $manager->migrate('testing');
                 self::$migrated = true;

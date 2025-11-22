@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use PDO;
@@ -6,11 +7,9 @@ use JsonSerializable;
 
 abstract class BaseModel implements JsonSerializable
 {
-    protected static ?PDO $db = null;
+    public static ?PDO $db = null;
     protected static string $tableName;
-
     public ?int $id = null;
-
     public function __construct(array $data = [])
     {
         if ($data) {
@@ -28,6 +27,37 @@ abstract class BaseModel implements JsonSerializable
     }
 
     /**
+     * Start a query builder for this model
+     * @param array|string $columns
+     * @return QueryBuilder
+     */
+    public static function select($columns = ['*']): QueryBuilder
+    {
+        return new QueryBuilder(static::class, $columns);
+    }
+
+    /**
+     * Find a record by its primary key with specific columns
+     * @param int $id
+     * @param array|string $columns
+     * @return static|null
+     */
+    public static function findWithColumns(int $id, $columns = ['*']): ?static
+    {
+        return static::select($columns)->where('id', '=', $id)->first();
+    }
+
+    /**
+     * Find all records with specific columns
+     * @param array|string $columns
+     * @return static[]
+     */
+    public static function findAllWithColumns($columns = ['*']): array
+    {
+        return static::select($columns)->get();
+    }
+
+    /**
      * Injects the database connection into the base model.
      * This should be called once during application bootstrap.
      * @param PDO $pdo
@@ -41,7 +71,7 @@ abstract class BaseModel implements JsonSerializable
      * Get the table name for the model.
      * @return string
      */
-    protected static function getTableName(): string
+    public static function getTableName(): string
     {
         if (isset(static::$tableName)) {
             return static::$tableName;
@@ -61,7 +91,6 @@ abstract class BaseModel implements JsonSerializable
         $stmt = self::$db->prepare("SELECT * FROM {$tableName} WHERE id = :id");
         $stmt->execute([':id' => $id]);
         $data = $stmt->fetch(PDO::FETCH_ASSOC);
-
         if ($data) {
             return new static($data);
         }
@@ -82,6 +111,18 @@ abstract class BaseModel implements JsonSerializable
             $items[] = new static($row);
         }
         return $items;
+    }
+
+    /**
+     * Get the count of records in the table.
+     * @return int
+     */
+    public static function count(): int
+    {
+        $tableName = static::getTableName();
+        $stmt = self::$db->query("SELECT COUNT(*) as count FROM {$tableName}");
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return (int)$result['count'];
     }
 
     public static function fetchAll(string $sql, array $params = []): array
@@ -118,7 +159,6 @@ abstract class BaseModel implements JsonSerializable
         $tableName = static::getTableName();
         $properties = get_object_vars($this);
         $columns = self::getTableColumns();
-        
         $dataToSave = [];
         foreach ($properties as $key => $value) {
             if (in_array($key, $columns)) {
@@ -126,10 +166,11 @@ abstract class BaseModel implements JsonSerializable
             }
         }
 
-        unset($dataToSave['id']); // Let the database handle the ID on creation
+        unset($dataToSave['id']);
+// Let the database handle the ID on creation
 
         if ($this->id) {
-            // Update
+// Update
             $set = [];
             foreach (array_keys($dataToSave) as $key) {
                 $set[] = "{$key} = :{$key}";
@@ -137,7 +178,7 @@ abstract class BaseModel implements JsonSerializable
             $sql = "UPDATE {$tableName} SET " . implode(', ', $set) . " WHERE id = :id";
             $dataToSave['id'] = $this->id;
         } else {
-            // Create
+        // Create
             $columns = implode(', ', array_keys($dataToSave));
             $placeholders = ':' . implode(', :', array_keys($dataToSave));
             $sql = "INSERT INTO {$tableName} ({$columns}) VALUES ({$placeholders})";
@@ -145,7 +186,6 @@ abstract class BaseModel implements JsonSerializable
 
         $stmt = self::$db->prepare($sql);
         $stmt->execute($dataToSave);
-
         if (!$this->id) {
             $this->id = (int)self::$db->lastInsertId();
         }

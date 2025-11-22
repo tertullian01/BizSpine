@@ -1,13 +1,12 @@
 <?php
+
 namespace App\Models;
 
 class UserReferral extends BaseModel
 {
     protected static string $tableName = 'user_referrals';
-    
-    // Additional properties for joined data
+// Additional properties for joined data
     public ?string $user_email;
-
     public function validate(int $referredUserId): void
     {
         if ($this->user_id === $referredUserId) {
@@ -20,11 +19,10 @@ class UserReferral extends BaseModel
             throw new \Exception('Referral code is only valid for the first order');
         }
     }
-    
+
     public static function createForUser(int $userId): UserReferral
     {
         $referralCode = self::generateReferralCode();
-        
         $referral = new UserReferral([
             'user_id' => $userId,
             'referral_code' => $referralCode,
@@ -34,7 +32,6 @@ class UserReferral extends BaseModel
             'points_redeemed' => 0,
         ]);
         $referral->save();
-
         return $referral;
     }
 
@@ -45,7 +42,6 @@ class UserReferral extends BaseModel
             $stmt = self::$db->prepare('SELECT id FROM user_referrals WHERE referral_code = :code');
             $stmt->execute([':code' => $code]);
         } while ($stmt->fetch());
-        
         return $code;
     }
 
