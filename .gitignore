@@ -301,6 +301,10 @@ FakesAssemblies/
 .ntvs_analysis.dat
 node_modules/
 
+# Composer / PHP vendor directories (ignore vendor/ in repo root and any subfolders)
+vendor/
+**/vendor/
+
 # Visual Studio 6 build log
 *.plg
 
