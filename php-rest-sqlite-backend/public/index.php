@@ -15,43 +15,8 @@ error_reporting(E_ALL);
 ini_set('error_log', __DIR__ . '/logs/debug.log');
 ini_set('log_errors', '1');
 
-// CORS headers for shared hosting - handle OPTIONS requests
-error_log("Request: " . $_SERVER['REQUEST_METHOD'] . " to " . $_SERVER['REQUEST_URI'] . " from " . ($_SERVER['HTTP_ORIGIN'] ?? 'no-origin'));
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    error_log("Handling OPTIONS request to: " . $_SERVER['REQUEST_URI']);
-    header('Access-Control-Allow-Origin: https://test.nakednettle.com');
-    header('Access-Control-Allow-Credentials: true');
-    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    header('Access-Control-Max-Age: 86400');
-    http_response_code(200);
-    exit(0);
-}
+// CORS is now handled by CorsMiddleware - removing duplicate PHP headers
 
-// Set CORS headers for all other requests
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-$allowedOrigins = ['https://test.nakednettle.com', 'https://nakednettle.com'];
-
-if (in_array($origin, $allowedOrigins)) {
-    header('Access-Control-Allow-Origin: ' . $origin);
-    header('Access-Control-Allow-Credentials: true');
-} else {
-    header('Access-Control-Allow-Origin: *');
-}
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin');
-header('Access-Control-Max-Age: 86400');
-
-// TEMPORARY: Simple response to test if index.php is reached
-if ($_SERVER['REQUEST_URI'] === '/cors-test') {
-    header('Content-Type: application/json');
-    echo json_encode([
-        'message' => 'Index.php reached for /cors-test',
-        'method' => $_SERVER['REQUEST_METHOD'],
-        'time' => date('Y-m-d H:i:s')
-    ]);
-    exit;
-}
 
 // Ensure Composer autoloader
 $autoloader = __DIR__ . '/../vendor/autoload.php';
@@ -99,6 +64,7 @@ $container->bind(\App\Services\EmailService::class, fn($c) => new \App\Services\
 $container->bind(\App\Middleware\AuthMiddleware::class, fn($c) => new \App\Middleware\AuthMiddleware($config->get('jwt.secret')));
 
 // Bind controllers with dependencies
+$container->bind(\App\Controllers\AuthController::class, fn($c) => new \App\Controllers\AuthController($config->getAll(), $c->get(\App\Services\EmailService::class)));
 $container->bind(\App\Controllers\StoreController::class, fn($c) => new \App\Controllers\StoreController($c->get(\App\Services\FileUploadService::class)));
 $container->bind(\App\Controllers\BookkeepingController::class, fn($c) => new \App\Controllers\BookkeepingController(null, $c->get(\App\Services\FileUploadService::class)));
 $container->bind(\App\Controllers\TestimonialController::class, fn($c) => new \App\Controllers\TestimonialController(null, null, $c->get(\App\Services\FileUploadService::class)));

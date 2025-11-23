@@ -21,27 +21,43 @@ class AuthMiddleware implements MiddlewareInterface
 
     public function process(Request $request, RequestHandler $handler): Response
     {
+        error_log("AUTH_MIDDLEWARE: Processing request to: " . $request->getUri()->getPath() . " method: " . $request->getMethod());
+
+        // Skip authentication for OPTIONS requests (CORS preflight)
+        if ($request->getMethod() === 'OPTIONS') {
+            error_log("AUTH_MIDDLEWARE: Allowing OPTIONS request through without authentication");
+            return $handler->handle($request);
+        }
+
         $authHeader = $request->getHeaderLine('Authorization');
+        error_log("AUTH_MIDDLEWARE: Authorization header: " . ($authHeader ? substr($authHeader, 0, 20) . "..." : "missing"));
 
         if (empty($authHeader)) {
+            error_log("AUTH_MIDDLEWARE: No Authorization header found");
             return $this->unauthorizedResponse('Missing Authorization header');
         }
 
         if (!preg_match('/Bearer\s+(\S+)/i', $authHeader, $matches)) {
+            error_log("AUTH_MIDDLEWARE: Authorization header format invalid");
             return $this->unauthorizedResponse('Invalid Authorization header format');
         }
 
         $token = $matches[1];
+        error_log("AUTH_MIDDLEWARE: Token extracted, length: " . strlen($token));
 
         try {
+            error_log("AUTH_MIDDLEWARE: Attempting to decode JWT token");
             $decoded = JWT::decode($token, new Key($this->secret, 'HS256'));
+            error_log("AUTH_MIDDLEWARE: JWT decoded successfully, user_id: " . ($decoded->sub ?? 'unknown'));
 
             // Add user_id to request attributes so controllers can access it
             $request = $request->withAttribute('user_id', $decoded->sub);
             $request = $request->withAttribute('token', $decoded);
 
+            error_log("AUTH_MIDDLEWARE: Authentication successful, proceeding to controller");
             return $handler->handle($request);
         } catch (\Exception $e) {
+            error_log("AUTH_MIDDLEWARE: JWT decode failed: " . $e->getMessage());
             return $this->unauthorizedResponse('Invalid or expired token: ' . $e->getMessage());
         }
     }

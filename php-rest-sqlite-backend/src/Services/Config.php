@@ -70,4 +70,9 @@ class Config
         }
         $array[array_shift($keys)] = $value;
     }
+
+    public function getAll(): array
+    {
+        return $this->config;
+    }
 }
