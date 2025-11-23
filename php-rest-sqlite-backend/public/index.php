@@ -31,6 +31,21 @@ require $autoloader;
 // Initialize Config service
 $config = Config::getInstance();
 
+// Handle CORS headers in PHP for shared hosting compatibility
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowedOrigins = $config->get('cors.allowed_origins', []);
+if (in_array($origin, $allowedOrigins)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+    header('Access-Control-Allow-Credentials: true');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    header('Access-Control-Max-Age: 86400');
+}
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit(0);
+}
+
 // Initialize database connection
 $dbPath = $config->get('database.database_path');
 $db = Database::get($dbPath);

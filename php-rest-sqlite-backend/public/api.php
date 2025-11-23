@@ -1,12 +1,7 @@
 <?php
 declare(strict_types=1);
 
-// Direct API handler - bypasses .htaccess issues
-header('Access-Control-Allow-Origin: https://test.nakednettle.com');
-header('Access-Control-Allow-Credentials: true');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin');
-header('Access-Control-Max-Age: 86400');
+// Direct API handler - CORS handled by middleware or Apache headers
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
