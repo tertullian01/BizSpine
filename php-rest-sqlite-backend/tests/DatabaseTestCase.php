@@ -21,7 +21,7 @@ class DatabaseTestCase extends TestCase
 
         if (self::$db === null) {
             // Set the database path for the testing environment
-            AppConfig::set('database.database_path', __DIR__ . '/../protected/database/testing.db');
+            AppConfig::getInstance()->set('database.database_path', __DIR__ . '/../protected/database/testing.db');
 
             $dbDir = __DIR__ . '/../protected/database';
             $dbPath = $dbDir . '/testing.db';

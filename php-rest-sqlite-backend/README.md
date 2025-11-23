@@ -1,70 +1,319 @@
 # PHP REST SQLite Backend
 
 ## Overview
-This project is a PHP RESTful API backend that connects to an SQLite database. It is designed to provide a simple and efficient way to manage user data and perform various API operations.
+
+A comprehensive REST API backend for small business management built with **Slim Framework 4.0** and **SQLite**. This project provides a complete e-commerce and business management solution with user authentication, product management, order processing, inventory tracking, and more.
+
+## Features
+
+### Core Functionality
+- **User Authentication & Authorization** - JWT-based auth with registration, login, logout, and token refresh
+- **Password Recovery** - Secure email-based password reset functionality
+- **Product Management** - Complete product catalog with categories, pricing, and descriptions
+- **Order Processing** - Full order lifecycle from creation to fulfillment
+- **Inventory Management** - Real-time stock tracking across multiple store locations
+- **Customer Reviews** - Product reviews and ratings system
+- **Testimonials** - Customer testimonial management
+- **Coupon System** - Discount codes with flexible rules and usage tracking
+- **Referral Program** - User referral system with points and rewards
+- **Tax Management** - Configurable tax rates by region
+- **Return & Refund Processing** - Complete return workflow with inventory restoration
+- **Financial Reporting** - Income/expense tracking and profit analysis
+- **Multi-Store Support** - Manage multiple physical locations
+
+### Technical Features
+- **RESTful API Design** - Clean, consistent API endpoints
+- **JWT Authentication** - Secure token-based authentication
+- **Email Integration** - PHPMailer-based email sending for notifications
+- **Database Migrations** - Phinx-based database versioning
+- **Comprehensive Testing** - Unit and integration tests with PHPUnit
+- **OpenAPI Specification** - Complete API documentation
+- **Dependency Injection** - Clean architecture with service containers
+- **Middleware Support** - Security headers, file uploads, metrics
+- **Error Handling** - Structured error responses and logging
 
 ## Project Structure
+
 ```
-php-rest-sqlite-backend
-├── public
-│   ├── index.php          # Entry point of the application
-│   └── .htaccess          # URL rewriting and security
-├── src
-│   ├── Controllers
-│   │   ├── HealthController.php  # Health check endpoint
-│   │   └── ApiController.php     # API request handling
-│   ├── Models
-│   │   └── User.php              # User model
-│   ├── Routes
-│   │   └── api.php               # API routes definition
-│   ├── Middleware
-│   │   └── AuthMiddleware.php     # Authentication handling
-│   └── Services
-│       └── Database.php           # Database connection management
-├── protected
-│   ├── config
-│   │   ├── config.php             # Application configuration settings
-│   │   └── settings.php           # Additional application settings
-│   └── db
-│       └── database.sqlite         # SQLite database file
-├── tests
-│   └── ExampleTest.php            # Example unit tests
-├── composer.json                   # Composer dependencies and autoloading
-├── phpunit.xml                    # PHPUnit configuration
-├── .env                            # Environment variables
-└── README.md                       # Project documentation
+php-rest-sqlite-backend/
+├── public/
+│   ├── index.php              # Application entry point
+│   ├── .htaccess              # URL rewriting and security
+│   ├── docs/                  # API documentation (Swagger UI)
+│   │   ├── index.html         # Interactive API documentation
+│   │   ├── CODE_QUALITY.md    # Code quality guidelines
+│   │   └── README.md          # Documentation README
+│   └── openapi.yaml           # OpenAPI 3.0 specification
+├── src/
+│   ├── Controllers/           # API endpoint controllers
+│   │   ├── ApiController.php      # Base controller with common methods
+│   │   ├── AuthController.php     # Authentication endpoints
+│   │   ├── HealthController.php   # Health check endpoint
+│   │   ├── ProductController.php  # Product management
+│   │   ├── OrderController.php    # Order processing
+│   │   ├── StoreController.php    # Store location management
+│   │   ├── InventoryController.php # Stock management
+│   │   ├── ReviewController.php    # Product reviews
+│   │   ├── TestimonialController.php # Customer testimonials
+│   │   ├── CouponController.php     # Discount management
+│   │   ├── ReferralController.php   # Referral program
+│   │   ├── TaxController.php        # Tax rate configuration
+│   │   ├── ReturnController.php     # Return processing
+│   │   └── BookkeepingController.php # Financial records
+│   ├── Models/                 # Data models and database interactions
+│   │   ├── BaseModel.php           # Base model with common DB methods
+│   │   ├── User.php                # User model
+│   │   ├── Product.php             # Product model
+│   │   ├── Order.php               # Order model
+│   │   └── ...                    # Additional models
+│   ├── Routes/                 # Route definitions
+│   │   ├── api.php                # Main API routes
+│   │   ├── AuthRoutes.php         # Authentication routes
+│   │   ├── ProductRoutes.php      # Product routes
+│   │   └── ...                    # Feature-specific routes
+│   ├── Services/               # Business logic and utilities
+│   │   ├── Config.php             # Configuration management
+│   │   ├── Database.php           # Database connection
+│   │   ├── EmailService.php       # Email sending service
+│   │   ├── Logger.php             # Logging service
+│   │   ├── Validator.php          # Input validation
+│   │   ├── Container.php          # Dependency injection
+│   │   └── ...                    # Additional services
+│   ├── Middleware/             # PSR-15 middleware
+│   │   ├── AuthMiddleware.php     # JWT authentication
+│   │   ├── CorsMiddleware.php     # Cross-origin resource sharing
+│   │   ├── SecurityHeadersMiddleware.php # Security headers
+│   │   ├── FileUploadMiddleware.php # File upload handling
+│   │   ├── ErrorHandlerMiddleware.php # Error handling
+│   │   └── MetricsMiddleware.php  # Performance metrics
+│   └── Exceptions/             # Custom exceptions
+│       └── ValidationException.php # Validation errors
+├── protected/
+│   ├── config/
+│   │   ├── config.php            # Main configuration
+│   │   └── settings.php          # Additional settings
+│   ├── database/                # SQLite databases
+│   │   ├── database.sqlite       # Production database
+│   │   └── testing.db            # Test database
+│   └── scripts/                 # Database setup scripts
+│       ├── init_db.php           # Initial database setup
+│       ├── add_user_roles.php    # Add user roles
+│       └── add_password_reset.php # Password reset setup
+├── tests/
+│   ├── Unit/                    # Unit tests
+│   │   ├── AuthControllerTest.php   # Authentication tests
+│   │   ├── EmailServiceTest.php     # Email service tests
+│   │   └── ...                      # Additional unit tests
+│   ├── Integration/            # Integration tests
+│   │   ├── PasswordResetTest.php    # Password reset integration
+│   │   └── ProductApiTest.php       # Product API tests
+│   ├── DatabaseTestCase.php     # Base test case with DB setup
+│   └── bootstrap.php            # Test bootstrap
+├── composer.json               # PHP dependencies
+├── composer.lock               # Dependency lock file
+├── phpunit.xml                 # PHPUnit configuration
+├── phinx.php                   # Database migration config
+├── .env                        # Environment variables
+├── .env.example                # Environment template
+├── .gitignore                  # Git ignore rules
+├── LICENSE                     # MIT License
+└── README.md                   # This file
 ```
 
 ## Installation
-1. Clone the repository:
-   ```
+
+### Prerequisites
+- PHP 7.4 or higher
+- Composer
+- SQLite3
+
+### Setup Steps
+
+1. **Clone the repository:**
+   ```bash
    git clone <repository-url>
-   ```
-2. Navigate to the project directory:
-   ```
    cd php-rest-sqlite-backend
    ```
-3. Install dependencies using Composer:
-   ```
+
+2. **Install PHP dependencies:**
+   ```bash
    composer install
    ```
 
+3. **Environment configuration:**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your settings
+   ```
+
+4. **Database setup:**
+   ```bash
+   # Initialize database
+   php protected/scripts/init_db.php
+
+   # Add user roles
+   php protected/scripts/add_user_roles.php
+
+   # Add password reset functionality
+   php protected/scripts/add_password_reset.php
+   ```
+
+5. **Run database migrations:**
+   ```bash
+   ./vendor/bin/phinx migrate
+   ```
+
 ## Configuration
-- Update the `protected/config/config.php` file with your database connection details and other configuration settings.
-- Set environment variables in the `.env` file as needed.
+
+### Environment Variables (.env)
+```env
+# Database
+DB_DATABASE=/path/to/database.sqlite
+
+# JWT Authentication
+JWT_SECRET=your-super-secret-jwt-key-here
+
+# Email Configuration (for password reset)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+SMTP_ENCRYPTION=tls
+FROM_EMAIL=noreply@yourdomain.com
+FROM_NAME=Your App Name
+```
+
+### Application Config (protected/config/config.php)
+Contains database settings, JWT configuration, email settings, CORS settings, file upload limits, and other application parameters.
+
+### CORS Configuration
+Configure cross-origin resource sharing in `config.php`:
+```php
+'cors' => [
+    'allowed_origins' => ['https://yourfrontend.com', 'https://test.yourfrontend.com'],
+    'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    'allowed_headers' => ['Content-Type', 'Authorization', 'X-Requested-With'],
+    'allow_credentials' => true,
+],
+```
+
+**Shared Hosting Note**: If you cannot restart your web server, CORS headers are also set via `.htaccess` and PHP fallbacks in `public/index.php` for immediate compatibility.
 
 ## Usage
-- Start the PHP built-in server:
-  ```
-  php -S localhost:8000 -t public
-  ```
-- Access the API at `http://localhost:8000`.
+
+### Starting the Development Server
+```bash
+php -S localhost:8000 -t public
+```
+
+The API will be available at `http://localhost:8000`
+
+### API Documentation
+- **OpenAPI Spec**: Available at `/openapi.yaml` for complete API documentation
+- **Interactive Docs**: Access `/docs/` for Swagger UI documentation
+
+### Authentication Flow
+1. **Register**: `POST /auth/register` with email/password
+2. **Login**: `POST /auth/login` to get JWT token
+3. **Use API**: Include `Authorization: Bearer <token>` header
+4. **Password Reset**: `POST /auth/forgot-password` then `POST /auth/reset-password`
 
 ## Testing
-- Run tests using PHPUnit:
-  ```
-  ./vendor/bin/phpunit
-  ```
+
+### Running Tests
+```bash
+# Run all tests
+composer test
+
+# Run specific test suite
+./vendor/bin/phpunit tests/Unit/
+./vendor/bin/phpunit tests/Integration/
+
+# Run with coverage
+./vendor/bin/phpunit --coverage-html coverage/
+```
+
+### Test Structure
+- **Unit Tests**: Test individual components in isolation
+- **Integration Tests**: Test complete workflows and database interactions
+- **Database Tests**: Use separate test database with automatic cleanup
+
+## API Endpoints
+
+### Authentication
+- `POST /auth/register` - User registration
+- `POST /auth/login` - User login
+- `POST /auth/logout` - User logout
+- `POST /auth/refresh` - Refresh access token
+- `POST /auth/forgot-password` - Request password reset
+- `POST /auth/reset-password` - Reset password with token
+
+### Products & Inventory
+- `GET/POST /products` - Product catalog management
+- `GET/PUT/DELETE /products/{id}` - Individual product operations
+- `GET/POST /inventory` - Inventory management
+- `GET/PUT/DELETE /inventory/{id}` - Inventory item operations
+
+### Orders & Sales
+- `GET/POST /orders` - Order management
+- `GET /orders/my` - User's orders
+- `POST /orders/{id}/cancel` - Cancel order
+
+### Additional Features
+- **Stores**: Multi-location management
+- **Reviews**: Product reviews and ratings
+- **Coupons**: Discount code system
+- **Referrals**: User referral program
+- **Returns**: Return and refund processing
+- **Tax Rates**: Tax configuration
+- **Bookkeeping**: Financial reporting
+
+## Development
+
+### Code Quality
+```bash
+# Run code analysis
+composer stan    # PHPStan static analysis
+composer cs       # CodeSniffer style check
+composer qa       # Run all quality checks
+```
+
+### Database Migrations
+```bash
+# Create new migration
+./vendor/bin/phinx create MyMigration
+
+# Run migrations
+./vendor/bin/phinx migrate
+
+# Rollback
+./vendor/bin/phinx rollback
+```
+
+## Security Features
+
+- **JWT Authentication** with configurable expiration
+- **Password Hashing** using PHP's password_hash()
+- **SQL Injection Protection** via PDO prepared statements
+- **XSS Protection** with security headers middleware
+- **CSRF Protection** through JWT tokens
+- **Input Validation** with Respect/Validation
+- **Rate Limiting** (configurable)
+- **Secure File Uploads** with type and size validation
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Write tests for new functionality
+4. Ensure all tests pass
+5. Submit a pull request
 
 ## License
+
 This project is licensed under the MIT License. See the LICENSE file for more details.
+
+## Support
+
+For API documentation, see the OpenAPI specification at `/openapi.yaml` or interactive docs at `/docs/`.
+For issues and questions, please create an issue in the repository.

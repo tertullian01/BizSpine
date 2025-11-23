@@ -6,6 +6,20 @@ use Slim\App;
 
 /** @var App $app */
 
+// CORS test route
+$app->get('/cors-test', function ($request, $response) {
+    $response->getBody()->write(json_encode([
+        'success' => true,
+        'data' => [
+            'message' => 'CORS is working!',
+            'status' => 'success',
+            'method' => $request->getMethod(),
+            'origin' => $request->getHeaderLine('Origin') ?: 'none'
+        ]
+    ]));
+    return $response->withHeader('Content-Type', 'application/json');
+});
+
 // Register all routes
 \App\Routes\ProductRoutes::register($app);
 \App\Routes\OrderRoutes::register($app);

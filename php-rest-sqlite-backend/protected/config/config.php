@@ -41,4 +41,23 @@ return [
         'max_files' => 10,
         'allowed_fields' => [], // Empty array means all fields allowed
     ],
+    'cors' => [
+        'allowed_origins' => ['https://test.nakednettle.com', 'https://nakednettle.com'],
+        'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        'allowed_headers' => ['Content-Type', 'Authorization', 'X-Requested-With'],
+        'allow_credentials' => true,
+    ],
+    'email' => [
+        'smtp' => [
+            'host' => getenv('SMTP_HOST') ?: 'smtp.example.com',
+            'port' => getenv('SMTP_PORT') ?: 587,
+            'username' => getenv('SMTP_USERNAME') ?: '',
+            'password' => getenv('SMTP_PASSWORD') ?: '',
+            'encryption' => getenv('SMTP_ENCRYPTION') ?: 'tls',
+        ],
+        'from' => [
+            'email' => getenv('FROM_EMAIL') ?: 'noreply@example.com',
+            'name' => getenv('FROM_NAME') ?: 'Small Business App',
+        ],
+    ],
 ];

@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Exceptions\ValidationException;
 use App\Services\Database;
 use App\Services\Validator;
+use App\Services\EmailService;
 use Firebase\JWT\JWT;
 use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -16,16 +17,15 @@ class AuthController extends ApiController
     private array $config;
     private PDO $db;
     private Validator $validator;
-    public function __construct(array $config = [], ?PDO $db = null)
+    private EmailService $emailService;
+
+    public function __construct(array $config = [], ?EmailService $emailService = null)
     {
         $this->config = $config;
-        if ($db) {
-            $this->db = $db;
-        } else {
-            $dbPath = $config['db_path'] ?? $config['database']['database_path'] ?? null;
-            $this->db = Database::get($dbPath);
-        }
+        $dbPath = $config['db_path'] ?? $config['database']['database_path'] ?? null;
+        $this->db = Database::get($dbPath);
         $this->validator = new Validator();
+        $this->emailService = $emailService ?? new EmailService($config['email'] ?? [], new \App\Services\Logger());
     }
 
     public function register(Request $request, Response $response): Response
@@ -113,5 +113,62 @@ class AuthController extends ApiController
     public function oauthCallback(Request $request, Response $response): Response
     {
         return $this->error($response, 'Not implemented', 501);
+    }
+
+    public function forgotPassword(Request $request, Response $response): Response
+    {
+        $body = $request->getParsedBody();
+        $this->validator->validate($body, [
+            'email' => v::notEmpty()->email()->setName('Email'),
+        ]);
+        $email = trim($body['email']);
+
+        $stmt = $this->db->prepare('SELECT id FROM users WHERE email = :e');
+        $stmt->execute([':e' => $email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$user) {
+            // For security, don't reveal if email exists
+            return $this->success($response, ['message' => 'If the email exists, a reset link has been sent.']);
+        }
+
+        $token = bin2hex(random_bytes(32));
+        $expiresAt = date('Y-m-d H:i:s', time() + 3600); // 1 hour
+
+        $stmt = $this->db->prepare('UPDATE users SET reset_token = :t, reset_expires_at = :e WHERE id = :id');
+        $stmt->execute([':t' => $token, ':e' => $expiresAt, ':id' => $user['id']]);
+
+        // Send email
+        $emailSent = $this->emailService->sendPasswordResetEmail($email, $token);
+
+        if (!$emailSent) {
+            // Log error, but still return success for security
+            return $this->success($response, ['message' => 'If the email exists, a reset link has been sent.']);
+        }
+
+        return $this->success($response, ['message' => 'If the email exists, a reset link has been sent.']);
+    }
+
+    public function resetPassword(Request $request, Response $response): Response
+    {
+        $body = $request->getParsedBody();
+        $this->validator->validate($body, [
+            'token' => v::notEmpty()->setName('Token'),
+            'password' => v::notEmpty()->length(8, null)->setName('Password'),
+        ]);
+        $token = trim($body['token']);
+        $password = trim($body['password']);
+
+        $stmt = $this->db->prepare('SELECT id FROM users WHERE reset_token = :t AND reset_expires_at > datetime("now")');
+        $stmt->execute([':t' => $token]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$user) {
+            return $this->error($response, 'Invalid or expired token', 400);
+        }
+
+        $hash = password_hash($password, PASSWORD_DEFAULT);
+        $stmt = $this->db->prepare('UPDATE users SET password_hash = :p, reset_token = NULL, reset_expires_at = NULL WHERE id = :id');
+        $stmt->execute([':p' => $hash, ':id' => $user['id']]);
+
+        return $this->success($response, ['message' => 'Password reset successfully']);
     }
 }

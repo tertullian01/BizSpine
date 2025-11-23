@@ -12,7 +12,8 @@
         "symfony/cache": "^5.0",
         "predis/predis": "^2.0",
         "monolog/monolog": "^2.0",
-        "zircote/swagger-php": "^4.0"
+        "zircote/swagger-php": "^4.0",
+        "phpmailer/phpmailer": "^6.8"
     },
     "autoload": {
         "psr-4": {

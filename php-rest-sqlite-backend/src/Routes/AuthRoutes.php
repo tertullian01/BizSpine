@@ -16,5 +16,7 @@ class AuthRoutes
         $app->post('/auth/login', [AuthController::class, 'login']);
         $app->post('/auth/logout', [AuthController::class, 'logout'])->add(AuthMiddleware::class);
         $app->post('/auth/refresh', [AuthController::class, 'refresh'])->add(AuthMiddleware::class);
+        $app->post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+        $app->post('/auth/reset-password', [AuthController::class, 'resetPassword']);
     }
 }

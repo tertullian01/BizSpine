@@ -11,6 +11,48 @@ ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 
+// Enable PHP error logging
+ini_set('error_log', __DIR__ . '/logs/debug.log');
+ini_set('log_errors', '1');
+
+// CORS headers for shared hosting - handle OPTIONS requests
+error_log("Request: " . $_SERVER['REQUEST_METHOD'] . " to " . $_SERVER['REQUEST_URI'] . " from " . ($_SERVER['HTTP_ORIGIN'] ?? 'no-origin'));
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    error_log("Handling OPTIONS request to: " . $_SERVER['REQUEST_URI']);
+    header('Access-Control-Allow-Origin: https://test.nakednettle.com');
+    header('Access-Control-Allow-Credentials: true');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    header('Access-Control-Max-Age: 86400');
+    http_response_code(200);
+    exit(0);
+}
+
+// Set CORS headers for all other requests
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowedOrigins = ['https://test.nakednettle.com', 'https://nakednettle.com'];
+
+if (in_array($origin, $allowedOrigins)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+    header('Access-Control-Allow-Credentials: true');
+} else {
+    header('Access-Control-Allow-Origin: *');
+}
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin');
+header('Access-Control-Max-Age: 86400');
+
+// TEMPORARY: Simple response to test if index.php is reached
+if ($_SERVER['REQUEST_URI'] === '/cors-test') {
+    header('Content-Type: application/json');
+    echo json_encode([
+        'message' => 'Index.php reached for /cors-test',
+        'method' => $_SERVER['REQUEST_METHOD'],
+        'time' => date('Y-m-d H:i:s')
+    ]);
+    exit;
+}
+
 // Ensure Composer autoloader
 $autoloader = __DIR__ . '/../vendor/autoload.php';
 if (!file_exists($autoloader)) {
@@ -48,6 +90,10 @@ $container->bind(\App\Services\PaginationService::class, fn($c) => new \App\Serv
 $container->bind(\App\Services\Logger::class, fn($c) => new \App\Services\Logger());
 $container->bind(\App\Services\DatabasePool::class, fn($c) => new \App\Services\DatabasePool('sqlite:' . $dbPath, 5));
 $container->bind(\App\Services\Metrics::class, fn($c) => new \App\Services\Metrics($c->get(\App\Services\Logger::class)));
+$container->bind(\App\Services\EmailService::class, fn($c) => new \App\Services\EmailService(
+    $config->get('email', []),
+    $c->get(\App\Services\Logger::class)
+));
 
 // Bind middleware
 $container->bind(\App\Middleware\AuthMiddleware::class, fn($c) => new \App\Middleware\AuthMiddleware($config->get('jwt.secret')));
@@ -59,6 +105,15 @@ $container->bind(\App\Controllers\TestimonialController::class, fn($c) => new \A
 
 // Add Metrics Middleware (must be first to measure all requests)
 $app->add(new \App\Middleware\MetricsMiddleware($container->get(\App\Services\Metrics::class)));
+
+// Add CORS Middleware
+$corsConfig = $config->get('cors', []);
+$app->add(new \App\Middleware\CorsMiddleware(
+    allowedOrigins: $corsConfig['allowed_origins'] ?? ['*'],
+    allowedMethods: $corsConfig['allowed_methods'] ?? ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: $corsConfig['allowed_headers'] ?? ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowCredentials: $corsConfig['allow_credentials'] ?? true
+));
 
 // Add Body Parsing Middleware
 $app->addBodyParsingMiddleware();
