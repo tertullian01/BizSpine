@@ -21,6 +21,7 @@ $app->get('/cors-test', function ($request, $response) {
 });
 
 // Register all routes
+\App\Routes\SetupRoutes::register($app);
 \App\Routes\ProductRoutes::register($app);
 \App\Routes\OrderRoutes::register($app);
 \App\Routes\AuthRoutes::register($app);

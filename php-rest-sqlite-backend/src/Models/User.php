@@ -8,6 +8,16 @@ class User extends BaseModel
 {
     protected static string $tableName = 'users';
 
+    public ?string $email = null;
+    public ?string $password_hash = null;
+    public ?string $display_name = null;
+    public ?int $is_email_verified = null;
+    public ?string $created_at = null;
+    public ?string $last_login = null;
+    public ?string $role = null;
+    public ?string $reset_token = null;
+    public ?string $reset_expires_at = null;
+
     public static function findByEmail(string $email): ?User
     {
         return self::fetchOne('SELECT * FROM users WHERE email = :email', [':email' => $email]);

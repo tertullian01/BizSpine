@@ -97,7 +97,7 @@ class AuthController extends ApiController
         $token = JWT::encode($payload, $this->config['jwt']['secret'] ?? 'dev', 'HS256');
 
         error_log("LOGIN: Login successful for user: $email");
-        return $this->success($response, ['access_token' => $token]);
+        return $this->success($response, ['access_token' => $token, 'role' => $user['role'] ?? 'customer']);
     }
 
     public function logout(Request $request, Response $response): Response
