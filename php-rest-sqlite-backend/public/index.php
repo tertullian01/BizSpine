@@ -89,7 +89,7 @@ $container->bind(\App\Controllers\OrderController::class, fn($c) => new \App\Con
 $container->bind(\App\Controllers\InventoryController::class, fn($c) => new \App\Controllers\InventoryController($db));
 $container->bind(\App\Controllers\ReviewController::class, fn($c) => new \App\Controllers\ReviewController($db));
 $container->bind(\App\Controllers\CouponController::class, fn($c) => new \App\Controllers\CouponController($db));
-$container->bind(\App\Controllers\ReferralController::class, fn($c) => new \App\Controllers\ReferralController($db));
+$container->bind(\App\Controllers\ReferralController::class, fn($c) => new \App\Controllers\ReferralController());
 $container->bind(\App\Controllers\TaxController::class, fn($c) => new \App\Controllers\TaxController($c->get(\App\Services\PaginationService::class)));
 $container->bind(\App\Controllers\ReturnController::class, fn($c) => new \App\Controllers\ReturnController($db));
 

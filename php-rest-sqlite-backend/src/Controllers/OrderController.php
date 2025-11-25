@@ -39,7 +39,7 @@ class OrderController extends ApiController
 
         // Get total count
         $countStmt = $this->db->query('SELECT COUNT(*) as total FROM orders');
-        $total = (int)$countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+        $total = (int) $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
 
         $sql = <<<'SQL'
 SELECT
@@ -93,7 +93,7 @@ SQL;
 
     public function getById(Request $request, Response $response, array $args): Response
     {
-        $id = (int)$args['id'];
+        $id = (int) $args['id'];
         $sql = <<<'SQL'
 SELECT 
     o.*,
@@ -165,9 +165,9 @@ SQL;
             $subtotal = 0;
             $validatedItems = [];
             foreach ($body['items'] as $item) {
-                $productId = (int)$item['product_id'];
-                $storeId = (int)$item['store_id'];
-                $quantity = (int)$item['quantity'];
+                $productId = (int) $item['product_id'];
+                $storeId = (int) $item['store_id'];
+                $quantity = (int) $item['quantity'];
                 $stmt = $this->db->prepare('SELECT cost FROM products WHERE id = :id');
                 $stmt->execute([':id' => $productId]);
                 $product = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -175,7 +175,7 @@ SQL;
                     throw new \Exception("Product with ID $productId not found");
                 }
 
-                $unitPrice = (float)$product['cost'];
+                $unitPrice = (float) $product['cost'];
                 $itemSubtotal = $unitPrice * $quantity;
                 $subtotal += $itemSubtotal;
                 $stmt = $this->db->prepare('SELECT quantity FROM inventory WHERE product_id = :product_id AND store_id = :store_id');
@@ -209,7 +209,7 @@ SQL;
             if ($hasCoupon) {
                 require_once __DIR__ . '/CouponController.php';
                 $couponController = new CouponController($this->db);
-                $couponResult = $couponController->validateCoupon($body['coupon_code'], $subtotal, (int)$userId, 0);
+                $couponResult = $couponController->validateCoupon($body['coupon_code'], $subtotal, (int) $userId, 0);
                 if (!$couponResult['valid']) {
                     throw new \Exception($couponResult['error']);
                 }
@@ -217,10 +217,10 @@ SQL;
                 $discountAmount = $couponResult['discount_amount'];
                 $couponCode = $body['coupon_code'];
             } elseif (isset($body['discount_amount'])) {
-                $discountAmount = (float)$body['discount_amount'];
+                $discountAmount = (float) $body['discount_amount'];
             }
 
-            $shippingCost = isset($body['shipping_cost']) ? (float)$body['shipping_cost'] : 0;
+            $shippingCost = isset($body['shipping_cost']) ? (float) $body['shipping_cost'] : 0;
             require_once __DIR__ . '/TaxController.php';
             $taxController = new TaxController();
             $taxableAmount = $subtotal - $discountAmount + $shippingCost;
@@ -254,7 +254,7 @@ SQL;
                 ':total' => $total,
                 ':notes' => $body['notes'] ?? null,
             ]);
-            $orderId = (int)$this->db->lastInsertId();
+            $orderId = (int) $this->db->lastInsertId();
             $itemSql = <<<'SQL'
 INSERT INTO order_items 
     (order_id, product_id, store_id, quantity, unit_price, subtotal, created_at) 
@@ -274,9 +274,9 @@ SQL;
                 $invSql = 'UPDATE inventory SET quantity = quantity - :quantity, updated_at = datetime("now") WHERE product_id = :product_id AND store_id = :store_id';
                 $invStmt = $this->db->prepare($invSql);
                 $invStmt->execute([
-                                ':quantity' => $item['quantity'],
-                                ':product_id' => $item['product_id'],
-                                ':store_id' => $item['store_id'],
+                    ':quantity' => $item['quantity'],
+                    ':product_id' => $item['product_id'],
+                    ':store_id' => $item['store_id'],
                 ]);
             }
 
@@ -293,11 +293,11 @@ SQL;
             if ($hasReferral) {
                 $orderCountStmt = $this->db->prepare('SELECT COUNT(*) FROM orders WHERE user_id = :user_id');
                 $orderCountStmt->execute([':user_id' => $userId]);
-                $orderCount = (int)$orderCountStmt->fetchColumn();
+                $orderCount = (int) $orderCountStmt->fetchColumn();
                 if ($orderCount === 1) {
                     require_once __DIR__ . '/ReferralController.php';
-                    $referralController = new ReferralController($this->db);
-                    $referralController->validateReferralCode($body['referral_code'], (int)$userId, $orderId);
+                    $referralController = new ReferralController();
+                    $referralController->validateReferralCode($body['referral_code'], (int) $userId);
                 }
             }
 
@@ -311,7 +311,7 @@ SQL;
 
     public function update(Request $request, Response $response, array $args): Response
     {
-        $id = (int)$args['id'];
+        $id = (int) $args['id'];
         $body = $request->getParsedBody();
         try {
             $this->db->beginTransaction();
@@ -341,7 +341,7 @@ SQL;
                     $updates[] = 'shipping_date = datetime("now")';
                     if (isset($body['tracking_number']) && $order['shipping_cost'] > 0) {
                         $createShippingExpense = true;
-                        $shippingCost = (float)$order['shipping_cost'];
+                        $shippingCost = (float) $order['shipping_cost'];
                     }
                 }
             }
@@ -351,13 +351,13 @@ SQL;
                 $params[':tracking_number'] = $body['tracking_number'];
                 if (isset($body['fulfillment_status']) && $body['fulfillment_status'] === 'shipped' && $order['shipping_cost'] > 0) {
                     $createShippingExpense = true;
-                    $shippingCost = (float)$order['shipping_cost'];
+                    $shippingCost = (float) $order['shipping_cost'];
                 }
             }
 
             if (isset($body['shipping_cost'])) {
                 $updates[] = 'shipping_cost = :shipping_cost';
-                $params[':shipping_cost'] = (float)$body['shipping_cost'];
+                $params[':shipping_cost'] = (float) $body['shipping_cost'];
                 $updates[] = 'total = subtotal - discount_amount + :shipping_cost';
             }
 
@@ -385,9 +385,9 @@ VALUES
 SQL;
                 $expenseStmt = $this->db->prepare($expenseSql);
                 $expenseStmt->execute([
-                ':order_id' => $id,
-                ':amount' => $shippingCost,
-                ':description' => "Shipping cost for order {$order['order_number']}",
+                    ':order_id' => $id,
+                    ':amount' => $shippingCost,
+                    ':description' => "Shipping cost for order {$order['order_number']}",
                 ]);
             }
 
@@ -402,7 +402,7 @@ SQL;
 
     public function addPayment(Request $request, Response $response, array $args): Response
     {
-        $id = (int)$args['id'];
+        $id = (int) $args['id'];
         $body = $request->getParsedBody();
         try {
             $this->validator->validate($body, [
@@ -433,7 +433,7 @@ SQL;
             $incomeStmt = $this->db->prepare($incomeSql);
             $incomeStmt->execute([
                 ':order_id' => $id,
-                ':amount' => (float)$body['amount'],
+                ':amount' => (float) $body['amount'],
                 ':payment_method' => $body['payment_method'] ?? 'Unknown',
                 ':description' => "Payment for order {$order['order_number']}",
                 ':notes' => $body['notes'] ?? null,
@@ -442,8 +442,8 @@ SQL;
             $response->getBody()->write(json_encode([
                 'message' => 'Payment recorded successfully',
                 'order_id' => $id,
-                'amount' => (float)$body['amount'],
-                'income_id' => (int)$this->db->lastInsertId(),
+                'amount' => (float) $body['amount'],
+                'income_id' => (int) $this->db->lastInsertId(),
             ]));
             return $response->withHeader('Content-Type', 'application/json');
         } catch (\Exception $e) {
@@ -455,7 +455,7 @@ SQL;
 
     public function cancel(Request $request, Response $response, array $args): Response
     {
-        $id = (int)$args['id'];
+        $id = (int) $args['id'];
         try {
             $this->db->beginTransaction();
             $stmt = $this->db->prepare('SELECT fulfillment_status FROM orders WHERE id = :id');
@@ -486,9 +486,9 @@ SQL;
             $invStmt = $this->db->prepare($invSql);
             foreach ($items as $item) {
                 $invStmt->execute([
-                ':quantity' => $item['quantity'],
-                ':product_id' => $item['product_id'],
-                ':store_id' => $item['store_id'],
+                    ':quantity' => $item['quantity'],
+                    ':product_id' => $item['product_id'],
+                    ':store_id' => $item['store_id'],
                 ]);
             }
 

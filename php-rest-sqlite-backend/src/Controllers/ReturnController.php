@@ -8,11 +8,18 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Inventory;
 use App\Models\Expense;
+use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
 class ReturnController extends ApiController
 {
+    private ?PDO $db;
+
+    public function __construct(?PDO $db = null)
+    {
+        $this->db = $db;
+    }
     public function getAll(Request $request, Response $response): Response
     {
         $sql = <<<'SQL'
@@ -35,7 +42,7 @@ SQL;
 
     public function getById(Request $request, Response $response, array $args): Response
     {
-        $id = (int)$args['id'];
+        $id = (int) $args['id'];
         $sql = <<<'SQL'
 SELECT 
     r.*,
@@ -73,7 +80,7 @@ SQL;
 
     public function approve(Request $request, Response $response, array $args): Response
     {
-        $id = (int)$args['id'];
+        $id = (int) $args['id'];
         try {
             $return = OrderReturn::find($id);
             if (!$return) {
@@ -89,7 +96,7 @@ SQL;
 
     public function processRefund(Request $request, Response $response, array $args): Response
     {
-        $id = (int)$args['id'];
+        $id = (int) $args['id'];
         $body = $request->getParsedBody();
         try {
             $return = OrderReturn::find($id);
