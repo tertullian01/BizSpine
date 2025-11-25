@@ -211,6 +211,55 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+
+  /auth/change-password:
+    post:
+      summary: Change password
+      description: Change password for authenticated user
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - current_password
+                - new_password
+              properties:
+                current_password:
+                  type: string
+                  description: Current password
+                new_password:
+                  type: string
+                  minLength: 8
+                  description: New password (minimum 8 characters)
+            example:
+              current_password: "current_password_123"
+              new_password: "new_secure_password_456"
+      responses:
+        '200':
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Invalid input or incorrect current password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   # Products
   /products:
     get:

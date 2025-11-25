@@ -17,6 +17,7 @@ class CouponRoutes
             $group->get('/usage-report', [CouponController::class, 'getUsageReport']);
             $group->get('/{id}', [CouponController::class, 'getById']);
             $group->post('', [CouponController::class, 'create']);
+            $group->put('/{id}', [CouponController::class, 'update']);
             $group->delete('/{id}', [CouponController::class, 'delete']);
         })->add(AuthMiddleware::class);
     }

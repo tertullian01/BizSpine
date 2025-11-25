@@ -99,7 +99,6 @@ SQL;
             $referral->validate($referredUserId);
             return true;
         } catch (\Exception $e) {
-            error_log("Referral validation error: " . $e->getMessage());
             return false;
         }
     }

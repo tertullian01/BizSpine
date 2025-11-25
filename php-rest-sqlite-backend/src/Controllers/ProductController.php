@@ -107,10 +107,10 @@ class ProductController extends ApiController
         $total = Product::count();
 
         // Use optimized query with specific columns, excluding large text fields
-        $products = Product::select(['id', 'name', 'type', 'cost', 'created_at', 'updated_at'])
-                           ->orderBy('name')
-                           ->limit($limit, $offset)
-                           ->get();
+        $products = Product::select(['id', 'name', 'type', 'description', 'size', 'cost', 'created_at', 'updated_at'])
+                            ->orderBy('name')
+                            ->limit($limit, $offset)
+                            ->get();
 
         $result = $this->paginationService->formatPaginatedResponse($products, $total, $page, $limit);
 
@@ -182,14 +182,23 @@ class ProductController extends ApiController
     {
         $data = $request->getParsedBody();
 
+        // Convert cost to float if it's a string
+        if (isset($data['cost'])) {
+            if (is_string($data['cost'])) {
+                $data['cost'] = (float)$data['cost'];
+            } elseif (!is_float($data['cost']) && !is_int($data['cost'])) {
+                return $this->error($response, 'Cost must be a valid number', 400);
+            }
+        }
+
         $validator = v::key('name', v::stringType()->notEmpty())
-                     ->key('cost', v::floatType()->positive());
+                      ->key('cost', v::numericVal()->positive());
 
         try {
             $validator->assert($data);
             // Process valid data
         } catch (NestedValidationException $e) {
-            return $this->error($response, $e->getMessages(), 400);
+            return $this->error($response, json_encode($e->getMessages()), 400);
         }
 
         $product = new Product();
@@ -215,13 +224,22 @@ class ProductController extends ApiController
         $id = (int)$args['id'];
         $data = $request->getParsedBody();
 
+        // Convert cost to float if it's a string
+        if (isset($data['cost'])) {
+            if (is_string($data['cost'])) {
+                $data['cost'] = (float)$data['cost'];
+            } elseif (!is_float($data['cost']) && !is_int($data['cost'])) {
+                return $this->error($response, 'Cost must be a valid number', 400);
+            }
+        }
+
         $validator = v::key('name', v::stringType()->notEmpty())
-                     ->key('cost', v::floatType()->positive(), false); // optional
+                      ->key('cost', v::numericVal()->positive(), false); // optional
 
         try {
             $validator->assert($data);
         } catch (NestedValidationException $e) {
-            return $this->error($response, $e->getMessages(), 400);
+            return $this->error($response, json_encode($e->getMessages()), 400);
         }
 
         $product = Product::find($id);

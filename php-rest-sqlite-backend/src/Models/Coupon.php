@@ -5,6 +5,20 @@ namespace App\Models;
 class Coupon extends BaseModel
 {
     protected static string $tableName = 'coupons';
+
+    public ?int $id = null;
+    public ?string $code = null;
+    public ?string $discount_type = null;
+    public ?float $discount_value = null;
+    public ?float $min_purchase_amount = null;
+    public ?int $max_uses = null;
+    public ?int $times_used = null;
+    public ?string $valid_from = null;
+    public ?string $valid_until = null;
+    public ?int $is_active = null;
+    public ?string $description = null;
+    public ?string $created_at = null;
+    public ?string $updated_at = null;
     public function validate(float $subtotal, int $userId): array
     {
         if (!$this->id) {

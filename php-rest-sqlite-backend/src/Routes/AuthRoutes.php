@@ -20,5 +20,7 @@ class AuthRoutes
         $app->post('/auth/forgot_password', [AuthController::class, 'forgotPassword']); // Alias for underscore
         $app->post('/auth/reset-password', [AuthController::class, 'resetPassword']);
         $app->post('/auth/reset_password', [AuthController::class, 'resetPassword']); // Alias for underscore
+        $app->post('/auth/change-password', [AuthController::class, 'changePassword'])->add(AuthMiddleware::class);
+        $app->post('/auth/change_password', [AuthController::class, 'changePassword'])->add(AuthMiddleware::class); // Alias for underscore
     }
 }

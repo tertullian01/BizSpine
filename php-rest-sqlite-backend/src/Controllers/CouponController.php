@@ -15,12 +15,12 @@ class CouponController extends ApiController
 {
     private PDO $db;
     private Validator $validator;
-    public function __construct(PDO $db = null)
+    public function __construct(?PDO $db = null)
     {
         if ($db) {
             $this->db = $db;
         } else {
-            $this->db = Database::get(Config::get('database.database_path'));
+            $this->db = Database::get(Config::getInstance()->get('database.database_path'));
         }
         $this->validator = new Validator();
     }
@@ -34,7 +34,7 @@ class CouponController extends ApiController
 
     public function getById(Request $request, Response $response, array $args): Response
     {
-        $id = (int)$args['id'];
+        $id = (int) $args['id'];
         $stmt = $this->db->prepare('SELECT * FROM coupons WHERE id = :id');
         $stmt->execute([':id' => $id]);
         $coupon = $stmt->fetchObject('App\Models\Coupon');
@@ -48,6 +48,24 @@ class CouponController extends ApiController
     public function create(Request $request, Response $response): Response
     {
         $body = $request->getParsedBody();
+
+        // Preprocess body to handle aliases and legacy fields
+        if (isset($body['discount_type']) && $body['discount_type'] === 'percent') {
+            $body['discount_type'] = 'percentage';
+        }
+        if (isset($body['expiration_date'])) {
+            $body['valid_until'] = $body['expiration_date'] === '' ? null : $body['expiration_date'];
+        }
+        if (isset($body['active'])) {
+            $body['is_active'] = (int) $body['active'];
+        }
+        // Ensure empty strings for dates are converted to null
+        if (isset($body['valid_from']) && $body['valid_from'] === '') {
+            $body['valid_from'] = null;
+        }
+        if (isset($body['valid_until']) && $body['valid_until'] === '') {
+            $body['valid_until'] = null;
+        }
         $this->validator->validate($body, [
             'code' => v::notEmpty()->setName('Code'),
             'discount_type' => v::notEmpty()->in(['percentage', 'fixed'])->setName('Discount Type'),
@@ -64,7 +82,7 @@ SQL;
             $stmt->execute([
                 ':code' => strtoupper($body['code']),
                 ':discount_type' => $body['discount_type'],
-                ':discount_value' => (float)$body['discount_value'],
+                ':discount_value' => (float) $body['discount_value'],
                 ':min_purchase' => $body['min_purchase_amount'] ?? 0,
                 ':max_uses' => $body['max_uses'] ?? null,
                 ':valid_from' => $body['valid_from'] ?? null,
@@ -72,8 +90,109 @@ SQL;
                 ':is_active' => $body['is_active'] ?? 1,
                 ':description' => $body['description'] ?? null,
             ]);
-            $id = (int)$this->db->lastInsertId();
+            $id = (int) $this->db->lastInsertId();
             return $this->getById($request, $response->withStatus(201), ['id' => $id]);
+        } catch (\PDOException $e) {
+            if (strpos($e->getMessage(), 'UNIQUE constraint failed') !== false) {
+                return $this->error($response, 'Coupon code already exists', 409);
+            } else {
+                return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+            }
+        }
+    }
+
+    public function update(Request $request, Response $response, array $args): Response
+    {
+        $id = (int) $args['id'];
+        $body = $request->getParsedBody();
+
+        // Handle case where client sends array-wrapped payload
+        if (is_array($body) && isset($body[0]) && is_array($body[0])) {
+            $body = $body[0];
+        }
+
+        // Preprocess body to handle aliases and legacy fields
+        if (isset($body['discount_type']) && $body['discount_type'] === 'percent') {
+            $body['discount_type'] = 'percentage';
+        }
+        if (isset($body['expiration_date'])) {
+            $body['valid_until'] = $body['expiration_date'] === '' ? null : $body['expiration_date'];
+        }
+        if (isset($body['active'])) {
+            $body['is_active'] = (int) $body['active'];
+        }
+        // Ensure empty strings for dates are converted to null
+        if (isset($body['valid_from']) && $body['valid_from'] === '') {
+            $body['valid_from'] = null;
+        }
+        if (isset($body['valid_until']) && $body['valid_until'] === '') {
+            $body['valid_until'] = null;
+        }
+
+        $this->validator->validate($body, [
+            'code' => v::optional(v::notEmpty()->setName('Code')),
+            'discount_type' => v::optional(v::notEmpty()->in(['percentage', 'fixed'])->setName('Discount Type')),
+            'discount_value' => v::optional(v::notEmpty()->floatVal()->positive()->setName('Discount Value')),
+        ]);
+
+        $checkStmt = $this->db->prepare('SELECT id FROM coupons WHERE id = :id');
+        $checkStmt->execute([':id' => $id]);
+        if (!$checkStmt->fetch()) {
+            return $this->error($response, 'Coupon not found', 404);
+        }
+
+        try {
+            $fields = [];
+            $params = [':id' => $id];
+
+            if (isset($body['code'])) {
+                $fields[] = 'code = :code';
+                $params[':code'] = strtoupper($body['code']);
+            }
+            if (isset($body['discount_type'])) {
+                $fields[] = 'discount_type = :discount_type';
+                $params[':discount_type'] = $body['discount_type'];
+            }
+            if (isset($body['discount_value'])) {
+                $fields[] = 'discount_value = :discount_value';
+                $params[':discount_value'] = (float) $body['discount_value'];
+            }
+            if (isset($body['min_purchase_amount'])) {
+                $fields[] = 'min_purchase_amount = :min_purchase';
+                $params[':min_purchase'] = $body['min_purchase_amount'];
+            }
+            if (isset($body['max_uses'])) {
+                $fields[] = 'max_uses = :max_uses';
+                $params[':max_uses'] = $body['max_uses'];
+            }
+            if (array_key_exists('valid_from', $body)) {
+                $fields[] = 'valid_from = :valid_from';
+                $params[':valid_from'] = $body['valid_from'];
+            }
+            if (array_key_exists('valid_until', $body) || array_key_exists('expiration_date', $body)) {
+                $fields[] = 'valid_until = :valid_until';
+                $params[':valid_until'] = $body['valid_until'];
+            }
+            if (isset($body['is_active']) || array_key_exists('active', $body)) {
+                $fields[] = 'is_active = :is_active';
+                $params[':is_active'] = $body['is_active'];
+            }
+            if (isset($body['description'])) {
+                $fields[] = 'description = :description';
+                $params[':description'] = $body['description'];
+            }
+
+            if (empty($fields)) {
+                return $this->success($response, ['message' => 'No changes made']);
+            }
+
+            $fields[] = 'updated_at = datetime("now")';
+
+            $sql = 'UPDATE coupons SET ' . implode(', ', $fields) . ' WHERE id = :id';
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+
+            return $this->getById($request, $response, ['id' => $id]);
         } catch (\PDOException $e) {
             if (strpos($e->getMessage(), 'UNIQUE constraint failed') !== false) {
                 return $this->error($response, 'Coupon code already exists', 409);
@@ -85,7 +204,7 @@ SQL;
 
     public function delete(Request $request, Response $response, array $args): Response
     {
-        $id = (int)$args['id'];
+        $id = (int) $args['id'];
         $checkStmt = $this->db->prepare('SELECT id FROM coupons WHERE id = :id');
         $checkStmt->execute([':id' => $id]);
         if (!$checkStmt->fetch()) {
@@ -162,7 +281,7 @@ SQL;
                 ':order_id' => $orderId,
                 ':discount' => $discountAmount,
             ]);
-// Update coupon times_used
+            // Update coupon times_used
             $updateSql = 'UPDATE coupons SET times_used = times_used + 1, updated_at = datetime("now") WHERE id = :id';
             $updateStmt = $this->db->prepare($updateSql);
             $updateStmt->execute([':id' => $coupon['id']]);
