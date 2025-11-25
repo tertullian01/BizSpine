@@ -34,4 +34,5 @@ $app->get('/cors-test', function ($request, $response) {
 \App\Routes\CouponRoutes::register($app);
 \App\Routes\TaxRoutes::register($app);
 \App\Routes\ReturnRoutes::register($app);
+\App\Routes\UserRoutes::register($app);
 \App\Routes\HealthRoutes::register($app);
