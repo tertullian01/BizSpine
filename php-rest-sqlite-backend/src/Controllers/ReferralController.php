@@ -10,6 +10,20 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 class ReferralController extends ApiController
 {
     private const POINTS_PER_REFERRAL = 100;
+    public function getAll(Request $request, Response $response): Response
+    {
+        $sql = <<<'SQL'
+SELECT 
+    r.*,
+    u.email as user_email
+FROM user_referrals r
+LEFT JOIN users u ON r.user_id = u.id
+ORDER BY r.created_at DESC
+SQL;
+        $referrals = UserReferral::fetchAll($sql);
+        return $this->success($response, $referrals);
+    }
+
     public function getMyReferral(Request $request, Response $response): Response
     {
         $userId = $request->getAttribute('user_id');
@@ -27,7 +41,7 @@ WHERE r.user_id = :user_id
 SQL;
         $referral = UserReferral::fetchOne($sql, [':user_id' => $userId]);
         if (!$referral) {
-        // Create referral code if doesn't exist
+            // Create referral code if doesn't exist
             $referral = UserReferral::createForUser($userId);
         }
 
@@ -70,7 +84,7 @@ SQL;
             return $this->error($response, 'Valid points amount is required', 400);
         }
 
-        $pointsToRedeem = (int)$body['points'];
+        $pointsToRedeem = (int) $body['points'];
         try {
             $referral = UserReferral::fetchOne('SELECT * FROM user_referrals WHERE user_id = :user_id', [':user_id' => $userId]);
             if (!$referral) {

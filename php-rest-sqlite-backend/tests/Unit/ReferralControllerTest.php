@@ -16,11 +16,11 @@ class ReferralControllerTest extends DatabaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
-    // Insert test users
+        // Insert test users
         self::$db->exec("INSERT INTO users (email) VALUES ('referrer@example.com')");
-        $this->userId = (int)self::$db->lastInsertId();
+        $this->userId = (int) self::$db->lastInsertId();
         self::$db->exec("INSERT INTO users (email) VALUES ('referred@example.com')");
-        $this->referredUserId = (int)self::$db->lastInsertId();
+        $this->referredUserId = (int) self::$db->lastInsertId();
     }
 
     public function testGetMyReferralCreatesCodeIfNotExists()
@@ -29,7 +29,7 @@ class ReferralControllerTest extends DatabaseTestCase
         $request = $this->createRequest('GET', '/api/referrals/my')
             ->withAttribute('user_id', $this->userId);
         $response = $this->createResponse();
-        $response = $controller->getMyReferral($request, $response, []);
+        $response = $controller->getMyReferral($request, $response);
         $body = json_decode($response->getBody()->__toString());
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertTrue($body->success);
@@ -37,6 +37,25 @@ class ReferralControllerTest extends DatabaseTestCase
         $this->assertStringStartsWith('REF-', $body->data->referral_code);
         $this->assertEquals(0, $body->data->times_used);
         $this->assertEquals(0, $body->data->points_balance);
+    }
+
+    public function testGetAll()
+    {
+        // Create referral code for user
+        self::$db->exec("INSERT INTO user_referrals (user_id, referral_code, created_at) VALUES ({$this->userId}, 'REF-TEST123', '2023-01-01 10:00:00')");
+
+        $controller = new ReferralController();
+        $request = $this->createRequest('GET', '/api/referrals');
+        $response = $this->createResponse();
+
+        $response = $controller->getAll($request, $response);
+        $body = json_decode($response->getBody()->__toString());
+
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertTrue($body->success);
+        $this->assertCount(1, $body->data);
+        $this->assertEquals('REF-TEST123', $body->data[0]->referral_code);
+        $this->assertEquals('referrer@example.com', $body->data[0]->user_email);
     }
 
     public function testValidateReferralCodeSuccess()
@@ -61,12 +80,12 @@ class ReferralControllerTest extends DatabaseTestCase
     {
         // Create referral code
         self::$db->exec("INSERT INTO user_referrals (user_id, referral_code) VALUES ({$this->userId}, 'REF-TEST123')");
-// Create first order and use referral
+        // Create first order and use referral
         self::$db->exec("INSERT INTO orders (user_id, order_number, shipping_address, total) VALUES ({$this->referredUserId}, 'ORD-001', '123 Main St', 50.00)");
         $controller = new ReferralController();
         $result = $controller->validateReferralCode('REF-TEST123', $this->referredUserId);
         $this->assertFalse($result);
-// Should fail - already used a referral
+        // Should fail - already used a referral
     }
 
     public function testRedeemPoints()
@@ -78,13 +97,13 @@ class ReferralControllerTest extends DatabaseTestCase
         $request = $this->createRequestWithBody('POST', '/api/referrals/redeem', $requestData)
             ->withAttribute('user_id', $this->userId);
         $response = $this->createResponse();
-        $response = $controller->redeemPoints($request, $response, []);
+        $response = $controller->redeemPoints($request, $response);
         $body = json_decode($response->getBody()->__toString());
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertTrue($body->success);
         $this->assertEquals(50, $body->data->points_redeemed);
         $this->assertEquals(150, $body->data->new_balance);
-// Verify database was updated
+        // Verify database was updated
         $stmt = self::$db->query("SELECT points_balance, points_redeemed FROM user_referrals WHERE user_id = {$this->userId}");
         $referral = $stmt->fetch(\PDO::FETCH_ASSOC);
         $this->assertEquals(150, $referral['points_balance']);
@@ -100,7 +119,7 @@ class ReferralControllerTest extends DatabaseTestCase
         $request = $this->createRequestWithBody('POST', '/api/referrals/redeem', $requestData)
             ->withAttribute('user_id', $this->userId);
         $response = $this->createResponse();
-        $response = $controller->redeemPoints($request, $response, []);
+        $response = $controller->redeemPoints($request, $response);
         $body = json_decode($response->getBody()->__toString());
         $this->assertEquals(400, $response->getStatusCode());
         $this->assertEquals('Insufficient points balance', $body->error);

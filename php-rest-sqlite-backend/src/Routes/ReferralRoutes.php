@@ -13,6 +13,7 @@ class ReferralRoutes
     public static function register(App $app): void
     {
         $app->group('/referrals', function ($group) {
+            $group->get('', [ReferralController::class, 'getAll']);
             $group->get('/my', [ReferralController::class, 'getMyReferral']);
             $group->get('/my/usage', [ReferralController::class, 'getMyReferralUsage']);
             $group->post('/redeem', [ReferralController::class, 'redeemPoints']);

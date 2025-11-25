@@ -5,7 +5,16 @@ namespace App\Models;
 class UserReferral extends BaseModel
 {
     protected static string $tableName = 'user_referrals';
-// Additional properties for joined data
+
+    public int $user_id;
+    public string $referral_code;
+    public int $times_used;
+    public int $points_balance;
+    public int $points_earned;
+    public int $points_redeemed;
+    public ?string $created_at;
+
+    // Additional properties for joined data
     public ?string $user_email;
     public function validate(int $referredUserId): void
     {
@@ -15,7 +24,7 @@ class UserReferral extends BaseModel
 
         $orderCount = self::$db->prepare('SELECT COUNT(*) FROM orders WHERE user_id = :user_id');
         $orderCount->execute([':user_id' => $referredUserId]);
-        if ((int)$orderCount->fetchColumn() > 0) {
+        if ((int) $orderCount->fetchColumn() > 0) {
             throw new \Exception('Referral code is only valid for the first order');
         }
     }
