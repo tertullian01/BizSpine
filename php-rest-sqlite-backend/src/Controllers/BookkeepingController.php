@@ -18,7 +18,7 @@ class BookkeepingController extends ApiController
     private Validator $validator;
     private FileUploadService $fileUploadService;
 
-    public function __construct(PDO $db = null, ?FileUploadService $fileUploadService = null)
+    public function __construct(?PDO $db = null, ?FileUploadService $fileUploadService = null)
     {
         if ($db) {
             $this->db = $db;

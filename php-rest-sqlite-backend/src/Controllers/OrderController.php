@@ -17,7 +17,7 @@ class OrderController extends ApiController
     private Validator $validator;
     private PaginationService $paginationService;
 
-    public function __construct(PDO $db = null, PaginationService $paginationService = null)
+    public function __construct(?PDO $db = null, ?PaginationService $paginationService = null)
     {
         if ($db) {
             $this->db = $db;
