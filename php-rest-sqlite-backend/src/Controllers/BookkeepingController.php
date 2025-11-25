@@ -23,7 +23,7 @@ class BookkeepingController extends ApiController
         if ($db) {
             $this->db = $db;
         } else {
-            $this->db = Database::get(Config::get('database.database_path'));
+            $this->db = Database::get(Config::getInstance()->get('database.database_path'));
         }
         $this->validator = new Validator();
         $this->fileUploadService = $fileUploadService ?? new FileUploadService(new \App\Services\Logger());
@@ -48,7 +48,7 @@ SQL;
 
     public function getIncomeById(Request $request, Response $response, array $args): Response
     {
-        $id = (int)$args['id'];
+        $id = (int) $args['id'];
         $sql = <<<'SQL'
 SELECT 
     i.*,
@@ -82,19 +82,19 @@ SQL;
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             ':order_id' => $body['order_id'] ?? null,
-            ':amount' => (float)$body['amount'],
+            ':amount' => (float) $body['amount'],
             ':payment_method' => $body['payment_method'] ?? null,
             ':payment_date' => $body['payment_date'] ?? date('Y-m-d H:i:s'),
             ':description' => $body['description'] ?? null,
             ':notes' => $body['notes'] ?? null,
         ]);
-        $id = (int)$this->db->lastInsertId();
+        $id = (int) $this->db->lastInsertId();
         return $this->getIncomeById($request, $response->withStatus(201), ['id' => $id]);
     }
 
     public function deleteIncome(Request $request, Response $response, array $args): Response
     {
-        $id = (int)$args['id'];
+        $id = (int) $args['id'];
         $checkStmt = $this->db->prepare('SELECT id FROM income WHERE id = :id');
         $checkStmt->execute([':id' => $id]);
         if (!$checkStmt->fetch()) {
@@ -126,7 +126,7 @@ SQL;
     public function getExpensesByCategory(Request $request, Response $response, array $args): Response
     {
         $category = $args['category'];
-// Assuming category is passed as an argument or query param?
+        // Assuming category is passed as an argument or query param?
         // Wait, the original code didn't use args, but it was likely intended for a route like /expenses/category/{category}
         // But looking at api.php, there is no route for getExpensesByCategory.
         // I'll keep it but it might be unused.
@@ -148,7 +148,7 @@ SQL;
 
     public function getExpenseById(Request $request, Response $response, array $args): Response
     {
-        $id = (int)$args['id'];
+        $id = (int) $args['id'];
         $sql = <<<'SQL'
 SELECT 
     e.*,
@@ -185,19 +185,19 @@ SQL;
             ':order_id' => $body['order_id'] ?? null,
             ':vendor' => $body['vendor'] ?? null,
             ':category' => $body['category'],
-            ':amount' => (float)$body['amount'],
+            ':amount' => (float) $body['amount'],
             ':expense_date' => $body['expense_date'] ?? date('Y-m-d H:i:s'),
             ':description' => $body['description'] ?? null,
             ':receipt_image_url' => $body['receipt_image_url'] ?? null,
             ':notes' => $body['notes'] ?? null,
         ]);
-        $id = (int)$this->db->lastInsertId();
+        $id = (int) $this->db->lastInsertId();
         return $this->getExpenseById($request, $response->withStatus(201), ['id' => $id]);
     }
 
     public function updateExpense(Request $request, Response $response, array $args): Response
     {
-        $id = (int)$args['id'];
+        $id = (int) $args['id'];
         $body = $request->getParsedBody();
         $checkStmt = $this->db->prepare('SELECT id FROM expenses WHERE id = :id');
         $checkStmt->execute([':id' => $id]);
@@ -223,7 +223,7 @@ SQL;
 
         if (isset($body['amount'])) {
             $updates[] = 'amount = :amount';
-            $params[':amount'] = (float)$body['amount'];
+            $params[':amount'] = (float) $body['amount'];
         }
 
         if (isset($body['description'])) {
@@ -254,7 +254,7 @@ SQL;
 
     public function deleteExpense(Request $request, Response $response, array $args): Response
     {
-        $id = (int)$args['id'];
+        $id = (int) $args['id'];
         $checkStmt = $this->db->prepare('SELECT id FROM expenses WHERE id = :id');
         $checkStmt->execute([':id' => $id]);
         if (!$checkStmt->fetch()) {
@@ -270,13 +270,13 @@ SQL;
     {
         // Get total income
         $incomeStmt = $this->db->query('SELECT COALESCE(SUM(amount), 0) as total FROM income');
-        $totalIncome = (float)$incomeStmt->fetchColumn();
-// Get total expenses
+        $totalIncome = (float) $incomeStmt->fetchColumn();
+        // Get total expenses
         $expenseStmt = $this->db->query('SELECT COALESCE(SUM(amount), 0) as total FROM expenses');
-        $totalExpenses = (float)$expenseStmt->fetchColumn();
-// Calculate profit
+        $totalExpenses = (float) $expenseStmt->fetchColumn();
+        // Calculate profit
         $profit = $totalIncome - $totalExpenses;
-// Get expense breakdown by category
+        // Get expense breakdown by category
         $categoryStmt = $this->db->query('SELECT category, SUM(amount) as total FROM expenses GROUP BY category ORDER BY total DESC');
         $expensesByCategory = $categoryStmt->fetchAll(PDO::FETCH_ASSOC);
         $summary = [
@@ -310,7 +310,7 @@ SQL;
             ]);
 
             // Optionally save receipt URL to expense
-            $expenseId = (int)$args['id'];
+            $expenseId = (int) $args['id'];
             $stmt = $this->db->prepare('UPDATE expenses SET receipt_image_url = :url WHERE id = :id');
             $stmt->execute([
                 ':url' => $result['url'],
