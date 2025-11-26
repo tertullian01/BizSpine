@@ -129,15 +129,20 @@ abstract class BaseModel implements JsonSerializable
     {
         $stmt = self::$db->prepare($sql);
         $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_CLASS, static::class);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $objects = [];
+        foreach ($results as $result) {
+            $objects[] = new static($result);
+        }
+        return $objects;
     }
 
     public static function fetchOne(string $sql, array $params = []): ?static
     {
         $stmt = self::$db->prepare($sql);
         $stmt->execute($params);
-        $result = $stmt->fetchObject(static::class);
-        return $result === false ? null : $result;
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result === false ? null : new static($result);
     }
 
     private static function getTableColumns(): array

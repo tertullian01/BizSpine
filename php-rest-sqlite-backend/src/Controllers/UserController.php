@@ -41,7 +41,7 @@ class UserController extends ApiController
         );
 
         // Remove sensitive data and enrich each client with order statistics
-        $db = \App\Services\Database::get();
+        $db = \App\Models\BaseModel::$db;
         foreach ($clients as &$client) {
             // Remove password hash from response
             unset($client['password_hash']);
