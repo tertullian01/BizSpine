@@ -81,10 +81,111 @@ class UserController extends ApiController
         return $this->success($response, $clients);
     }
 
+    public function getClient(Request $request, Response $response, array $args): Response
+    {
+        $id = (int) $args['id'];
+        $user = User::find($id);
+
+        if (!$user || $user->role !== 'customer') {
+            return $this->error($response, 'Client not found', 404);
+        }
+
+        // Convert to array and add order statistics
+        $clientData = (array) $user;
+        unset($clientData['password_hash']);
+        unset($clientData['reset_token']);
+        unset($clientData['reset_expires_at']);
+
+        // Get order count and total spent
+        $db = \App\Models\BaseModel::$db;
+        $stmt = $db->prepare('
+            SELECT COUNT(*) as order_count, COALESCE(SUM(total), 0) as total_spent
+            FROM orders WHERE user_id = :user_id
+        ');
+        $stmt->execute([':user_id' => $id]);
+        $orderStats = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        $clientData['order_count'] = (int) $orderStats['order_count'];
+        $clientData['total_spent'] = (float) $orderStats['total_spent'];
+
+        // Get last order date
+        $stmt = $db->prepare('
+            SELECT order_date FROM orders
+            WHERE user_id = :user_id
+            ORDER BY order_date DESC
+            LIMIT 1
+        ');
+        $stmt->execute([':user_id' => $id]);
+        $lastOrder = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $clientData['last_order_date'] = $lastOrder ? $lastOrder['order_date'] : null;
+
+        return $this->success($response, $clientData);
+    }
+
+    public function updateClient(Request $request, Response $response, array $args): Response
+    {
+        $id = (int) $args['id'];
+        $user = User::find($id);
+
+        if (!$user || $user->role !== 'customer') {
+            return $this->error($response, 'Client not found', 404);
+        }
+
+        $data = $request->getParsedBody();
+        foreach ($data as $key => $value) {
+            if (property_exists($user, $key)) {
+                $user->$key = $value;
+            }
+        }
+        $user->save();
+
+        // Return updated client data with order statistics
+        $clientData = (array) $user;
+        unset($clientData['password_hash']);
+        unset($clientData['reset_token']);
+        unset($clientData['reset_expires_at']);
+
+        // Get order count and total spent
+        $db = \App\Models\BaseModel::$db;
+        $stmt = $db->prepare('
+            SELECT COUNT(*) as order_count, COALESCE(SUM(total), 0) as total_spent
+            FROM orders WHERE user_id = :user_id
+        ');
+        $stmt->execute([':user_id' => $id]);
+        $orderStats = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        $clientData['order_count'] = (int) $orderStats['order_count'];
+        $clientData['total_spent'] = (float) $orderStats['total_spent'];
+
+        // Get last order date
+        $stmt = $db->prepare('
+            SELECT order_date FROM orders
+            WHERE user_id = :user_id
+            ORDER BY order_date DESC
+            LIMIT 1
+        ');
+        $stmt->execute([':user_id' => $id]);
+        $lastOrder = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $clientData['last_order_date'] = $lastOrder ? $lastOrder['order_date'] : null;
+
+        return $this->success($response, $clientData);
+    }
+
     public function createUser(Request $request, Response $response): Response
     {
         $data = $request->getParsedBody();
+
+        // Handle password separately
+        $password = $data['password'] ?? null;
+        unset($data['password']);
+
         $user = new User($data);
+
+        // Hash password if provided
+        if ($password) {
+            $user->password_hash = password_hash($password, PASSWORD_DEFAULT);
+        }
+
         $user->save();
         return $this->success($response, $user, 201);
     }
