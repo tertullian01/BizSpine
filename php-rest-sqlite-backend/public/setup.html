@@ -1,185 +1,712 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Setup - Small Business Backend</title>
+    <title>Database Setup Wizard</title>
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 50px auto;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             padding: 20px;
-            background-color: #f5f5f5;
         }
-        .container {
+
+        .wizard-container {
+            max-width: 800px;
+            margin: 0 auto;
             background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .wizard-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
             padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 {
             text-align: center;
+        }
+
+        .wizard-header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .wizard-header p {
+            opacity: 0.9;
+        }
+
+        .progress-bar {
+            background: rgba(255, 255, 255, 0.2);
+            height: 6px;
+            margin-top: 20px;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: white;
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .wizard-body {
+            padding: 40px;
+        }
+
+        .step {
+            display: none;
+        }
+
+        .step.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .step-title {
+            font-size: 24px;
             color: #333;
+            margin-bottom: 10px;
         }
+
+        .step-description {
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
+
         label {
             display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
         }
-        input[type="email"], input[type="password"], input[type="text"] {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        button {
+
+        input[type="email"],
+        input[type="password"],
+        textarea {
             width: 100%;
             padding: 12px;
-            background-color: #007bff;
-            color: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            min-height: 200px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .sample-json {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+        }
+
+        .wizard-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        button {
+            padding: 12px 30px;
             border: none;
-            border-radius: 4px;
-            cursor: pointer;
+            border-radius: 6px;
             font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
         }
-        button:hover {
-            background-color: #0056b3;
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
         }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #666;
+        }
+
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+
+        .btn-skip {
+            background: transparent;
+            color: #667eea;
+            text-decoration: underline;
+        }
+
         button:disabled {
-            background-color: #ccc;
+            opacity: 0.5;
             cursor: not-allowed;
         }
+
         .message {
-            margin-top: 20px;
-            padding: 10px;
-            border-radius: 4px;
-            text-align: center;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
         }
-        .success {
-            background-color: #d4edda;
+
+        .message.success {
+            background: #d4edda;
             color: #155724;
             border: 1px solid #c3e6cb;
         }
-        .error {
-            background-color: #f8d7da;
+
+        .message.error {
+            background: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
-        .info {
-            background-color: #d1ecf1;
+
+        .message.info {
+            background: #d1ecf1;
             color: #0c5460;
             border: 1px solid #bee5eb;
         }
+
+        .message.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
         .hidden {
-            display: none;
+            display: none !important;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
         }
     </style>
 </head>
+
 <body>
-    <div class="container">
-        <h1>Initial Setup</h1>
-        <div id="statusMessage" class="message hidden"></div>
-        <form id="setupForm">
-            <div class="form-group">
-                <label for="email">Admin Email:</label>
-                <input type="email" id="email" name="email" required>
+    <div class="wizard-container">
+        <div class="wizard-header">
+            <h1>Database Setup Wizard</h1>
+            <p>Let's get your REST API ready</p>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 11%"></div>
             </div>
-            <div class="form-group">
-                <label for="password">Admin Password:</label>
-                <input type="password" id="password" name="password" required minlength="8">
+        </div>
+
+        <div class="wizard-body">
+            <div id="messageContainer"></div>
+
+            <!-- Step 1: Database Check -->
+            <div class="step active" data-step="1">
+                <h2 class="step-title">Step 1: Database Check</h2>
+                <p class="step-description">Checking if your database is ready for setup...</p>
+                <div id="dbCheckResult"></div>
             </div>
-            <div class="form-group">
-                <label for="store_name">Store Name:</label>
-                <input type="text" id="store_name" name="store_name" required>
+
+            <!-- Step 2: Admin Credentials -->
+            <div class="step" data-step="2">
+                <h2 class="step-title">Step 2: Create Admin Account</h2>
+                <p class="step-description">Create your administrator account to manage the system.</p>
+                <div class="form-group">
+                    <label for="adminEmail">Admin Email *</label>
+                    <input type="email" id="adminEmail" required placeholder="admin@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="adminPassword">Admin Password *</label>
+                    <input type="password" id="adminPassword" required minlength="8" placeholder="Minimum 8 characters">
+                </div>
             </div>
-            <div class="form-group">
-                <label for="store_email">Store Email:</label>
-                <input type="email" id="store_email" name="store_email" required>
+
+            <!-- Step 3: Import Users -->
+            <div class="step" data-step="3">
+                <h2 class="step-title">Step 3: Import Users (Optional)</h2>
+                <p class="step-description">Import existing users from JSON data.</p>
+                <div class="form-group">
+                    <label for="usersJson">Users JSON</label>
+                    <textarea id="usersJson" placeholder="Paste your JSON here or skip this step"></textarea>
+                </div>
+                <details>
+                    <summary style="cursor: pointer; color: #667eea; margin-bottom: 10px;">Show Sample JSON</summary>
+                    <div class="sample-json">[
+                        {
+                        "email": "customer@example.com",
+                        "password": "password123",
+                        "display_name": "John Doe",
+                        "role": "customer"
+                        },
+                        {
+                        "email": "employee@example.com",
+                        "password": "password123",
+                        "display_name": "Jane Smith",
+                        "role": "employee"
+                        }
+                        ]</div>
+                </details>
             </div>
-            <button type="submit" id="submitBtn">Complete Setup</button>
-        </form>
+
+            <!-- Step 4: Import Stores -->
+            <div class="step" data-step="4">
+                <h2 class="step-title">Step 4: Import Stores (Optional)</h2>
+                <p class="step-description">Import your store locations.</p>
+                <div class="form-group">
+                    <label for="storesJson">Stores JSON</label>
+                    <textarea id="storesJson" placeholder="Paste your JSON here or skip this step"></textarea>
+                </div>
+                <details>
+                    <summary style="cursor: pointer; color: #667eea; margin-bottom: 10px;">Show Sample JSON</summary>
+                    <div class="sample-json">[
+                        {
+                        "name": "Main Store",
+                        "location": "Downtown",
+                        "address": "123 Main St, City, State 12345",
+                        "phone": "+1-555-0100",
+                        "email": "store@example.com"
+                        },
+                        {
+                        "name": "Branch Store",
+                        "location": "Uptown",
+                        "address": "456 Oak Ave, City, State 12346",
+                        "phone": "+1-555-0200",
+                        "email": "branch@example.com"
+                        }
+                        ]</div>
+                </details>
+            </div>
+
+            <!-- Step 5: Import Products -->
+            <div class="step" data-step="5">
+                <h2 class="step-title">Step 5: Import Products (Optional)</h2>
+                <p class="step-description">Import your product catalog.</p>
+                <div class="form-group">
+                    <label for="productsJson">Products JSON</label>
+                    <textarea id="productsJson" placeholder="Paste your JSON here or skip this step"></textarea>
+                </div>
+                <details>
+                    <summary style="cursor: pointer; color: #667eea; margin-bottom: 10px;">Show Sample JSON</summary>
+                    <div class="sample-json">[
+                        {
+                        "name": "Premium Product",
+                        "type": "Category A",
+                        "description": "High-quality product",
+                        "cost": 29.99,
+                        "featured_ingredients": "Ingredient 1, Ingredient 2",
+                        "all_ingredients": "Full ingredient list here",
+                        "size": "100ml"
+                        },
+                        {
+                        "name": "Standard Product",
+                        "type": "Category B",
+                        "description": "Everyday product",
+                        "cost": 19.99,
+                        "size": "50ml"
+                        }
+                        ]</div>
+                </details>
+            </div>
+
+            <!-- Step 6: Import Orders -->
+            <div class="step" data-step="6">
+                <h2 class="step-title">Step 6: Import Orders (Optional)</h2>
+                <p class="step-description">Import historical orders. This will also create customers and match/create
+                    products automatically.</p>
+                <div class="form-group">
+                    <label for="ordersJson">Orders JSON</label>
+                    <textarea id="ordersJson" placeholder="Paste your JSON here or skip this step"></textarea>
+                </div>
+                <details>
+                    <summary style="cursor: pointer; color: #667eea; margin-bottom: 10px;">Show Sample JSON</summary>
+                    <div class="sample-json">[
+                        {
+                        "customer_email": "customer@example.com",
+                        "order_number": "ORD-001",
+                        "shipping_address": "123 Customer St, City, State",
+                        "subtotal": 59.98,
+                        "total": 64.78,
+                        "order_date": "2024-01-15 10:30:00",
+                        "items": [
+                        {
+                        "product_name": "Premium Product",
+                        "quantity": 2,
+                        "unit_price": 29.99
+                        }
+                        ]
+                        }
+                        ]</div>
+                </details>
+            </div>
+
+            <!-- Step 7: Import Coupons -->
+            <div class="step" data-step="7">
+                <h2 class="step-title">Step 7: Import Coupons (Optional)</h2>
+                <p class="step-description">Import discount coupons.</p>
+                <div class="form-group">
+                    <label for="couponsJson">Coupons JSON</label>
+                    <textarea id="couponsJson" placeholder="Paste your JSON here or skip this step"></textarea>
+                </div>
+                <details>
+                    <summary style="cursor: pointer; color: #667eea; margin-bottom: 10px;">Show Sample JSON</summary>
+                    <div class="sample-json">[
+                        {
+                        "code": "SAVE10",
+                        "discount_type": "percentage",
+                        "discount_value": 10,
+                        "min_purchase": 50,
+                        "max_uses": 100,
+                        "expires_at": "2024-12-31 23:59:59"
+                        },
+                        {
+                        "code": "FLAT20",
+                        "discount_type": "fixed",
+                        "discount_value": 20,
+                        "min_purchase": 0,
+                        "max_uses": null,
+                        "expires_at": null
+                        }
+                        ]</div>
+                </details>
+            </div>
+
+            <!-- Step 8: Import Reviews -->
+            <div class="step" data-step="8">
+                <h2 class="step-title">Step 8: Import Reviews (Optional)</h2>
+                <p class="step-description">Import product reviews.</p>
+                <div class="form-group">
+                    <label for="reviewsJson">Reviews JSON</label>
+                    <textarea id="reviewsJson" placeholder="Paste your JSON here or skip this step"></textarea>
+                </div>
+                <details>
+                    <summary style="cursor: pointer; color: #667eea; margin-bottom: 10px;">Show Sample JSON</summary>
+                    <div class="sample-json">[
+                        {
+                        "user_id": 1,
+                        "product_id": 1,
+                        "rating": 5,
+                        "review_text": "Excellent product! Highly recommend."
+                        },
+                        {
+                        "user_id": 2,
+                        "product_id": 1,
+                        "rating": 4,
+                        "review_text": "Good quality, fast shipping."
+                        }
+                        ]</div>
+                </details>
+            </div>
+
+            <!-- Step 9: Import Testimonials -->
+            <div class="step" data-step="9">
+                <h2 class="step-title">Step 9: Import Testimonials (Optional)</h2>
+                <p class="step-description">Import customer testimonials.</p>
+                <div class="form-group">
+                    <label for="testimonialsJson">Testimonials JSON</label>
+                    <textarea id="testimonialsJson" placeholder="Paste your JSON here or skip this step"></textarea>
+                </div>
+                <details>
+                    <summary style="cursor: pointer; color: #667eea; margin-bottom: 10px;">Show Sample JSON</summary>
+                    <div class="sample-json">[
+                        {
+                        "customer_name": "Sarah Johnson",
+                        "testimonial_text": "Amazing service and products!",
+                        "rating": 5,
+                        "is_featured": 1
+                        },
+                        {
+                        "customer_name": "Mike Williams",
+                        "testimonial_text": "Best purchase I've made this year.",
+                        "rating": 5,
+                        "is_featured": 0
+                        }
+                        ]</div>
+                </details>
+            </div>
+
+            <!-- Completion Step -->
+            <div class="step" data-step="10">
+                <h2 class="step-title">🎉 Setup Complete!</h2>
+                <p class="step-description">Your database has been successfully configured.</p>
+                <div class="message success">
+                    <strong>Success!</strong> You can now log in with your admin credentials and start using the API.
+                </div>
+            </div>
+
+            <div class="wizard-actions">
+                <button type="button" class="btn-secondary" id="prevBtn" onclick="changeStep(-1)">Previous</button>
+                <div>
+                    <button type="button" class="btn-skip hidden" id="skipBtn" onclick="skipStep()">Skip</button>
+                    <button type="button" class="btn-primary" id="nextBtn" onclick="changeStep(1)">Next</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
         const apiBase = window.location.origin;
-        const form = document.getElementById('setupForm');
-        const submitBtn = document.getElementById('submitBtn');
-        const statusMessage = document.getElementById('statusMessage');
+        let currentStep = 1;
+        const totalSteps = 10;
+        let dbInitialized = false;
 
-        function showMessage(message, type) {
-            statusMessage.textContent = message;
-            statusMessage.className = `message ${type}`;
-            statusMessage.classList.remove('hidden');
-        }
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkDatabase();
+        });
 
-        function hideMessage() {
-            statusMessage.classList.add('hidden');
-        }
-
-        async function checkSetupStatus() {
+        async function checkDatabase() {
             try {
-                const response = await fetch(`${apiBase}/setup/status`);
-                const data = await response.json();
-                if (data.success && data.data.setup_completed) {
-                    showMessage('Setup has already been completed. You can now log in to the admin panel.', 'info');
-                    form.style.display = 'none';
+                const response = await fetch(`${apiBase}/setup/check`);
+                const result = await response.json();
+
+                const checkResult = document.getElementById('dbCheckResult');
+
+                if (result.data.initialized) {
+                    dbInitialized = true;
+                    checkResult.innerHTML = `
+                        <div class="message warning">
+                            <strong>Database Already Initialized</strong><br>
+                            ${result.data.message}<br><br>
+                            Setup cannot proceed. If you need to reset the database, please contact your system administrator.
+                        </div>
+                    `;
+                    document.getElementById('nextBtn').disabled = true;
                 } else {
-                    form.style.display = 'block';
+                    checkResult.innerHTML = `
+                        <div class="message success">
+                            <strong>Ready for Setup</strong><br>
+                            ${result.data.message}
+                        </div>
+                    `;
                 }
             } catch (error) {
-                console.error('Error checking setup status:', error);
-                showMessage('Error checking setup status. Please try refreshing the page.', 'error');
+                showMessage('Error checking database status: ' + error.message, 'error');
             }
         }
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            hideMessage();
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Setting up...';
+        function changeStep(direction) {
+            if (dbInitialized && currentStep === 1) return;
 
-            const formData = new FormData(form);
-            const data = {
-                email: formData.get('email'),
-                password: formData.get('password'),
-                store_name: formData.get('store_name'),
-                store_email: formData.get('store_email')
-            };
+            const currentStepEl = document.querySelector(`.step[data-step="${currentStep}"]`);
+
+            // Validate current step before moving forward
+            if (direction > 0 && !validateStep(currentStep)) {
+                return;
+            }
+
+            // Process step before moving
+            if (direction > 0) {
+                processStep(currentStep);
+            }
+
+            currentStep += direction;
+
+            if (currentStep < 1) currentStep = 1;
+            if (currentStep > totalSteps) currentStep = totalSteps;
+
+            updateUI();
+        }
+
+        function skipStep() {
+            changeStep(1);
+        }
+
+        function validateStep(step) {
+            if (step === 2) {
+                const email = document.getElementById('adminEmail').value;
+                const password = document.getElementById('adminPassword').value;
+
+                if (!email || !password) {
+                    showMessage('Please fill in all required fields', 'error');
+                    return false;
+                }
+
+                if (password.length < 8) {
+                    showMessage('Password must be at least 8 characters', 'error');
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        async function processStep(step) {
+            try {
+                switch (step) {
+                    case 2:
+                        await createAdmin();
+                        break;
+                    case 3:
+                        await importData('users', 'usersJson');
+                        break;
+                    case 4:
+                        await importData('stores', 'storesJson');
+                        break;
+                    case 5:
+                        await importData('products', 'productsJson');
+                        break;
+                    case 6:
+                        await importData('orders', 'ordersJson');
+                        break;
+                    case 7:
+                        await importData('coupons', 'couponsJson');
+                        break;
+                    case 8:
+                        await importData('reviews', 'reviewsJson');
+                        break;
+                    case 9:
+                        await importData('testimonials', 'testimonialsJson');
+                        break;
+                }
+            } catch (error) {
+                showMessage('Error: ' + error.message, 'error');
+                currentStep--; // Stay on current step if error
+            }
+        }
+
+        async function createAdmin() {
+            const email = document.getElementById('adminEmail').value;
+            const password = document.getElementById('adminPassword').value;
+
+            const response = await fetch(`${apiBase}/setup/admin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            const result = await response.json();
+
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to create admin');
+            }
+
+            showMessage('Admin account created successfully!', 'success');
+        }
+
+        async function importData(type, textareaId) {
+            const textarea = document.getElementById(textareaId);
+            const jsonData = textarea.value.trim();
+
+            if (!jsonData) {
+                return; // Skip if empty
+            }
 
             try {
-                const response = await fetch(`${apiBase}/setup`, {
+                const data = JSON.parse(jsonData);
+                const payload = {};
+                payload[type] = data;
+
+                const response = await fetch(`${apiBase}/setup/import/${type}`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
 
                 const result = await response.json();
 
                 if (result.success) {
-                    showMessage('Setup completed successfully! You can now log in with your admin credentials.', 'success');
-                    form.style.display = 'none';
+                    showMessage(`Imported ${result.data.imported} ${type}`, 'success');
                 } else {
-                    showMessage(result.error || 'Setup failed. Please try again.', 'error');
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Complete Setup';
+                    throw new Error(result.error || `Failed to import ${type}`);
                 }
             } catch (error) {
-                console.error('Error during setup:', error);
-                showMessage('An error occurred during setup. Please try again.', 'error');
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Complete Setup';
+                if (error instanceof SyntaxError) {
+                    throw new Error('Invalid JSON format');
+                }
+                throw error;
             }
-        });
+        }
 
-        // Check setup status on page load
-        checkSetupStatus();
+        function updateUI() {
+            // Update steps visibility
+            document.querySelectorAll('.step').forEach(step => {
+                step.classList.remove('active');
+            });
+            document.querySelector(`.step[data-step="${currentStep}"]`).classList.add('active');
+
+            // Update progress bar
+            const progress = (currentStep / totalSteps) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+
+            // Update buttons
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const skipBtn = document.getElementById('skipBtn');
+
+            prevBtn.style.display = currentStep === 1 ? 'none' : 'block';
+
+            if (currentStep === totalSteps) {
+                nextBtn.style.display = 'none';
+                skipBtn.classList.add('hidden');
+            } else {
+                nextBtn.style.display = 'block';
+                nextBtn.textContent = currentStep === totalSteps - 1 ? 'Finish' : 'Next';
+
+                // Show skip button for optional steps (3-9)
+                if (currentStep >= 3 && currentStep <= 9) {
+                    skipBtn.classList.remove('hidden');
+                } else {
+                    skipBtn.classList.add('hidden');
+                }
+            }
+        }
+
+        function showMessage(message, type) {
+            const container = document.getElementById('messageContainer');
+            container.innerHTML = `<div class="message ${type}">${message}</div>`;
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+
+        updateUI();
     </script>
 </body>
+
 </html>

@@ -2,413 +2,454 @@
 
 namespace App\Controllers;
 
-use App\Exceptions\ValidationException;
 use App\Services\Database;
-use App\Services\Validator;
-use App\Models\User;
-use App\Models\Store;
 use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
-use Respect\Validation\Validator as v;
 
 class SetupController extends ApiController
 {
     private array $config;
-    private PDO $db;
-    private Validator $validator;
+    private ?PDO $db = null;
 
     public function __construct(array $config = [])
     {
         $this->config = $config;
-        $dbPath = $config['db_path'] ?? $config['database']['database_path'] ?? null;
-        $this->db = Database::get($dbPath);
-        $this->validator = new Validator();
     }
 
-    public function checkSetupStatus(Request $request, Response $response): Response
+    /**
+     * Check if database is already initialized
+     */
+    public function checkDatabase(Request $request, Response $response): Response
     {
-        try {
-            // Check if role column exists
-            $stmt = $this->db->query("PRAGMA table_info(users)");
-            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $hasRole = false;
-            foreach ($columns as $column) {
-                if ($column['name'] === 'role') {
-                    $hasRole = true;
-                    break;
-                }
-            }
+        $dbPath = $this->config['database']['database_path'] ?? null;
 
-            if (!$hasRole) {
-                return $this->success($response, ['setup_completed' => false]);
-            }
-
-            $stmt = $this->db->prepare('SELECT COUNT(*) as count FROM users WHERE role = :role');
-            $stmt->execute([':role' => 'admin']);
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            $isSetup = $result['count'] > 0;
-
-            return $this->success($response, ['setup_completed' => $isSetup]);
-        } catch (\Exception $e) {
-            // If table doesn't exist or other error, assume not setup
-            return $this->success($response, ['setup_completed' => false]);
-        }
-    }
-
-    public function performSetup(Request $request, Response $response): Response
-    {
-        // Check if setup already done
-        try {
-            // Check if role column exists
-            $stmt = $this->db->query("PRAGMA table_info(users)");
-            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $hasRole = false;
-            foreach ($columns as $column) {
-                if ($column['name'] === 'role') {
-                    $hasRole = true;
-                    break;
-                }
-            }
-
-            if ($hasRole) {
-                $stmt = $this->db->prepare('SELECT COUNT(*) as count FROM users WHERE role = :role');
-                $stmt->execute([':role' => 'admin']);
-                $result = $stmt->fetch(PDO::FETCH_ASSOC);
-                if ($result['count'] > 0) {
-                    return $this->error($response, 'Setup already completed', 403);
-                }
-            }
-        } catch (\Exception $e) {
-            // If table doesn't exist or other error, continue with setup
-        }
-
-        $body = $request->getParsedBody();
-
-        try {
-            $this->validator->validate($body, [
-                'email' => v::notEmpty()->email()->setName('Email'),
-                'password' => v::notEmpty()->length(8, null)->setName('Password'),
-                'store_name' => v::notEmpty()->setName('Store Name'),
-                'store_email' => v::notEmpty()->email()->setName('Store Email'),
+        if (!$dbPath || !file_exists($dbPath)) {
+            return $this->success($response, [
+                'initialized' => false,
+                'message' => 'Database not found. Ready for setup.'
             ]);
-        } catch (ValidationException $e) {
-            return $this->error($response, $e->getFirstError(), 400);
-        } catch (\Exception $e) {
-            return $this->error($response, $e->getMessage(), 400);
         }
 
-        $email = trim($body['email']);
-        $password = trim($body['password']);
-        $storeName = trim($body['store_name']);
-        $storeEmail = trim($body['store_email']);
-
-        // Initialize all database tables
         try {
-            $this->initializeDatabaseTables();
-        } catch (\Exception $e) {
-            return $this->error($response, 'Failed to initialize database tables: ' . $e->getMessage(), 500);
-        }
+            $db = Database::get($dbPath);
+            $stmt = $db->query("SELECT COUNT(*) as count FROM users");
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        // Create admin user
-        try {
-            $user = User::register($email, $password);
-            // Set role to admin
-            $stmt = $this->db->prepare('UPDATE users SET role = :role WHERE id = :id');
-            $stmt->execute([':role' => 'admin', ':id' => $user->id]);
-        } catch (\Exception $e) {
-            return $this->error($response, 'Failed to create admin user: ' . $e->getMessage(), 500);
-        }
-
-        // Create or update store
-        try {
-            $store = Store::findByName($storeName);
-            if (!$store) {
-                $store = new Store([
-                    'name' => $storeName,
-                    'email' => $storeEmail,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'updated_at' => date('Y-m-d H:i:s'),
+            if ($result['count'] > 0) {
+                return $this->success($response, [
+                    'initialized' => true,
+                    'message' => 'Database already contains data. Setup cannot proceed.'
                 ]);
-                $store->save();
-            } else {
-                $store->email = $storeEmail;
-                $store->updated_at = date('Y-m-d H:i:s');
-                $store->save();
             }
-        } catch (\Exception $e) {
-            return $this->error($response, 'Failed to setup store: ' . $e->getMessage(), 500);
-        }
 
-        return $this->success($response, ['message' => 'Setup completed successfully', 'admin_email' => $email, 'store_name' => $storeName], 201);
+            return $this->success($response, [
+                'initialized' => false,
+                'message' => 'Database exists but is empty. Ready for setup.'
+            ]);
+        } catch (\Exception $e) {
+            return $this->success($response, [
+                'initialized' => false,
+                'message' => 'Database not initialized. Ready for setup.'
+            ]);
+        }
     }
 
-    private function initializeDatabaseTables(): void
+    /**
+     * Create admin user
+     */
+    public function createAdmin(Request $request, Response $response): Response
     {
-        // Add user roles
-        $this->db->exec('ALTER TABLE users ADD COLUMN role TEXT DEFAULT "customer"');
-        $this->db->exec('CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)');
+        $body = $request->getParsedBody();
+        $email = $body['email'] ?? null;
+        $password = $body['password'] ?? null;
 
-        // Add stores table
-        $this->db->exec("CREATE TABLE IF NOT EXISTS stores (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE,
-            description TEXT,
-            address TEXT,
-            phone TEXT,
-            email TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )");
-        // Insert default stores
-        $this->db->exec("INSERT OR IGNORE INTO stores (name, description) VALUES ('Siedlung', 'Siedlung store location')");
-        $this->db->exec("INSERT OR IGNORE INTO stores (name, description) VALUES ('USA', 'USA store location')");
+        if (!$email || !$password) {
+            return $this->error($response, 'Email and password are required', 400);
+        }
 
-        // Add products table
-        $this->db->exec("CREATE TABLE IF NOT EXISTS products (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            type TEXT,
-            description TEXT,
-            featured_ingredients TEXT,
-            all_ingredients TEXT,
-            size TEXT,
-            cost REAL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )");
-        $this->db->exec('CREATE INDEX IF NOT EXISTS idx_products_type ON products(type)');
-        $this->db->exec('CREATE INDEX IF NOT EXISTS idx_products_name ON products(name)');
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return $this->error($response, 'Invalid email format', 400);
+        }
 
-        // Add inventory table
-        $this->db->exec("CREATE TABLE IF NOT EXISTS inventory (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            product_id INTEGER NOT NULL,
-            store_id INTEGER NOT NULL,
-            quantity INTEGER NOT NULL,
-            min_quantity INTEGER,
-            max_quantity INTEGER,
-            last_restocked DATETIME,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(product_id) REFERENCES products(id),
-            FOREIGN KEY(store_id) REFERENCES stores(id)
-        )");
-        $this->db->exec('CREATE INDEX IF NOT EXISTS idx_inventory_product_store ON inventory(product_id, store_id)');
+        if (strlen($password) < 8) {
+            return $this->error($response, 'Password must be at least 8 characters', 400);
+        }
 
-        // Add orders tables
-        $this->db->exec("CREATE TABLE IF NOT EXISTS orders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            order_number TEXT NOT NULL,
-            order_date DATETIME,
-            fulfillment_status TEXT,
-            shipping_date DATETIME,
-            shipping_address TEXT NOT NULL,
-            phone_number TEXT,
-            whatsapp_number TEXT,
-            subtotal REAL NOT NULL,
-            discount_amount REAL,
-            coupon_code TEXT,
-            shipping_cost REAL,
-            total REAL NOT NULL,
-            tracking_number TEXT,
-            notes TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        )");
-        $this->db->exec("CREATE TABLE IF NOT EXISTS order_items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            order_id INTEGER NOT NULL,
-            product_id INTEGER NOT NULL,
-            store_id INTEGER NOT NULL,
-            quantity INTEGER NOT NULL,
-            unit_price REAL NOT NULL,
-            subtotal REAL NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(order_id) REFERENCES orders(id),
-            FOREIGN KEY(product_id) REFERENCES products(id),
-            FOREIGN KEY(store_id) REFERENCES stores(id)
-        )");
-        $this->db->exec('CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id)');
-        $this->db->exec('CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id)');
+        try {
+            $dbPath = $this->config['database']['database_path'];
+            $db = Database::get($dbPath);
 
-        // Add reviews table
-        $this->db->exec("CREATE TABLE IF NOT EXISTS product_reviews (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            product_id INTEGER NOT NULL,
-            order_id INTEGER,
-            rating INTEGER NOT NULL,
-            review_text TEXT,
-            verified INTEGER,
-            published INTEGER,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(user_id) REFERENCES users(id),
-            FOREIGN KEY(product_id) REFERENCES products(id),
-            FOREIGN KEY(order_id) REFERENCES orders(id)
-        )");
-        $this->db->exec('CREATE INDEX IF NOT EXISTS idx_product_reviews_product_id ON product_reviews(product_id)');
-        $this->db->exec('CREATE INDEX IF NOT EXISTS idx_product_reviews_user_id ON product_reviews(user_id)');
+            // Check if admin already exists
+            $stmt = $db->prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'");
+            $stmt->execute();
+            if ($stmt->fetch(PDO::FETCH_ASSOC)['count'] > 0) {
+                return $this->error($response, 'Admin user already exists', 400);
+            }
 
-        // Add bookkeeping tables
-        $this->db->exec("CREATE TABLE IF NOT EXISTS income (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            order_id INTEGER,
-            amount REAL NOT NULL,
-            payment_method TEXT,
-            payment_date DATETIME,
-            description TEXT,
-            notes TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(order_id) REFERENCES orders(id)
-        )");
-        $this->db->exec("CREATE TABLE IF NOT EXISTS expenses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            order_id INTEGER,
-            vendor TEXT,
-            category TEXT NOT NULL,
-            amount REAL NOT NULL,
-            expense_date DATETIME,
-            description TEXT,
-            receipt_image_url TEXT,
-            notes TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(order_id) REFERENCES orders(id)
-        )");
-        $this->db->exec('CREATE INDEX IF NOT EXISTS idx_income_order_id ON income(order_id)');
-        $this->db->exec('CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category)');
+            // Create admin user
+            $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+            $stmt = $db->prepare("
+                INSERT INTO users (email, password_hash, role, is_email_verified, created_at)
+                VALUES (:email, :password_hash, 'admin', 1, datetime('now'))
+            ");
+            $stmt->execute([
+                ':email' => $email,
+                ':password_hash' => $passwordHash
+            ]);
 
-        // Add referral tables
-        $this->db->exec("CREATE TABLE IF NOT EXISTS user_referrals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            referral_code TEXT NOT NULL,
-            times_used INTEGER,
-            points_earned INTEGER,
-            points_redeemed INTEGER,
-            points_balance INTEGER,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        )");
-        $this->db->exec("CREATE TABLE IF NOT EXISTS referral_usage (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            referrer_user_id INTEGER NOT NULL,
-            referred_user_id INTEGER NOT NULL,
-            referral_code TEXT NOT NULL,
-            order_id INTEGER,
-            points_awarded INTEGER,
-            used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(referrer_user_id) REFERENCES users(id),
-            FOREIGN KEY(referred_user_id) REFERENCES users(id),
-            FOREIGN KEY(order_id) REFERENCES orders(id)
-        )");
-        $this->db->exec('CREATE INDEX IF NOT EXISTS idx_user_referrals_user_id ON user_referrals(user_id)');
-        $this->db->exec('CREATE INDEX IF NOT EXISTS idx_referral_usage_referrer ON referral_usage(referrer_user_id)');
+            return $this->success($response, [
+                'message' => 'Admin user created successfully',
+                'user_id' => $db->lastInsertId()
+            ], 201);
+        } catch (\Exception $e) {
+            return $this->error($response, 'Failed to create admin: ' . $e->getMessage(), 500);
+        }
+    }
 
-        // Add coupons tables
-        $this->db->exec("CREATE TABLE IF NOT EXISTS coupons (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            code TEXT NOT NULL,
-            discount_type TEXT NOT NULL,
-            discount_value REAL NOT NULL,
-            min_purchase_amount REAL,
-            max_uses INTEGER,
-            times_used INTEGER,
-            valid_from DATETIME,
-            valid_until DATETIME,
-            is_active INTEGER,
-            description TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )");
-        $this->db->exec("CREATE TABLE IF NOT EXISTS coupon_usage (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            coupon_id INTEGER NOT NULL,
-            user_id INTEGER NOT NULL,
-            order_id INTEGER NOT NULL,
-            discount_amount REAL NOT NULL,
-            used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(coupon_id) REFERENCES coupons(id),
-            FOREIGN KEY(user_id) REFERENCES users(id),
-            FOREIGN KEY(order_id) REFERENCES orders(id)
-        )");
-        $this->db->exec('CREATE INDEX IF NOT EXISTS idx_coupons_code ON coupons(code)');
-        $this->db->exec('CREATE INDEX IF NOT EXISTS idx_coupon_usage_coupon_id ON coupon_usage(coupon_id)');
+    /**
+     * Import users from JSON
+     */
+    public function importUsers(Request $request, Response $response): Response
+    {
+        $body = $request->getParsedBody();
+        $users = $body['users'] ?? [];
 
-        // Add returns system
-        $this->db->exec("CREATE TABLE IF NOT EXISTS returns (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            order_id INTEGER NOT NULL,
-            user_id INTEGER NOT NULL,
-            return_number TEXT NOT NULL,
-            status TEXT,
-            reason TEXT,
-            refund_amount REAL,
-            refund_method TEXT,
-            refund_date DATETIME,
-            notes TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(order_id) REFERENCES orders(id),
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        )");
-        $this->db->exec("CREATE TABLE IF NOT EXISTS return_items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            return_id INTEGER NOT NULL,
-            order_item_id INTEGER NOT NULL,
-            product_id INTEGER NOT NULL,
-            store_id INTEGER NOT NULL,
-            quantity INTEGER NOT NULL,
-            refund_amount REAL NOT NULL,
-            reason TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(return_id) REFERENCES returns(id),
-            FOREIGN KEY(order_item_id) REFERENCES order_items(id),
-            FOREIGN KEY(product_id) REFERENCES products(id),
-            FOREIGN KEY(store_id) REFERENCES stores(id)
-        )");
-        $this->db->exec('CREATE INDEX IF NOT EXISTS idx_returns_order_id ON returns(order_id)');
-        $this->db->exec('CREATE INDEX IF NOT EXISTS idx_return_items_return_id ON return_items(return_id)');
+        if (empty($users)) {
+            return $this->success($response, ['imported' => 0, 'message' => 'No users to import']);
+        }
 
-        // Add tax system
-        $this->db->exec("CREATE TABLE IF NOT EXISTS tax_rates (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            rate REAL NOT NULL,
-            region TEXT,
-            is_default INTEGER,
-            is_active INTEGER,
-            description TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )");
-        $this->db->exec('ALTER TABLE orders ADD COLUMN tax_rate REAL');
-        $this->db->exec('ALTER TABLE orders ADD COLUMN tax_amount REAL');
-        // Insert default tax rates
-        $this->db->exec("INSERT OR IGNORE INTO tax_rates (name, rate, region, is_default, is_active, description) VALUES ('Germany VAT', 19.0, 'DE', 1, 1, 'German Value Added Tax')");
-        $this->db->exec("INSERT OR IGNORE INTO tax_rates (name, rate, region, is_default, is_active, description) VALUES ('USA Sales Tax', 7.5, 'US', 0, 1, 'US Sales Tax')");
+        try {
+            $dbPath = $this->config['database']['database_path'];
+            $db = Database::get($dbPath);
+            $db->beginTransaction();
 
-        // Add testimonials table
-        $this->db->exec("CREATE TABLE IF NOT EXISTS testimonials (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_name TEXT NOT NULL,
-            customer_email TEXT NOT NULL,
-            age_range TEXT,
-            testimonial_text TEXT NOT NULL,
-            image_url TEXT,
-            published INTEGER,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )");
+            $imported = 0;
+            foreach ($users as $user) {
+                $stmt = $db->prepare("
+                    INSERT INTO users (email, password_hash, display_name, role, created_at)
+                    VALUES (:email, :password_hash, :display_name, :role, datetime('now'))
+                ");
+                $stmt->execute([
+                    ':email' => $user['email'],
+                    ':password_hash' => password_hash($user['password'] ?? 'password123', PASSWORD_DEFAULT),
+                    ':display_name' => $user['display_name'] ?? $user['email'],
+                    ':role' => $user['role'] ?? 'customer'
+                ]);
+                $imported++;
+            }
 
-        // Add password reset fields
-        $this->db->exec('ALTER TABLE users ADD COLUMN reset_token TEXT');
-        $this->db->exec('ALTER TABLE users ADD COLUMN reset_expires_at DATETIME');
+            $db->commit();
+            return $this->success($response, ['imported' => $imported]);
+        } catch (\Exception $e) {
+            $db->rollBack();
+            return $this->error($response, 'Import failed: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Import stores from JSON
+     */
+    public function importStores(Request $request, Response $response): Response
+    {
+        $body = $request->getParsedBody();
+        $stores = $body['stores'] ?? [];
+
+        if (empty($stores)) {
+            return $this->success($response, ['imported' => 0]);
+        }
+
+        try {
+            $dbPath = $this->config['database']['database_path'];
+            $db = Database::get($dbPath);
+            $db->beginTransaction();
+
+            $imported = 0;
+            foreach ($stores as $store) {
+                $stmt = $db->prepare("
+                    INSERT INTO stores (name, location, address, phone, email, created_at)
+                    VALUES (:name, :location, :address, :phone, :email, datetime('now'))
+                ");
+                $stmt->execute([
+                    ':name' => $store['name'],
+                    ':location' => $store['location'] ?? null,
+                    ':address' => $store['address'] ?? null,
+                    ':phone' => $store['phone'] ?? null,
+                    ':email' => $store['email'] ?? null
+                ]);
+                $imported++;
+            }
+
+            $db->commit();
+            return $this->success($response, ['imported' => $imported]);
+        } catch (\Exception $e) {
+            $db->rollBack();
+            return $this->error($response, 'Import failed: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Import products from JSON
+     */
+    public function importProducts(Request $request, Response $response): Response
+    {
+        $body = $request->getParsedBody();
+        $products = $body['products'] ?? [];
+
+        if (empty($products)) {
+            return $this->success($response, ['imported' => 0]);
+        }
+
+        try {
+            $dbPath = $this->config['database']['database_path'];
+            $db = Database::get($dbPath);
+            $db->beginTransaction();
+
+            $imported = 0;
+            foreach ($products as $product) {
+                $stmt = $db->prepare("
+                    INSERT INTO products (name, type, description, cost, featured_ingredients, all_ingredients, size, created_at)
+                    VALUES (:name, :type, :description, :cost, :featured_ingredients, :all_ingredients, :size, datetime('now'))
+                ");
+                $stmt->execute([
+                    ':name' => $product['name'],
+                    ':type' => $product['type'] ?? null,
+                    ':description' => $product['description'] ?? null,
+                    ':cost' => $product['cost'] ?? 0,
+                    ':featured_ingredients' => $product['featured_ingredients'] ?? null,
+                    ':all_ingredients' => $product['all_ingredients'] ?? null,
+                    ':size' => $product['size'] ?? null
+                ]);
+                $imported++;
+            }
+
+            $db->commit();
+            return $this->success($response, ['imported' => $imported]);
+        } catch (\Exception $e) {
+            $db->rollBack();
+            return $this->error($response, 'Import failed: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Import orders from JSON (includes creating users and matching products)
+     */
+    public function importOrders(Request $request, Response $response): Response
+    {
+        $body = $request->getParsedBody();
+        $orders = $body['orders'] ?? [];
+
+        if (empty($orders)) {
+            return $this->success($response, ['imported' => 0]);
+        }
+
+        try {
+            $dbPath = $this->config['database']['database_path'];
+            $db = Database::get($dbPath);
+            $db->beginTransaction();
+
+            $imported = 0;
+            foreach ($orders as $order) {
+                // Create or find user
+                $userEmail = $order['customer_email'];
+                $stmt = $db->prepare("SELECT id FROM users WHERE email = :email");
+                $stmt->execute([':email' => $userEmail]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$user) {
+                    $stmt = $db->prepare("
+                        INSERT INTO users (email, password_hash, role, created_at)
+                        VALUES (:email, :password_hash, 'customer', datetime('now'))
+                    ");
+                    $stmt->execute([
+                        ':email' => $userEmail,
+                        ':password_hash' => password_hash('password123', PASSWORD_DEFAULT)
+                    ]);
+                    $userId = $db->lastInsertId();
+                } else {
+                    $userId = $user['id'];
+                }
+
+                // Create order
+                $stmt = $db->prepare("
+                    INSERT INTO orders (user_id, order_number, shipping_address, subtotal, total, order_date, created_at)
+                    VALUES (:user_id, :order_number, :shipping_address, :subtotal, :total, :order_date, datetime('now'))
+                ");
+                $stmt->execute([
+                    ':user_id' => $userId,
+                    ':order_number' => $order['order_number'] ?? 'ORD-' . uniqid(),
+                    ':shipping_address' => $order['shipping_address'] ?? 'N/A',
+                    ':subtotal' => $order['subtotal'] ?? 0,
+                    ':total' => $order['total'] ?? 0,
+                    ':order_date' => $order['order_date'] ?? date('Y-m-d H:i:s')
+                ]);
+                $orderId = $db->lastInsertId();
+
+                // Create order items
+                foreach ($order['items'] ?? [] as $item) {
+                    // Find or create product
+                    $stmt = $db->prepare("SELECT id FROM products WHERE name = :name");
+                    $stmt->execute([':name' => $item['product_name']]);
+                    $product = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                    if (!$product) {
+                        $stmt = $db->prepare("
+                            INSERT INTO products (name, cost, created_at)
+                            VALUES (:name, :cost, datetime('now'))
+                        ");
+                        $stmt->execute([
+                            ':name' => $item['product_name'],
+                            ':cost' => $item['unit_price'] ?? 0
+                        ]);
+                        $productId = $db->lastInsertId();
+                    } else {
+                        $productId = $product['id'];
+                    }
+
+                    // Create order item
+                    $stmt = $db->prepare("
+                        INSERT INTO order_items (order_id, product_id, store_id, quantity, unit_price, subtotal, created_at)
+                        VALUES (:order_id, :product_id, 1, :quantity, :unit_price, :subtotal, datetime('now'))
+                    ");
+                    $stmt->execute([
+                        ':order_id' => $orderId,
+                        ':product_id' => $productId,
+                        ':quantity' => $item['quantity'] ?? 1,
+                        ':unit_price' => $item['unit_price'] ?? 0,
+                        ':subtotal' => ($item['quantity'] ?? 1) * ($item['unit_price'] ?? 0)
+                    ]);
+                }
+
+                $imported++;
+            }
+
+            $db->commit();
+            return $this->success($response, ['imported' => $imported]);
+        } catch (\Exception $e) {
+            $db->rollBack();
+            return $this->error($response, 'Import failed: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Import coupons from JSON
+     */
+    public function importCoupons(Request $request, Response $response): Response
+    {
+        $body = $request->getParsedBody();
+        $coupons = $body['coupons'] ?? [];
+
+        if (empty($coupons)) {
+            return $this->success($response, ['imported' => 0]);
+        }
+
+        try {
+            $dbPath = $this->config['database']['database_path'];
+            $db = Database::get($dbPath);
+            $db->beginTransaction();
+
+            $imported = 0;
+            foreach ($coupons as $coupon) {
+                $stmt = $db->prepare("
+                    INSERT INTO coupons (code, discount_type, discount_value, min_purchase, max_uses, expires_at, is_active, created_at)
+                    VALUES (:code, :discount_type, :discount_value, :min_purchase, :max_uses, :expires_at, 1, datetime('now'))
+                ");
+                $stmt->execute([
+                    ':code' => $coupon['code'],
+                    ':discount_type' => $coupon['discount_type'] ?? 'percentage',
+                    ':discount_value' => $coupon['discount_value'] ?? 0,
+                    ':min_purchase' => $coupon['min_purchase'] ?? 0,
+                    ':max_uses' => $coupon['max_uses'] ?? null,
+                    ':expires_at' => $coupon['expires_at'] ?? null
+                ]);
+                $imported++;
+            }
+
+            $db->commit();
+            return $this->success($response, ['imported' => $imported]);
+        } catch (\Exception $e) {
+            $db->rollBack();
+            return $this->error($response, 'Import failed: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Import reviews from JSON
+     */
+    public function importReviews(Request $request, Response $response): Response
+    {
+        $body = $request->getParsedBody();
+        $reviews = $body['reviews'] ?? [];
+
+        if (empty($reviews)) {
+            return $this->success($response, ['imported' => 0]);
+        }
+
+        try {
+            $dbPath = $this->config['database']['database_path'];
+            $db = Database::get($dbPath);
+            $db->beginTransaction();
+
+            $imported = 0;
+            foreach ($reviews as $review) {
+                $stmt = $db->prepare("
+                    INSERT INTO product_reviews (user_id, product_id, rating, review_text, published, created_at)
+                    VALUES (:user_id, :product_id, :rating, :review_text, 1, datetime('now'))
+                ");
+                $stmt->execute([
+                    ':user_id' => $review['user_id'] ?? 1,
+                    ':product_id' => $review['product_id'] ?? 1,
+                    ':rating' => $review['rating'] ?? 5,
+                    ':review_text' => $review['review_text'] ?? ''
+                ]);
+                $imported++;
+            }
+
+            $db->commit();
+            return $this->success($response, ['imported' => $imported]);
+        } catch (\Exception $e) {
+            $db->rollBack();
+            return $this->error($response, 'Import failed: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Import testimonials from JSON
+     */
+    public function importTestimonials(Request $request, Response $response): Response
+    {
+        $body = $request->getParsedBody();
+        $testimonials = $body['testimonials'] ?? [];
+
+        if (empty($testimonials)) {
+            return $this->success($response, ['imported' => 0]);
+        }
+
+        try {
+            $dbPath = $this->config['database']['database_path'];
+            $db = Database::get($dbPath);
+            $db->beginTransaction();
+
+            $imported = 0;
+            foreach ($testimonials as $testimonial) {
+                $stmt = $db->prepare("
+                    INSERT INTO testimonials (customer_name, testimonial_text, rating, is_featured, created_at)
+                    VALUES (:customer_name, :testimonial_text, :rating, :is_featured, datetime('now'))
+                ");
+                $stmt->execute([
+                    ':customer_name' => $testimonial['customer_name'],
+                    ':testimonial_text' => $testimonial['testimonial_text'],
+                    ':rating' => $testimonial['rating'] ?? 5,
+                    ':is_featured' => $testimonial['is_featured'] ?? 0
+                ]);
+                $imported++;
+            }
+
+            $db->commit();
+            return $this->success($response, ['imported' => $imported]);
+        } catch (\Exception $e) {
+            $db->rollBack();
+            return $this->error($response, 'Import failed: ' . $e->getMessage(), 500);
+        }
     }
 }
