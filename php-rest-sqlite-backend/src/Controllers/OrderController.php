@@ -502,4 +502,46 @@ SQL;
             return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
         }
     }
+
+    public function delete(Request $request, Response $response, array $args): Response
+    {
+        $id = (int) $args['id'];
+        $userId = $request->getAttribute('user_id');
+
+        // Check if user is admin
+        $stmt = $this->db->prepare('SELECT role FROM users WHERE id = :id');
+        $stmt->execute([':id' => $userId]);
+        $userRole = $stmt->fetchColumn();
+
+        if ($userRole !== 'admin') {
+            return $this->error($response, 'Unauthorized. Admin access required.', 403);
+        }
+
+        try {
+            $this->db->beginTransaction();
+
+            // Check if order exists
+            $stmt = $this->db->prepare('SELECT id FROM orders WHERE id = :id');
+            $stmt->execute([':id' => $id]);
+            if (!$stmt->fetch()) {
+                $this->db->rollBack();
+                return $this->error($response, 'Order not found', 404);
+            }
+
+            // Delete related records
+            $this->db->prepare('DELETE FROM order_items WHERE order_id = :id')->execute([':id' => $id]);
+            $this->db->prepare('DELETE FROM expenses WHERE order_id = :id')->execute([':id' => $id]);
+            $this->db->prepare('DELETE FROM income WHERE order_id = :id')->execute([':id' => $id]);
+            $this->db->prepare('DELETE FROM coupon_usage WHERE order_id = :id')->execute([':id' => $id]);
+
+            // Delete the order
+            $this->db->prepare('DELETE FROM orders WHERE id = :id')->execute([':id' => $id]);
+
+            $this->db->commit();
+            return $response->withStatus(204);
+        } catch (\Exception $e) {
+            $this->db->rollBack();
+            return $this->error($response, 'Error deleting order: ' . $e->getMessage(), 500);
+        }
+    }
 }
