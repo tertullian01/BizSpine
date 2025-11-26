@@ -20,8 +20,9 @@ class HealthController extends ApiController
         // Check if database is initialized
         $dbPath = $this->config['database']['database_path'] ?? null;
 
+        // If no path configured, assume default location
         if (!$dbPath) {
-            return $this->error($response, 'Database path not configured', 500);
+            $dbPath = __DIR__ . '/../../protected/db/database.sqlite';
         }
 
         // Check if database file exists and has tables
