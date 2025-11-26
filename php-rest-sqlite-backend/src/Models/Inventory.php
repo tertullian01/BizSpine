@@ -10,6 +10,13 @@ class Inventory extends BaseModel
     public ?string $product_name = null;
     public ?string $store_name = null;
     protected static string $tableName = 'inventory';
+
+    public ?int $product_id;
+    public ?int $store_id;
+    public ?int $quantity;
+    public ?int $min_quantity;
+    public ?string $last_restocked;
+
     private static function getSelectQuery(): string
     {
         return <<<'SQL'

@@ -13,10 +13,31 @@ use App\Models\TaxRate;
 class Order extends BaseModel
 {
     protected static string $tableName = 'orders';
-// Additional properties for joined data
+
+    public ?int $user_id;
+    public ?string $order_number;
+    public ?string $order_date;
+    public ?string $fulfillment_status;
+    public ?string $shipping_date;
+    public ?string $shipping_address;
+    public ?string $phone_number;
+    public ?string $whatsapp_number;
+    public ?float $subtotal;
+    public ?float $discount_amount;
+    public ?string $coupon_code;
+    public ?float $shipping_cost;
+    public ?float $total;
+    public ?string $tracking_number;
+    public ?string $notes;
+    public ?string $created_at;
+    public ?string $updated_at;
+    public ?float $tax_rate;
+    public ?float $tax_amount;
+
+    // Additional properties for joined data
     public ?string $user_email;
     public ?array $items;
-// Order items
+    // Order items
 
     public function getItems(): array
     {
@@ -46,9 +67,9 @@ class Order extends BaseModel
                     throw new \Exception('Each item must have product_id, store_id, and quantity');
                 }
 
-                $productId = (int)$item['product_id'];
-                $storeId = (int)$item['store_id'];
-                $quantity = (int)$item['quantity'];
+                $productId = (int) $item['product_id'];
+                $storeId = (int) $item['store_id'];
+                $quantity = (int) $item['quantity'];
                 if ($quantity <= 0) {
                     throw new \Exception('Quantity must be greater than 0');
                 }
@@ -58,7 +79,7 @@ class Order extends BaseModel
                     throw new \Exception("Product with ID $productId not found");
                 }
 
-                $unitPrice = (float)$product->cost;
+                $unitPrice = (float) $product->cost;
                 $itemSubtotal = $unitPrice * $quantity;
                 $subtotal += $itemSubtotal;
                 $inventory = Inventory::fetchOne('SELECT * FROM inventory WHERE product_id = :product_id AND store_id = :store_id', [':product_id' => $productId, ':store_id' => $storeId]);
@@ -102,7 +123,7 @@ class Order extends BaseModel
                 $discountAmount = $couponResult['discount_amount'];
                 $couponCode = $body['coupon_code'];
             } elseif (isset($body['discount_amount'])) {
-                $discountAmount = (float)$body['discount_amount'];
+                $discountAmount = (float) $body['discount_amount'];
             }
             if ($hasReferral) {
                 $referral = UserReferral::fetchOne('SELECT * FROM user_referrals WHERE referral_code = :code', [':code' => $body['referral_code']]);
@@ -113,7 +134,7 @@ class Order extends BaseModel
                 }
             }
 
-            $shippingCost = isset($body['shipping_cost']) ? (float)$body['shipping_cost'] : 0;
+            $shippingCost = isset($body['shipping_cost']) ? (float) $body['shipping_cost'] : 0;
             $taxableAmount = $subtotal - $discountAmount + $shippingCost;
             $taxCalc = TaxRate::calculateTax($taxableAmount, $body['tax_region'] ?? null);
             $taxRate = $taxCalc['tax_rate'];
@@ -140,13 +161,13 @@ class Order extends BaseModel
             $order->save();
             foreach ($validatedItems as $item) {
                 $orderItem = new OrderItem([
-                                'order_id' => $order->id,
-                                'product_id' => $item['product_id'],
-                                'store_id' => $item['store_id'],
-                                'quantity' => $item['quantity'],
-                                'unit_price' => $item['unit_price'],
-                                'subtotal' => $item['subtotal'],
-                                'created_at' => date('Y-m-d H:i:s'),
+                    'order_id' => $order->id,
+                    'product_id' => $item['product_id'],
+                    'store_id' => $item['store_id'],
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $item['unit_price'],
+                    'subtotal' => $item['subtotal'],
+                    'created_at' => date('Y-m-d H:i:s'),
                 ]);
                 $orderItem->save();
                 $item['inventory']->adjustQuantity(-$item['quantity']);
@@ -217,7 +238,7 @@ class Order extends BaseModel
             }
 
             if (isset($body['shipping_cost'])) {
-                $this->shipping_cost = (float)$body['shipping_cost'];
+                $this->shipping_cost = (float) $body['shipping_cost'];
                 $this->total = $this->subtotal - $this->discount_amount + $this->shipping_cost;
             }
 
@@ -229,14 +250,14 @@ class Order extends BaseModel
             $this->save();
             if ($createShippingExpense) {
                 $expense = new Expense([
-                'order_id' => $this->id,
-                'vendor' => 'Shipping Provider',
-                'category' => 'Shipping',
-                'amount' => $this->shipping_cost,
-                'expense_date' => date('Y-m-d H:i:s'),
-                'description' => "Shipping cost for order {$this->order_number}",
-                'created_at' => date('Y-m-d H:i:s'),
-                'updated_at' => date('Y-m-d H:i:s'),
+                    'order_id' => $this->id,
+                    'vendor' => 'Shipping Provider',
+                    'category' => 'Shipping',
+                    'amount' => $this->shipping_cost,
+                    'expense_date' => date('Y-m-d H:i:s'),
+                    'description' => "Shipping cost for order {$this->order_number}",
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s'),
                 ]);
                 $expense->save();
             }
@@ -258,7 +279,7 @@ class Order extends BaseModel
         try {
             $income = new Income([
                 'order_id' => $this->id,
-                'amount' => (float)$body['amount'],
+                'amount' => (float) $body['amount'],
                 'payment_method' => $body['payment_method'] ?? 'Unknown',
                 'payment_date' => date('Y-m-d H:i:s'),
                 'description' => "Payment for order {$this->order_number}",

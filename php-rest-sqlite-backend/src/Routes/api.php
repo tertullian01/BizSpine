@@ -36,3 +36,9 @@ $app->get('/cors-test', function ($request, $response) {
 \App\Routes\ReturnRoutes::register($app);
 \App\Routes\UserRoutes::register($app);
 \App\Routes\HealthRoutes::register($app);
+
+$app->get('/system/import', [\App\Controllers\SystemController::class, 'importData']);
+$app->get('/system/ping', function ($request, $response) {
+    $response->getBody()->write('pong');
+    return $response;
+});
