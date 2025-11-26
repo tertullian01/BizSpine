@@ -241,8 +241,179 @@ class SetupController extends ApiController
             SQL
             );
 
+            // Create income table
+            $db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS income (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id INTEGER,
+                amount REAL NOT NULL,
+                payment_method TEXT,
+                payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                description TEXT,
+                notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE SET NULL
+            );
+            SQL
+            );
+
+            // Create expenses table
+            $db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS expenses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id INTEGER,
+                vendor TEXT,
+                category TEXT NOT NULL,
+                amount REAL NOT NULL,
+                expense_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                description TEXT,
+                receipt_image_url TEXT,
+                notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE SET NULL
+            );
+            SQL
+            );
+
+            // Create tax_rates table
+            $db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS tax_rates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                rate REAL NOT NULL,
+                region TEXT,
+                is_default INTEGER DEFAULT 0,
+                is_active INTEGER DEFAULT 1,
+                description TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            SQL
+            );
+
+            // Create returns table
+            $db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS returns (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                return_number TEXT UNIQUE NOT NULL,
+                status TEXT DEFAULT 'requested',
+                reason TEXT,
+                refund_amount REAL DEFAULT 0,
+                refund_method TEXT,
+                refund_date DATETIME,
+                notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            SQL
+            );
+
+            // Create return_items table
+            $db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS return_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                return_id INTEGER NOT NULL,
+                order_item_id INTEGER NOT NULL,
+                product_id INTEGER NOT NULL,
+                store_id INTEGER NOT NULL,
+                quantity INTEGER NOT NULL,
+                refund_amount REAL NOT NULL,
+                reason TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(return_id) REFERENCES returns(id) ON DELETE CASCADE,
+                FOREIGN KEY(order_item_id) REFERENCES order_items(id) ON DELETE CASCADE,
+                FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE RESTRICT,
+                FOREIGN KEY(store_id) REFERENCES stores(id) ON DELETE RESTRICT
+            );
+            SQL
+            );
+
+            // Create user_referrals table
+            $db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS user_referrals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL UNIQUE,
+                referral_code TEXT NOT NULL UNIQUE,
+                times_used INTEGER DEFAULT 0,
+                points_earned INTEGER DEFAULT 0,
+                points_redeemed INTEGER DEFAULT 0,
+                points_balance INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            SQL
+            );
+
+            // Create referral_usage table
+            $db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS referral_usage (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                referrer_user_id INTEGER NOT NULL,
+                referred_user_id INTEGER NOT NULL,
+                referral_code TEXT NOT NULL,
+                order_id INTEGER,
+                points_awarded INTEGER DEFAULT 0,
+                used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(referrer_user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY(referred_user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE SET NULL
+            );
+            SQL
+            );
+
             // Insert default store
             $db->exec("INSERT OR IGNORE INTO stores (name, description) VALUES ('Default Store', 'Default store location')");
+
+            // Add additional fields to users table
+            try { $db->exec('ALTER TABLE users ADD COLUMN reset_token TEXT'); } catch (\Exception $e) {}
+            try { $db->exec('ALTER TABLE users ADD COLUMN reset_expires_at DATETIME'); } catch (\Exception $e) {}
+            try { $db->exec('ALTER TABLE users ADD COLUMN first_name TEXT'); } catch (\Exception $e) {}
+            try { $db->exec('ALTER TABLE users ADD COLUMN last_name TEXT'); } catch (\Exception $e) {}
+            try { $db->exec('ALTER TABLE users ADD COLUMN country TEXT'); } catch (\Exception $e) {}
+            try { $db->exec('ALTER TABLE users ADD COLUMN street_line_1 TEXT'); } catch (\Exception $e) {}
+            try { $db->exec('ALTER TABLE users ADD COLUMN street_line_2 TEXT'); } catch (\Exception $e) {}
+            try { $db->exec('ALTER TABLE users ADD COLUMN city TEXT'); } catch (\Exception $e) {}
+            try { $db->exec('ALTER TABLE users ADD COLUMN state TEXT'); } catch (\Exception $e) {}
+            try { $db->exec('ALTER TABLE users ADD COLUMN postal_code TEXT'); } catch (\Exception $e) {}
+            try { $db->exec('ALTER TABLE users ADD COLUMN mobile_number TEXT'); } catch (\Exception $e) {}
+            try { $db->exec('ALTER TABLE users ADD COLUMN whatsapp_number TEXT'); } catch (\Exception $e) {}
+            try { $db->exec('ALTER TABLE users ADD COLUMN instagram_link TEXT'); } catch (\Exception $e) {}
+            try { $db->exec('ALTER TABLE users ADD COLUMN facebook_link TEXT'); } catch (\Exception $e) {}
+
+            // Add tax fields to orders table
+            try { $db->exec('ALTER TABLE orders ADD COLUMN tax_rate REAL DEFAULT 0'); } catch (\Exception $e) {}
+            try { $db->exec('ALTER TABLE orders ADD COLUMN tax_amount REAL DEFAULT 0'); } catch (\Exception $e) {}
+
+            // Create indexes
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_income_order ON income(order_id);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_income_date ON income(payment_date);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_expenses_order ON expenses(order_id);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(expense_date);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_expenses_vendor ON expenses(vendor);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_tax_rates_active ON tax_rates(is_active);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_tax_rates_region ON tax_rates(region);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_returns_order ON returns(order_id);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_returns_user ON returns(user_id);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_returns_status ON returns(status);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_return_items_return ON return_items(return_id);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_user_referrals_user ON user_referrals(user_id);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_user_referrals_code ON user_referrals(referral_code);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_referral_usage_referrer ON referral_usage(referrer_user_id);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_referral_usage_referred ON referral_usage(referred_user_id);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_referral_usage_code ON referral_usage(referral_code);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)');
+
+            // Insert default tax rates
+            $db->exec("INSERT OR IGNORE INTO tax_rates (name, rate, region, is_default, description) VALUES ('Germany VAT', 19.0, 'DE', 1, 'Standard German VAT rate')");
+            $db->exec("INSERT OR IGNORE INTO tax_rates (name, rate, region, is_default, description) VALUES ('USA Sales Tax', 7.5, 'US', 0, 'Average US sales tax')");
 
             // Check if admin already exists
             $stmt = $db->prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'");
