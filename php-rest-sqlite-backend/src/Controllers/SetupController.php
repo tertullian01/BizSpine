@@ -80,6 +80,170 @@ class SetupController extends ApiController
             $dbPath = $this->config['database']['database_path'];
             $db = Database::get($dbPath);
 
+            // Initialize database schema
+            $db->exec('PRAGMA foreign_keys = ON;');
+            
+            // Create users table
+            $db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                display_name TEXT,
+                role TEXT DEFAULT 'customer',
+                is_email_verified INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                last_login DATETIME
+            );
+            SQL
+            );
+
+            // Create stores table
+            $db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS stores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                description TEXT,
+                location TEXT,
+                address TEXT,
+                phone TEXT,
+                email TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            SQL
+            );
+
+            // Create products table
+            $db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS products (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                type TEXT,
+                description TEXT,
+                featured_ingredients TEXT,
+                all_ingredients TEXT,
+                size TEXT,
+                cost REAL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            SQL
+            );
+
+            // Create inventory table
+            $db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS inventory (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                product_id INTEGER NOT NULL,
+                store_id INTEGER NOT NULL,
+                quantity INTEGER NOT NULL DEFAULT 0,
+                min_quantity INTEGER DEFAULT 0,
+                max_quantity INTEGER DEFAULT NULL,
+                last_restocked DATETIME,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(product_id, store_id),
+                FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE CASCADE,
+                FOREIGN KEY(store_id) REFERENCES stores(id) ON DELETE CASCADE
+            );
+            SQL
+            );
+
+            // Create orders table
+            $db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                order_number TEXT UNIQUE NOT NULL,
+                order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                fulfillment_status TEXT DEFAULT 'pending',
+                shipping_date DATETIME,
+                shipping_address TEXT NOT NULL,
+                phone_number TEXT,
+                whatsapp_number TEXT,
+                subtotal REAL NOT NULL DEFAULT 0,
+                discount_amount REAL DEFAULT 0,
+                coupon_code TEXT,
+                shipping_cost REAL DEFAULT 0,
+                total REAL NOT NULL DEFAULT 0,
+                tracking_number TEXT,
+                notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            SQL
+            );
+
+            // Create order_items table
+            $db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS order_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id INTEGER NOT NULL,
+                product_id INTEGER NOT NULL,
+                store_id INTEGER NOT NULL,
+                quantity INTEGER NOT NULL,
+                unit_price REAL NOT NULL,
+                subtotal REAL NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE,
+                FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE RESTRICT,
+                FOREIGN KEY(store_id) REFERENCES stores(id) ON DELETE RESTRICT
+            );
+            SQL
+            );
+
+            // Create product_reviews table
+            $db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS product_reviews (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                product_id INTEGER NOT NULL,
+                rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
+                review_text TEXT,
+                published INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE CASCADE
+            );
+            SQL
+            );
+
+            // Create coupons table
+            $db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS coupons (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT UNIQUE NOT NULL,
+                discount_type TEXT NOT NULL DEFAULT 'percentage',
+                discount_value REAL NOT NULL,
+                min_purchase REAL DEFAULT 0,
+                max_uses INTEGER,
+                times_used INTEGER DEFAULT 0,
+                expires_at DATETIME,
+                is_active INTEGER DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            SQL
+            );
+
+            // Create testimonials table
+            $db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS testimonials (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_name TEXT NOT NULL,
+                testimonial_text TEXT NOT NULL,
+                rating INTEGER DEFAULT 5,
+                is_featured INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            SQL
+            );
+
+            // Insert default store
+            $db->exec("INSERT OR IGNORE INTO stores (name, description) VALUES ('Default Store', 'Default store location')");
+
             // Check if admin already exists
             $stmt = $db->prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'");
             $stmt->execute();
