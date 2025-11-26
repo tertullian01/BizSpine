@@ -10,15 +10,12 @@ class Coupon extends BaseModel
     public ?string $code = null;
     public ?string $discount_type = null;
     public ?float $discount_value = null;
-    public ?float $min_purchase_amount = null;
+    public ?float $min_purchase = null;
     public ?int $max_uses = null;
     public ?int $times_used = null;
-    public ?string $valid_from = null;
-    public ?string $valid_until = null;
+    public ?string $expires_at = null;
     public ?int $is_active = null;
-    public ?string $description = null;
     public ?string $created_at = null;
-    public ?string $updated_at = null;
     public function validate(float $subtotal, int $userId): array
     {
         if (!$this->id) {
@@ -29,11 +26,7 @@ class Coupon extends BaseModel
             return ['valid' => false, 'error' => 'Coupon is not active'];
         }
 
-        if ($this->valid_from && strtotime($this->valid_from) > time()) {
-            return ['valid' => false, 'error' => 'Coupon is not yet valid'];
-        }
-
-        if ($this->valid_until && strtotime($this->valid_until) < time()) {
+        if ($this->expires_at && strtotime($this->expires_at) < time()) {
             return ['valid' => false, 'error' => 'Coupon has expired'];
         }
 
@@ -41,8 +34,8 @@ class Coupon extends BaseModel
             return ['valid' => false, 'error' => 'Coupon has reached its usage limit'];
         }
 
-        if ($subtotal < $this->min_purchase_amount) {
-            return ['valid' => false, 'error' => "Minimum purchase amount of {$this->min_purchase_amount} not met"];
+        if ($subtotal < $this->min_purchase) {
+            return ['valid' => false, 'error' => "Minimum purchase amount of {$this->min_purchase} not met"];
         }
 
         // Check if user has already used this coupon
