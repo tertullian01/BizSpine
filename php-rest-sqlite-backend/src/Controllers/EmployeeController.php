@@ -104,6 +104,11 @@ class EmployeeController extends ApiController
         try {
             $user->delete();
             return $this->success($response, ['message' => 'Employee deleted']);
+        } catch (\PDOException $e) {
+            if ($e->getCode() == '23000') {
+                return $this->error($response, 'Cannot delete employee because they are associated with other records (e.g., orders, reviews).', 409);
+            }
+            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
         } catch (\Exception $e) {
             return $this->error($response, 'Error deleting employee: ' . $e->getMessage(), 500);
         }

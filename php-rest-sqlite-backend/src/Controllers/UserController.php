@@ -69,7 +69,14 @@ class UserController extends ApiController
             return $this->error($response, 'User not found', 404);
         }
 
-        $user->delete();
-        return $response->withStatus(204);
+        try {
+            $user->delete();
+            return $response->withStatus(204);
+        } catch (\PDOException $e) {
+            if ($e->getCode() == '23000') {
+                return $this->error($response, 'Cannot delete user because they are associated with other records (e.g., orders, reviews).', 409);
+            }
+            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+        }
     }
 }
