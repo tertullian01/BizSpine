@@ -35,6 +35,7 @@ $app->get('/cors-test', function ($request, $response) {
 \App\Routes\TaxRoutes::register($app);
 \App\Routes\ReturnRoutes::register($app);
 \App\Routes\UserRoutes::register($app);
+\App\Routes\EmployeeRoutes::register($app);
 \App\Routes\HealthRoutes::register($app);
 
 $app->get('/system/import', [\App\Controllers\SystemController::class, 'importData']);
