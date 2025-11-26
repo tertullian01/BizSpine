@@ -14,6 +14,7 @@ class SetupRoutes
         $app->group('/setup', function ($group) {
             $group->get('/check', [SetupController::class, 'checkDatabase']);
             $group->post('/admin', [SetupController::class, 'createAdmin']);
+            $group->post('/migrate', [SetupController::class, 'runMigrations']);
             $group->post('/import/users', [SetupController::class, 'importUsers']);
             $group->post('/import/stores', [SetupController::class, 'importStores']);
             $group->post('/import/products', [SetupController::class, 'importProducts']);

@@ -787,4 +787,67 @@ class SetupController extends ApiController
             return $this->error($response, 'Import failed: ' . $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Run database migrations to fix schema issues
+     */
+    public function runMigrations(Request $request, Response $response): Response
+    {
+        try {
+            $dbPath = $this->config['database']['database_path'];
+            $db = Database::get($dbPath);
+            
+            $migrations = [];
+
+            // Fix testimonials table - add missing columns
+            $stmt = $db->query("PRAGMA table_info(testimonials);");
+            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $columnNames = array_column($columns, 'name');
+
+            if (!in_array('published', $columnNames)) {
+                $db->exec("ALTER TABLE testimonials ADD COLUMN published INTEGER DEFAULT 0;");
+                $db->exec('CREATE INDEX IF NOT EXISTS idx_testimonials_published ON testimonials(published);');
+                $migrations[] = "Added 'published' column to testimonials table";
+            }
+
+            if (!in_array('customer_email', $columnNames)) {
+                $db->exec("ALTER TABLE testimonials ADD COLUMN customer_email TEXT;");
+                $db->exec('CREATE INDEX IF NOT EXISTS idx_testimonials_email ON testimonials(customer_email);');
+                $migrations[] = "Added 'customer_email' column to testimonials table";
+            }
+
+            if (!in_array('age_range', $columnNames)) {
+                $db->exec("ALTER TABLE testimonials ADD COLUMN age_range TEXT;");
+                $migrations[] = "Added 'age_range' column to testimonials table";
+            }
+
+            if (!in_array('image_url', $columnNames)) {
+                $db->exec("ALTER TABLE testimonials ADD COLUMN image_url TEXT;");
+                $migrations[] = "Added 'image_url' column to testimonials table";
+            }
+
+            // SQLite doesn't allow CURRENT_TIMESTAMP default in ALTER TABLE
+            // Use NULL default instead for updated_at
+            if (!in_array('updated_at', $columnNames)) {
+                $db->exec("ALTER TABLE testimonials ADD COLUMN updated_at DATETIME;");
+                $migrations[] = "Added 'updated_at' column to testimonials table";
+            }
+
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_testimonials_created ON testimonials(created_at);');
+
+            if (empty($migrations)) {
+                return $this->success($response, [
+                    'message' => 'No migrations needed - database schema is up to date',
+                    'migrations' => []
+                ]);
+            }
+
+            return $this->success($response, [
+                'message' => 'Migrations completed successfully',
+                'migrations' => $migrations
+            ]);
+        } catch (\Exception $e) {
+            return $this->error($response, 'Migration failed: ' . $e->getMessage(), 500);
+        }
+    }
 }
