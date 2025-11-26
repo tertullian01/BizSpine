@@ -49,11 +49,7 @@ class StoreController extends ApiController
             return $this->error($response, 'Name is required', 400);
         }
 
-        if (!in_array($body['name'], ['Siedlung', 'USA'])) {
-            return $this->error($response, 'Store name must be either "Siedlung" or "USA"', 400);
-        }
-
-        $name = $body['name'];
+        $name = trim($body['name']);
         if (Store::findByName($name)) {
             return $this->error($response, 'Store with this name already exists', 409);
         }
@@ -76,11 +72,7 @@ class StoreController extends ApiController
             return $this->error($response, 'Name is required', 400);
         }
 
-        if (!in_array($body['name'], ['Siedlung', 'USA'])) {
-            return $this->error($response, 'Store name must be either "Siedlung" or "USA"', 400);
-        }
-
-        $name = $body['name'];
+        $name = trim($body['name']);
  // Check if store exists
         $store = Store::find($id);
         if (!$store) {
