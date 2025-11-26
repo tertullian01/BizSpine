@@ -18,6 +18,20 @@ class User extends BaseModel
     public ?string $reset_token = null;
     public ?string $reset_expires_at = null;
 
+    // Profile fields
+    public ?string $first_name = null;
+    public ?string $last_name = null;
+    public ?string $country = null;
+    public ?string $street_line_1 = null;
+    public ?string $street_line_2 = null;
+    public ?string $city = null;
+    public ?string $state = null;
+    public ?string $postal_code = null;
+    public ?string $mobile_number = null;
+    public ?string $whatsapp_number = null;
+    public ?string $instagram_link = null;
+    public ?string $facebook_link = null;
+
     public static function findByEmail(string $email): ?User
     {
         return self::fetchOne('SELECT * FROM users WHERE email = :email', [':email' => $email]);
@@ -62,7 +76,7 @@ class User extends BaseModel
             'iss' => $config['jwt']['issuer'] ?? 'local',
             'iat' => $now,
             'exp' => $now + ($config['jwt']['access_exp'] ?? 900),
-            'sub' => (string)$this->id,
+            'sub' => (string) $this->id,
             'role' => $this->role ?? 'customer',
         ];
         return JWT::encode($payload, $config['jwt']['secret'] ?? 'dev', 'HS256');

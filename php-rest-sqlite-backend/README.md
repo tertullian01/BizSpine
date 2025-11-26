@@ -20,6 +20,8 @@ A comprehensive REST API backend for small business management built with **Slim
 - **Return & Refund Processing** - Complete return workflow with inventory restoration
 - **Financial Reporting** - Income/expense tracking and profit analysis
 - **Multi-Store Support** - Manage multiple physical locations
+- **Employee Management** - Role-based access control for employees and admins
+- **User Profiles** - Detailed user profiles with address and social media links
 
 ### Technical Features
 - **RESTful API Design** - Clean, consistent API endpoints
@@ -257,7 +259,12 @@ composer test
 ### Orders & Sales
 - `GET/POST /orders` - Order management
 - `GET /orders/my` - User's orders
+- `GET /orders/my` - User's orders
 - `POST /orders/{id}/cancel` - Cancel order
+
+### Employee Management
+- `GET/POST /employees` - Manage employees
+- `PUT/DELETE /employees/{id}` - Update/Delete employees
 
 ### Additional Features
 - **Stores**: Multi-location management

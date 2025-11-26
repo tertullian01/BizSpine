@@ -365,22 +365,6 @@ paths:
                         type: integer
                       email:
                         type: string
-                      role:
-                        type: string
-                      created_at:
-                        type: string
-                        format: date-time
-        '404':
-          description: User not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  # Products
-  /products:
-    get:
-      summary: Get all products
       description: Retrieve a list of all products with basic information
       tags:
         - Products
@@ -1572,6 +1556,51 @@ components:
           description: Token expiration time in seconds
       required:
         - access_token
+
+    # User Schema
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        display_name:
+          type: string
+        role:
+          type: string
+          enum: [customer, employee, admin]
+        first_name:
+          type: string
+        last_name:
+          type: string
+        country:
+          type: string
+        street_line_1:
+          type: string
+        street_line_2:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        postal_code:
+          type: string
+        mobile_number:
+          type: string
+        whatsapp_number:
+          type: string
+        instagram_link:
+          type: string
+        facebook_link:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_login:
+          type: string
+          format: date-time
 
     # Product Schemas
     ProductSummary:

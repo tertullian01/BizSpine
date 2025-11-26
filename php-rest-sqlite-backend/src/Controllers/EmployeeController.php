@@ -44,6 +44,18 @@ class EmployeeController extends ApiController
                 'role' => $body['role'] ?? 'employee', // Default to employee
                 'is_email_verified' => 1, // Auto-verify employees
                 'created_at' => date('Y-m-d H:i:s'),
+                'first_name' => $body['first_name'] ?? null,
+                'last_name' => $body['last_name'] ?? null,
+                'country' => $body['country'] ?? null,
+                'street_line_1' => $body['street_line_1'] ?? null,
+                'street_line_2' => $body['street_line_2'] ?? null,
+                'city' => $body['city'] ?? null,
+                'state' => $body['state'] ?? null,
+                'postal_code' => $body['postal_code'] ?? null,
+                'mobile_number' => $body['mobile_number'] ?? null,
+                'whatsapp_number' => $body['whatsapp_number'] ?? null,
+                'instagram_link' => $body['instagram_link'] ?? null,
+                'facebook_link' => $body['facebook_link'] ?? null,
             ]);
             $user->save();
 
@@ -79,6 +91,27 @@ class EmployeeController extends ApiController
                 $user->role = $body['role'];
             if (isset($body['password']) && !empty($body['password'])) {
                 $user->password_hash = password_hash($body['password'], PASSWORD_DEFAULT);
+            }
+
+            // Profile fields
+            $profileFields = [
+                'first_name',
+                'last_name',
+                'country',
+                'street_line_1',
+                'street_line_2',
+                'city',
+                'state',
+                'postal_code',
+                'mobile_number',
+                'whatsapp_number',
+                'instagram_link',
+                'facebook_link'
+            ];
+            foreach ($profileFields as $field) {
+                if (isset($body[$field])) {
+                    $user->$field = $body[$field];
+                }
             }
 
             $user->save();
