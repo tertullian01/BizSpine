@@ -262,6 +262,12 @@ composer test
 - `GET /orders/my` - User's orders
 - `POST /orders/{id}/cancel` - Cancel order
 
+### Users & Clients
+- `GET /users` - Get all users (admin)
+- `GET /users/customers` - Get all customers
+- `GET /users/{id}` - Get user by ID
+- `GET /clients` - Get all clients with full profile data and order statistics
+
 ### Employee Management
 - `GET/POST /employees` - Manage employees
 - `PUT/DELETE /employees/{id}` - Update/Delete employees

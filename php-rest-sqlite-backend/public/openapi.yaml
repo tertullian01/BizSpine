@@ -333,6 +333,62 @@ paths:
                     role: "customer"
                     created_at: "2025-11-25 05:00:00"
 
+  /clients:
+    get:
+      summary: Get all clients with full data
+      description: |
+        Retrieve a comprehensive list of all customers with their complete profile data and order statistics.
+        Returns detailed information including contact details, address, social media links, and purchasing history.
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of clients with full profile and order statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Client'
+              example:
+                success: true
+                data:
+                  - id: 1
+                    email: "customer@example.com"
+                    display_name: "John Doe"
+                    role: "customer"
+                    is_email_verified: 1
+                    created_at: "2025-11-25 05:00:00"
+                    last_login: "2025-11-26 10:30:00"
+                    first_name: "John"
+                    last_name: "Doe"
+                    country: "Germany"
+                    street_line_1: "123 Main Street"
+                    street_line_2: "Apt 4B"
+                    city: "Berlin"
+                    state: "Berlin"
+                    postal_code: "10115"
+                    mobile_number: "+49123456789"
+                    whatsapp_number: "+49123456789"
+                    instagram_link: "https://instagram.com/johndoe"
+                    facebook_link: "https://facebook.com/johndoe"
+                    order_count: 5
+                    total_spent: 249.99
+                    last_order_date: "2025-11-20 14:30:00"
+        '401':
+          description: Unauthorized - Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /users/{id}:
     get:
       summary: Get user by ID
@@ -1623,6 +1679,91 @@ components:
         last_login:
           type: string
           format: date-time
+
+    # Client Schema (extended User with order statistics)
+    Client:
+      type: object
+      description: Customer with full profile data and order statistics
+      properties:
+        id:
+          type: integer
+          description: Client ID
+        email:
+          type: string
+          format: email
+          description: Email address
+        display_name:
+          type: string
+          description: Display name
+        role:
+          type: string
+          enum: [customer]
+          description: User role (always 'customer' for clients)
+        is_email_verified:
+          type: integer
+          description: Email verification status (0 or 1)
+        created_at:
+          type: string
+          format: date-time
+          description: Account creation timestamp
+        last_login:
+          type: string
+          format: date-time
+          description: Last login timestamp
+        first_name:
+          type: string
+          description: First name
+        last_name:
+          type: string
+          description: Last name
+        country:
+          type: string
+          description: Country
+        street_line_1:
+          type: string
+          description: Street address line 1
+        street_line_2:
+          type: string
+          description: Street address line 2
+        city:
+          type: string
+          description: City
+        state:
+          type: string
+          description: State/Province
+        postal_code:
+          type: string
+          description: Postal/ZIP code
+        mobile_number:
+          type: string
+          description: Mobile phone number
+        whatsapp_number:
+          type: string
+          description: WhatsApp number
+        instagram_link:
+          type: string
+          description: Instagram profile URL
+        facebook_link:
+          type: string
+          description: Facebook profile URL
+        order_count:
+          type: integer
+          description: Total number of orders placed
+        total_spent:
+          type: number
+          format: float
+          description: Total amount spent across all orders
+        last_order_date:
+          type: string
+          format: date-time
+          nullable: true
+          description: Date of the most recent order
+      required:
+        - id
+        - email
+        - role
+        - order_count
+        - total_spent
 
     # Product Schemas
     ProductSummary:

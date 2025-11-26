@@ -20,5 +20,8 @@ class UserRoutes
             $group->put('/{id}', [UserController::class, 'updateUser']);
             $group->delete('/{id}', [UserController::class, 'deleteUser']);
         })->add(AuthMiddleware::class);
+
+        // Clients route - returns all customer data
+        $app->get('/clients', [UserController::class, 'getClients'])->add(AuthMiddleware::class);
     }
 }
