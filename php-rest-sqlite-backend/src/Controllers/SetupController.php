@@ -77,6 +77,88 @@ class SetupController extends ApiController
         }
 
         try {
+            $dbPath = $this->config['database']['database_path'] ?? __DIR__ . '/../../protected/db/database.sqlite';
+            
+            // Ensure directory exists
+            $dir = dirname($dbPath);
+            if (!is_dir($dir)) {
+                mkdir($dir, 0700, true);
+            }
+            
+            $db = Database::get($dbPath);
+
+            // Check if users table exists, if not run init script
+            try {
+                $db->query("SELECT 1 FROM users LIMIT 1");
+            } catch (\Exception $e) {
+                // Table doesn't exist, run initialization script
+                $initScript = __DIR__ . '/../../protected/scripts/init_db.php';
+                if (file_exists($initScript)) {
+                    exec("php " . escapeshellarg($initScript) . " 2>&1", $output, $returnCode);
+                    if ($returnCode !== 0) {
+                        return $this->error($response, 'Failed to initialize database schema', 500);
+                    }
+                }
+            }
+
+            // Check if admin already exists
+            $stmt = $db->prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'");
+            $stmt->execute();
+            if ($stmt->fetch(PDO::FETCH_ASSOC)['count'] > 0) {
+                return $this->error($response, 'Admin user already exists', 400);
+            }
+
+            // Create admin user
+            $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+            $stmt = $db->prepare("
+                INSERT INTO users (email, password_hash, role, is_email_verified, created_at)
+                VALUES (:email, :password_hash, 'admin', 1, datetime('now'))
+            ");
+            $stmt->execute([
+                ':email' => $email,
+                ':password_hash' => $passwordHash
+            ]);
+
+            return $this->success($response, [
+                'message' => 'Admin user created successfully',
+                'user_id' => $db->lastInsertId()
+            ], 201);
+        } catch (\Exception $e) {
+            return $this->error($response, 'Failed to create admin: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Import users from JSON
+     */
+                'initialized' => false,
+                'message' => 'Database not initialized. Ready for setup.'
+            ]);
+        }
+    }
+
+    /**
+     * Create admin user
+     */
+    public function createAdmin(Request $request, Response $response): Response
+    {
+        $body = $request->getParsedBody();
+        $email = $body['email'] ?? null;
+        $password = $body['password'] ?? null;
+
+        if (!$email || !$password) {
+            return $this->error($response, 'Email and password are required', 400);
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return $this->error($response, 'Invalid email format', 400);
+        }
+
+        if (strlen($password) < 8) {
+            return $this->error($response, 'Password must be at least 8 characters', 400);
+        }
+
+        try {
             $dbPath = $this->config['database']['database_path'];
             $db = Database::get($dbPath);
 
