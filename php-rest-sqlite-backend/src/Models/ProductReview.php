@@ -5,7 +5,18 @@ namespace App\Models;
 class ProductReview extends BaseModel
 {
     protected static string $tableName = 'product_reviews';
-// Additional properties for joined data
+
+    public ?int $user_id;
+    public ?int $product_id;
+    public ?int $order_id;
+    public ?int $rating;
+    public ?string $review_text;
+    public ?int $verified;
+    public ?int $published;
+    public ?string $created_at;
+    public ?string $updated_at;
+
+    // Additional properties for joined data
     public ?string $user_email;
     public ?string $product_name;
     public static function createReview(array $body, int $userId): ProductReview
@@ -14,8 +25,8 @@ class ProductReview extends BaseModel
             throw new \Exception('product_id and rating are required');
         }
 
-        $productId = (int)$body['product_id'];
-        $rating = (int)$body['rating'];
+        $productId = (int) $body['product_id'];
+        $rating = (int) $body['rating'];
         if ($rating < 1 || $rating > 5) {
             throw new \Exception('Rating must be between 1 and 5');
         }
@@ -57,7 +68,7 @@ SQL;
         }
 
         if (isset($body['rating'])) {
-            $rating = (int)$body['rating'];
+            $rating = (int) $body['rating'];
             if ($rating < 1 || $rating > 5) {
                 throw new \Exception('Rating must be between 1 and 5');
             }
