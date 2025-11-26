@@ -42,22 +42,26 @@ class UserController extends ApiController
 
         // Remove sensitive data and enrich each client with order statistics
         $db = \App\Models\BaseModel::$db;
-        foreach ($clients as &$client) {
+        $clientsArray = [];
+        foreach ($clients as $client) {
+            // Convert User object to array
+            $clientData = (array) $client;
+
             // Remove password hash from response
-            unset($client['password_hash']);
-            unset($client['reset_token']);
-            unset($client['reset_expires_at']);
+            unset($clientData['password_hash']);
+            unset($clientData['reset_token']);
+            unset($clientData['reset_expires_at']);
 
             // Get order count and total spent
             $stmt = $db->prepare('
                 SELECT COUNT(*) as order_count, COALESCE(SUM(total), 0) as total_spent
                 FROM orders WHERE user_id = :user_id
             ');
-            $stmt->execute([':user_id' => $client['id']]);
+            $stmt->execute([':user_id' => $clientData['id']]);
             $orderStats = $stmt->fetch(\PDO::FETCH_ASSOC);
 
-            $client['order_count'] = (int) $orderStats['order_count'];
-            $client['total_spent'] = (float) $orderStats['total_spent'];
+            $clientData['order_count'] = (int) $orderStats['order_count'];
+            $clientData['total_spent'] = (float) $orderStats['total_spent'];
 
             // Get last order date
             $stmt = $db->prepare('
@@ -66,10 +70,13 @@ class UserController extends ApiController
                 ORDER BY order_date DESC
                 LIMIT 1
             ');
-            $stmt->execute([':user_id' => $client['id']]);
+            $stmt->execute([':user_id' => $clientData['id']]);
             $lastOrder = $stmt->fetch(\PDO::FETCH_ASSOC);
-            $client['last_order_date'] = $lastOrder ? $lastOrder['order_date'] : null;
+            $clientData['last_order_date'] = $lastOrder ? $lastOrder['order_date'] : null;
+
+            $clientsArray[] = $clientData;
         }
+        $clients = $clientsArray;
 
         return $this->success($response, $clients);
     }
