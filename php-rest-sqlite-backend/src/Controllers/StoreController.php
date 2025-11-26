@@ -57,6 +57,7 @@ class StoreController extends ApiController
         $store = new Store();
         $store->name = $name;
         $store->description = $body['description'] ?? null;
+        $store->location = $body['location'] ?? null;
         $store->address = $body['address'] ?? null;
         $store->phone = $body['phone'] ?? null;
         $store->email = $body['email'] ?? null;
@@ -87,6 +88,7 @@ class StoreController extends ApiController
 
         $store->name = $name;
         $store->description = $body['description'] ?? $store->description;
+        $store->location = $body['location'] ?? $store->location;
         $store->address = $body['address'] ?? $store->address;
         $store->phone = $body['phone'] ?? $store->phone;
         $store->email = $body['email'] ?? $store->email;
@@ -102,8 +104,40 @@ class StoreController extends ApiController
             return $this->error($response, 'Store not found', 404);
         }
 
-        $store->delete();
-        return $response->withStatus(204);
+        // Check for related records that would prevent deletion
+        $db = \App\Models\BaseModel::$db;
+
+        // Check inventory records
+        $stmt = $db->prepare('SELECT COUNT(*) as count FROM inventory WHERE store_id = :store_id');
+        $stmt->execute([':store_id' => $id]);
+        $inventoryCount = $stmt->fetch(\PDO::FETCH_ASSOC)['count'];
+
+        // Check order items
+        $stmt = $db->prepare('SELECT COUNT(*) as count FROM order_items WHERE store_id = :store_id');
+        $stmt->execute([':store_id' => $id]);
+        $orderItemsCount = $stmt->fetch(\PDO::FETCH_ASSOC)['count'];
+
+        if ($inventoryCount > 0 || $orderItemsCount > 0) {
+            $reasons = [];
+            if ($inventoryCount > 0) {
+                $reasons[] = "{$inventoryCount} inventory record(s)";
+            }
+            if ($orderItemsCount > 0) {
+                $reasons[] = "{$orderItemsCount} order item(s)";
+            }
+            $reasonText = implode(' and ', $reasons);
+            return $this->error($response, "Cannot delete store because it is associated with {$reasonText}. Please reassign or remove these records first.", 409);
+        }
+
+        try {
+            $store->delete();
+            return $response->withStatus(204);
+        } catch (\PDOException $e) {
+            if ($e->getCode() == '23000') {
+                return $this->error($response, 'Cannot delete store because it is referenced by other records. Please contact support.', 409);
+            }
+            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+        }
     }
 
     /**

@@ -8,6 +8,7 @@ class Store extends BaseModel
 
     public ?string $name = null;
     public ?string $description = null;
+    public ?string $location = null;
     public ?string $address = null;
     public ?string $phone = null;
     public ?string $email = null;
