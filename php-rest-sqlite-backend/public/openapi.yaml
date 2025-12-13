@@ -421,6 +421,17 @@ paths:
                         type: integer
                       email:
                         type: string
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Products
+  /products:
+    get:
+      summary: Get all products
       description: Retrieve a list of all products with basic information
       tags:
         - Products

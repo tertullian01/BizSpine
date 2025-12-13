@@ -12,11 +12,13 @@ class TestimonialRoutes
 {
     public static function register(App $app): void
     {
-        $app->get('/testimonials', [TestimonialController::class, 'getAll']);
+        // Public endpoints - no authentication required
+        $app->get('/testimonials/published', [TestimonialController::class, 'getPublished']);
         $app->post('/testimonials', [TestimonialController::class, 'create']);
 
+        // Protected endpoints - authentication required
         $app->group('/testimonials', function ($group) {
-            $group->get('/admin', [TestimonialController::class, 'getAllAdmin']);
+            $group->get('', [TestimonialController::class, 'getAll']);
             $group->get('/{id}', [TestimonialController::class, 'getById']);
             $group->put('/{id}', [TestimonialController::class, 'update']);
             $group->delete('/{id}', [TestimonialController::class, 'delete']);

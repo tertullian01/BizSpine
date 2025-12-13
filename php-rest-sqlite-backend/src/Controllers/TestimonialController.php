@@ -34,7 +34,10 @@ class TestimonialController extends ApiController
         $this->fileUploadService = $fileUploadService ?? new FileUploadService(new \App\Services\Logger());
     }
 
-    public function getAll(Request $request, Response $response): Response
+    /**
+     * Get published testimonials only (public endpoint - no auth required)
+     */
+    public function getPublished(Request $request, Response $response): Response
     {
         $pagination = $this->paginationService->getPaginationParams($request);
         $total = Testimonial::select()->where('published', '=', 1)->count();
@@ -51,12 +54,15 @@ class TestimonialController extends ApiController
         return $this->success($response, $result);
     }
 
-    public function getAllAdmin(Request $request, Response $response): Response
+    /**
+     * Get all testimonials (requires authentication)
+     */
+    public function getAll(Request $request, Response $response): Response
     {
         $pagination = $this->paginationService->getPaginationParams($request);
         $total = Testimonial::count();
 
-        // Use optimized query for admin view - include all columns but with ordering
+        // Include all columns with ordering
         $testimonials = Testimonial::select(['*'])
                                   ->orderBy('created_at', 'DESC')
                                   ->limit($pagination['limit'], $pagination['offset'])
@@ -83,39 +89,33 @@ class TestimonialController extends ApiController
     public function create(Request $request, Response $response): Response
     {
         $body = $request->getParsedBody();
-        $validAgeRanges = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
-// Custom validation for testimonial creation
+        // Custom validation for testimonial creation
+        // Required fields: customer_name, testimonial_text
+        // Optional fields: customer_email, age_range, image_url
         if (!isset($body['customer_name']) || empty(trim($body['customer_name']))) {
             return $this->error($response, 'Customer Name is required', 400);
-        }
-
-        if (!isset($body['customer_email']) || empty(trim($body['customer_email']))) {
-            return $this->error($response, 'Customer Email is required', 400);
-        }
-
-        if (!filter_var($body['customer_email'], FILTER_VALIDATE_EMAIL)) {
-            return $this->error($response, 'Invalid email format', 400);
         }
 
         if (!isset($body['testimonial_text']) || empty(trim($body['testimonial_text']))) {
             return $this->error($response, 'Testimonial Text is required', 400);
         }
 
-        if (isset($body['age_range']) && !in_array($body['age_range'], $validAgeRanges)) {
-            return $this->error($response, 'Invalid age range', 400);
+        // Validate email format only if provided
+        if (isset($body['customer_email']) && !empty($body['customer_email']) && !filter_var($body['customer_email'], FILTER_VALIDATE_EMAIL)) {
+            return $this->error($response, 'Invalid email format', 400);
         }
 
         try {
             $sql = <<<'SQL'
-INSERT INTO testimonials 
-    (customer_name, customer_email, age_range, testimonial_text, image_url, published, created_at, updated_at) 
-VALUES 
+INSERT INTO testimonials
+    (customer_name, customer_email, age_range, testimonial_text, image_url, published, created_at, updated_at)
+VALUES
     (:customer_name, :customer_email, :age_range, :testimonial_text, :image_url, 0, datetime("now"), datetime("now"))
 SQL;
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 ':customer_name' => $body['customer_name'],
-                ':customer_email' => $body['customer_email'],
+                ':customer_email' => $body['customer_email'] ?? '',
                 ':age_range' => $body['age_range'] ?? null,
                 ':testimonial_text' => $body['testimonial_text'],
                 ':image_url' => $body['image_url'] ?? null,
@@ -137,15 +137,14 @@ SQL;
             return $this->error($response, 'Testimonial not found', 404);
         }
 
-        $validAgeRanges = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
-        try {
-            $this->validator->validate($body, [
-                'customer_email' => v::optional(v::email()->setName('Customer Email')),
-                'age_range' => v::optional(v::in($validAgeRanges)->setName('Age Range')),
-                'image_url' => v::optional(v::url()->setName('Image URL')),
-            ]);
-        } catch (ValidationException $e) {
-            return $this->error($response, $e->getFirstError(), 400);
+        // Manually validate email if present and not empty
+        if (array_key_exists('customer_email', $body) && !empty($body['customer_email']) && !v::email()->validate($body['customer_email'])) {
+            return $this->error($response, 'Customer Email must be a valid email address', 400);
+        }
+
+        // Manually validate image_url if present and not empty
+        if (isset($body['image_url']) && !empty($body['image_url']) && !v::url()->validate($body['image_url'])) {
+            return $this->error($response, 'Image URL must be a valid URL', 400);
         }
 
         $updates = [];
@@ -155,9 +154,9 @@ SQL;
             $params[':customer_name'] = $body['customer_name'];
         }
 
-        if (isset($body['customer_email'])) {
+        if (array_key_exists('customer_email', $body)) {
             $updates[] = 'customer_email = :customer_email';
-            $params[':customer_email'] = $body['customer_email'];
+            $params[':customer_email'] = $body['customer_email'] ?? '';
         }
 
         if (isset($body['age_range'])) {
@@ -173,6 +172,11 @@ SQL;
         if (isset($body['image_url'])) {
             $updates[] = 'image_url = :image_url';
             $params[':image_url'] = $body['image_url'];
+        }
+
+        if (isset($body['published'])) {
+            $updates[] = 'published = :published';
+            $params[':published'] = filter_var($body['published'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
         }
 
         if (empty($updates)) {
