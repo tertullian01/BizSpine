@@ -8,6 +8,7 @@ use Phinx\Migration\Manager;
 use Symfony\Component\Console\Input\StringInput;
 use Symfony\Component\Console\Output\NullOutput;
 use App\Services\Config as AppConfig;
+use App\Services\Database;
 use App\Models\BaseModel;
 
 class DatabaseTestCase extends TestCase
@@ -56,6 +57,9 @@ class DatabaseTestCase extends TestCase
 
             // Set the database connection for models
             BaseModel::setDatabase(self::$db);
+
+            // Set the database instance for Database service (used by controllers)
+            Database::setInstance(self::$db);
         }
 
         // Truncate all tables to ensure a clean state for each test

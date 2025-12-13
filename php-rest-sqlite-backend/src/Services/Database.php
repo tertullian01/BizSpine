@@ -12,9 +12,12 @@ class Database
      * Return a PDO instance for the given SQLite path.
      * Expects full path like .../protected/db/database.sqlite
      */
-    public static function get(string $dbPath): PDO
+    public static function get(?string $dbPath = null): PDO
     {
         if (self::$pdo === null) {
+            if ($dbPath === null) {
+                throw new \RuntimeException('Database path required for first connection');
+            }
             $dir = dirname($dbPath);
             if (!is_dir($dir)) {
                 mkdir($dir, 0700, true);
@@ -28,5 +31,21 @@ class Database
             self::$pdo = $pdo;
         }
         return self::$pdo;
+    }
+
+    /**
+     * Set the PDO instance directly (useful for testing)
+     */
+    public static function setInstance(PDO $pdo): void
+    {
+        self::$pdo = $pdo;
+    }
+
+    /**
+     * Reset the PDO instance (useful for testing)
+     */
+    public static function reset(): void
+    {
+        self::$pdo = null;
     }
 }

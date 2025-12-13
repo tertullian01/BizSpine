@@ -28,7 +28,8 @@ class AuthControllerTest extends DatabaseTestCase
                 'issuer' => 'test.local',
                 'access_exp' => 900,
                 'refresh_exp' => 604800,
-            ]
+            ],
+            'db_path' => __DIR__ . '/../../protected/database/testing.db',
         ];
         $this->logger = new Logger();
         $this->emailServiceMock = $this->createMock(EmailService::class);
@@ -36,19 +37,19 @@ class AuthControllerTest extends DatabaseTestCase
 
     public function testRegisterWithValidCredentials()
     {
-        $controller = new AuthController($this->config, self::$db);
+        $controller = new AuthController($this->config, $this->emailServiceMock);
         $requestData = ['email' => 'test@example.com', 'password' => 'password123'];
         $request = $this->createRequestWithBody('POST', '/api/auth/register', $requestData);
         $response = $this->createResponse();
         $response = $controller->register($request, $response, []);
         $body = json_decode($response->getBody()->__toString(), true);
-// Assert the response is correct
+        // Assert the response is correct
         $this->assertEquals(201, $response->getStatusCode());
         $this->assertEquals('application/json', $response->getHeaderLine('Content-Type'));
         $this->assertTrue($body['success']);
         $this->assertEquals('User created', $body['data']['message']);
         $this->assertEquals('test@example.com', $body['data']['email']);
-// Assert that the user was actually inserted into the database
+        // Assert that the user was actually inserted into the database
         $stmt = self::$db->query("SELECT COUNT(*) FROM users WHERE email = 'test@example.com'");
         $this->assertEquals(1, $stmt->fetchColumn());
     }
@@ -61,7 +62,7 @@ class AuthControllerTest extends DatabaseTestCase
         $hash = password_hash($password, PASSWORD_DEFAULT);
         $stmt = self::$db->prepare('INSERT INTO users (email, password_hash) VALUES (:e, :p)');
         $stmt->execute([':e' => $email, ':p' => $hash]);
-        $controller = new AuthController($this->config, self::$db);
+        $controller = new AuthController($this->config, $this->emailServiceMock);
         $requestData = ['email' => 'test@example.com', 'password' => 'password123'];
         $request = $this->createRequestWithBody('POST', '/api/auth/login', $requestData);
         $response = $this->createResponse();
@@ -70,7 +71,7 @@ class AuthControllerTest extends DatabaseTestCase
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertEquals('application/json', $response->getHeaderLine('Content-Type'));
         $this->assertTrue($body['success']);
-// Assert that we received an access token
+        // Assert that we received an access token
         $this->assertArrayHasKey('access_token', $body['data']);
         $this->assertNotEmpty($body['data']['access_token']);
     }
@@ -103,7 +104,7 @@ class AuthControllerTest extends DatabaseTestCase
             ->with($email, $this->isType('string'))
             ->willReturn(true);
 
-        $controller = new AuthController($this->config, self::$db, $this->emailServiceMock);
+        $controller = new AuthController($this->config, $this->emailServiceMock);
         $requestData = ['email' => $email];
         $request = $this->createRequestWithBody('POST', '/api/auth/forgot-password', $requestData);
         $response = $this->createResponse();
@@ -127,7 +128,7 @@ class AuthControllerTest extends DatabaseTestCase
         $this->emailServiceMock->expects($this->never())
             ->method('sendPasswordResetEmail');
 
-        $controller = new AuthController($this->config, self::$db, $this->emailServiceMock);
+        $controller = new AuthController($this->config, $this->emailServiceMock);
         $requestData = ['email' => 'nonexistent@example.com'];
         $request = $this->createRequestWithBody('POST', '/api/auth/forgot-password', $requestData);
         $response = $this->createResponse();
@@ -153,7 +154,7 @@ class AuthControllerTest extends DatabaseTestCase
             ':exp' => $expiresAt
         ]);
 
-        $controller = new AuthController($this->config, self::$db);
+        $controller = new AuthController($this->config, $this->emailServiceMock);
         $requestData = ['token' => $token, 'password' => 'newpassword123'];
         $request = $this->createRequestWithBody('POST', '/api/auth/reset-password', $requestData);
         $response = $this->createResponse();
@@ -175,7 +176,7 @@ class AuthControllerTest extends DatabaseTestCase
 
     public function testResetPasswordWithInvalidToken()
     {
-        $controller = new AuthController($this->config, self::$db);
+        $controller = new AuthController($this->config, $this->emailServiceMock);
         $requestData = ['token' => 'invalid-token', 'password' => 'newpassword123'];
         $request = $this->createRequestWithBody('POST', '/api/auth/reset-password', $requestData);
         $response = $this->createResponse();
@@ -201,7 +202,7 @@ class AuthControllerTest extends DatabaseTestCase
             ':exp' => $expiresAt
         ]);
 
-        $controller = new AuthController($this->config, self::$db);
+        $controller = new AuthController($this->config, $this->emailServiceMock);
         $requestData = ['token' => $token, 'password' => 'newpassword123'];
         $request = $this->createRequestWithBody('POST', '/api/auth/reset-password', $requestData);
         $response = $this->createResponse();

@@ -31,13 +31,33 @@ class ErrorHandlerMiddleware
                 $statusCode = $e->getCode();
                 $message = $e->getMessage();
             } elseif ($e instanceof PDOException) {
-    // For database exceptions, don't reveal details in production
-                if (Config::get('environment.debug', false)) {
-                    $message = 'Database error: ' . $e->getMessage();
+                // Check for foreign key constraint violation (SQLSTATE 23000)
+                if ($e->getCode() === '23000' || (isset($e->errorInfo[0]) && $e->errorInfo[0] === '23000')) {
+                    // Detect if it's a foreign key constraint failure
+                    $errorMessage = $e->getMessage();
+                    if (stripos($errorMessage, 'FOREIGN KEY constraint failed') !== false) {
+                        $statusCode = 409; // Conflict
+                        $message = 'Cannot delete this record because it is referenced by other records. Please remove the related records first.';
+                    } elseif (stripos($errorMessage, 'UNIQUE constraint failed') !== false) {
+                        $statusCode = 409; // Conflict
+                        $message = 'A record with this value already exists.';
+                    } elseif (stripos($errorMessage, 'NOT NULL constraint failed') !== false) {
+                        $statusCode = 400; // Bad Request
+                        $message = 'A required field is missing.';
+                    } else {
+                        // Generic integrity constraint violation
+                        $statusCode = 409;
+                        $message = 'The operation could not be completed due to a data integrity constraint.';
+                    }
                 } else {
-                    $message = 'A database error occurred.';
+                    // For other database exceptions, don't reveal details in production
+                    if (Config::get('environment.debug', false)) {
+                        $message = 'Database error: ' . $e->getMessage();
+                    } else {
+                        $message = 'A database error occurred.';
+                    }
+                    $statusCode = 500;
                 }
-                $statusCode = 500;
             } elseif (Config::get('environment.debug', false)) {
     // For other exceptions in debug mode, show more detail
                 $message = $e->getMessage();
