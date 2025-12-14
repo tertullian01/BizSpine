@@ -236,6 +236,70 @@ SQL
         return $response->withHeader('Content-Type', 'text/html');
     }
 
+    public function runMigrations(Request $request, Response $response): Response
+    {
+        $output = "<h1>Database Migration Log</h1>";
+
+        try {
+            $migrations = [];
+
+            // Fix testimonials table - add missing columns
+            $stmt = $this->db->query("PRAGMA table_info(testimonials);");
+            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $columnNames = array_column($columns, 'name');
+
+            if (!in_array('published', $columnNames)) {
+                $this->db->exec("ALTER TABLE testimonials ADD COLUMN published INTEGER DEFAULT 0;");
+                $this->db->exec('CREATE INDEX IF NOT EXISTS idx_testimonials_published ON testimonials(published);');
+                $migrations[] = "Added 'published' column to testimonials table";
+            }
+
+            if (!in_array('customer_email', $columnNames)) {
+                $this->db->exec("ALTER TABLE testimonials ADD COLUMN customer_email TEXT;");
+                $this->db->exec('CREATE INDEX IF NOT EXISTS idx_testimonials_email ON testimonials(customer_email);');
+                $migrations[] = "Added 'customer_email' column to testimonials table";
+            }
+
+            if (!in_array('age_range', $columnNames)) {
+                $this->db->exec("ALTER TABLE testimonials ADD COLUMN age_range TEXT;");
+                $migrations[] = "Added 'age_range' column to testimonials table";
+            }
+
+            if (!in_array('image_url', $columnNames)) {
+                $this->db->exec("ALTER TABLE testimonials ADD COLUMN image_url TEXT;");
+                $migrations[] = "Added 'image_url' column to testimonials table";
+            }
+
+            if (!in_array('updated_at', $columnNames)) {
+                $this->db->exec("ALTER TABLE testimonials ADD COLUMN updated_at DATETIME;");
+                $migrations[] = "Added 'updated_at' column to testimonials table";
+            }
+
+            // Fix products table - add image_url
+            $stmt = $this->db->query("PRAGMA table_info(products);");
+            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $columnNames = array_column($columns, 'name');
+
+            if (!in_array('image_url', $columnNames)) {
+                $this->db->exec("ALTER TABLE products ADD COLUMN image_url TEXT;");
+                $migrations[] = "Added 'image_url' column to products table";
+            }
+
+            if (empty($migrations)) {
+                $output .= "<p>No migrations needed - database schema is up to date.</p>";
+            } else {
+                $output .= "<ul><li>" . implode("</li><li>", $migrations) . "</li></ul>";
+                $output .= "<p><strong>Migrations completed successfully.</strong></p>";
+            }
+
+        } catch (Exception $e) {
+            $output .= "<p style='color:red'><strong>Error:</strong> " . $e->getMessage() . "</p>";
+        }
+
+        $response->getBody()->write($output);
+        return $response->withHeader('Content-Type', 'text/html');
+    }
+
     private function readJson(string $filename): array
     {
         $path = __DIR__ . '/../../protected/' . $filename;

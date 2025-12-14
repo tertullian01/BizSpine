@@ -13,6 +13,7 @@ class ProductRoutes
     public static function register(App $app): void
     {
         $app->get('/products', [ProductController::class, 'getAll']);
+        $app->get('/products/type/{type}', [ProductController::class, 'getByType']);
         $app->get('/products/{id}', [ProductController::class, 'getById']);
         $app->post('/products', [ProductController::class, 'create'])->add(AuthMiddleware::class);
         $app->put('/products/{id}', [ProductController::class, 'update'])->add(AuthMiddleware::class);

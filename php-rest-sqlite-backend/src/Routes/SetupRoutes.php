@@ -11,17 +11,15 @@ class SetupRoutes
 {
     public static function register(App $app): void
     {
-        $app->group('/setup', function ($group) {
-            $group->get('/check', [SetupController::class, 'checkDatabase']);
-            $group->post('/admin', [SetupController::class, 'createAdmin']);
-            $group->post('/migrate', [SetupController::class, 'runMigrations']);
-            $group->post('/import/users', [SetupController::class, 'importUsers']);
-            $group->post('/import/stores', [SetupController::class, 'importStores']);
-            $group->post('/import/products', [SetupController::class, 'importProducts']);
-            $group->post('/import/orders', [SetupController::class, 'importOrders']);
-            $group->post('/import/coupons', [SetupController::class, 'importCoupons']);
-            $group->post('/import/reviews', [SetupController::class, 'importReviews']);
-            $group->post('/import/testimonials', [SetupController::class, 'importTestimonials']);
-        });
+        $app->get('/setup/check', [SetupController::class, 'checkDatabase']);
+        $app->post('/setup/admin', [SetupController::class, 'createAdmin']);
+        $app->post('/setup/import/users', [SetupController::class, 'importUsers']);
+        $app->post('/setup/import/stores', [SetupController::class, 'importStores']);
+        $app->post('/setup/import/products', [SetupController::class, 'importProducts']);
+        $app->post('/setup/import/orders', [SetupController::class, 'importOrders']);
+        $app->post('/setup/import/coupons', [SetupController::class, 'importCoupons']);
+        $app->post('/setup/import/reviews', [SetupController::class, 'importReviews']);
+        $app->post('/setup/import/testimonials', [SetupController::class, 'importTestimonials']);
+        $app->post('/setup/migrate', [SetupController::class, 'runMigrations']);
     }
 }

@@ -26,6 +26,11 @@ use Respect\Validation\Exceptions\NestedValidationException;
  *     @OA\Property(property="name", type="string", example="Sample Product"),
  *     @OA\Property(property="type", type="string", example="food"),
  *     @OA\Property(property="cost", type="number", format="float", example=29.99),
+ *     @OA\Property(property="description", type="string", example="Product description"),
+ *     @OA\Property(property="size", type="string", example="500ml"),
+ *     @OA\Property(property="image_url", type="string", example="http://example.com/image.jpg"),
+ *     @OA\Property(property="featured_ingredients", type="string", example="Aloe Vera, Honey"),
+ *     @OA\Property(property="all_ingredients", type="string", example="Water, Aloe Vera, Honey, ..."),
  *     @OA\Property(property="created_at", type="string", format="date-time"),
  *     @OA\Property(property="updated_at", type="string", format="date-time")
  * )
@@ -107,7 +112,64 @@ class ProductController extends ApiController
         $total = Product::count();
 
         // Use optimized query with specific columns, excluding large text fields
-        $products = Product::select(['id', 'name', 'type', 'description', 'size', 'cost', 'created_at', 'updated_at'])
+        $products = Product::select(['id', 'name', 'type', 'description', 'size', 'cost', 'image_url', 'created_at', 'updated_at'])
+                            ->orderBy('name')
+                            ->limit($limit, $offset)
+                            ->get();
+
+        $result = $this->paginationService->formatPaginatedResponse($products, $total, $page, $limit);
+
+        return $this->success($response, $result);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/products/type/{type}",
+     *     summary="Get products by type",
+     *     @OA\Parameter(
+     *         name="type",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
+     *         name="page",
+     *         in="query",
+     *         description="Page number",
+     *         required=false,
+     *         @OA\Schema(type="integer", default=1)
+     *     ),
+     *     @OA\Parameter(
+     *         name="limit",
+     *         in="query",
+     *         description="Items per page",
+     *         required=false,
+     *         @OA\Schema(type="integer", default=20, maximum=100)
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Paginated list of products by type",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/Product")),
+     *             @OA\Property(property="pagination", ref="#/components/schemas/Pagination")
+     *         )
+     *     )
+     * )
+     */
+    public function getByType(Request $request, Response $response, array $args): Response
+    {
+        $type = $args['type'];
+        $pagination = $this->paginationService->getPaginationParams($request);
+        $page = $pagination['page'];
+        $limit = $pagination['limit'];
+        $offset = $pagination['offset'];
+
+        // Get total count for pagination
+        $total = Product::select()->where('type', '=', $type)->count();
+
+        // Use optimized query with specific columns
+        $products = Product::select(['id', 'name', 'type', 'description', 'size', 'cost', 'image_url', 'created_at', 'updated_at'])
+                            ->where('type', '=', $type)
                             ->orderBy('name')
                             ->limit($limit, $offset)
                             ->get();
@@ -163,7 +225,11 @@ class ProductController extends ApiController
      *             @OA\Property(property="name", type="string", example="New Product"),
      *             @OA\Property(property="cost", type="number", format="float", example=29.99),
      *             @OA\Property(property="type", type="string", example="food"),
-     *             @OA\Property(property="description", type="string", example="Product description")
+     *             @OA\Property(property="description", type="string", example="Product description"),
+     *             @OA\Property(property="size", type="string", example="500ml"),
+     *             @OA\Property(property="image_url", type="string", example="http://example.com/image.jpg"),
+     *             @OA\Property(property="featured_ingredients", type="string"),
+     *             @OA\Property(property="all_ingredients", type="string")
      *         )
      *     ),
      *     @OA\Response(
@@ -192,7 +258,8 @@ class ProductController extends ApiController
         }
 
         $validator = v::key('name', v::stringType()->notEmpty())
-                      ->key('cost', v::numericVal()->positive());
+                      ->key('cost', v::numericVal()->positive())
+                      ->key('image_url', v::url(), false);
 
         try {
             $validator->assert($data);
@@ -209,6 +276,7 @@ class ProductController extends ApiController
         $product->all_ingredients = $data['all_ingredients'] ?? null;
         $product->size = $data['size'] ?? null;
         $product->cost = $data['cost'] ?? null;
+        $product->image_url = $data['image_url'] ?? null;
         $product->save();
 
         $this->logger->info('Product created', [
@@ -219,6 +287,41 @@ class ProductController extends ApiController
         return $this->success($response, $product, 201);
     }
 
+    /**
+     * @OA\Put(
+     *     path="/products/{id}",
+     *     summary="Update a product",
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="name", type="string"),
+     *             @OA\Property(property="cost", type="number", format="float"),
+     *             @OA\Property(property="type", type="string"),
+     *             @OA\Property(property="description", type="string"),
+     *             @OA\Property(property="size", type="string"),
+     *             @OA\Property(property="image_url", type="string"),
+     *             @OA\Property(property="featured_ingredients", type="string"),
+     *             @OA\Property(property="all_ingredients", type="string")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Product updated",
+     *         @OA\JsonContent(ref="#/components/schemas/Product")
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Product not found",
+     *         @OA\JsonContent(ref="#/components/schemas/Error")
+     *     )
+     * )
+     */
     public function update(Request $request, Response $response, array $args): Response
     {
         $id = (int)$args['id'];
@@ -234,7 +337,8 @@ class ProductController extends ApiController
         }
 
         $validator = v::key('name', v::stringType()->notEmpty())
-                      ->key('cost', v::numericVal()->positive(), false); // optional
+                      ->key('cost', v::numericVal()->positive(), false) // optional
+                      ->key('image_url', v::url(), false);
 
         try {
             $validator->assert($data);
@@ -254,6 +358,7 @@ class ProductController extends ApiController
         $product->all_ingredients = $data['all_ingredients'] ?? $product->all_ingredients;
         $product->size = $data['size'] ?? $product->size;
         $product->cost = $data['cost'] ?? $product->cost;
+        $product->image_url = $data['image_url'] ?? $product->image_url;
         $product->save();
 
         // Invalidate cache
@@ -262,6 +367,22 @@ class ProductController extends ApiController
         return $this->success($response, $product);
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/products/{id}",
+     *     summary="Delete a product",
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=204,
+     *         description="Product deleted"
+     *     )
+     * )
+     */
     public function delete(Request $request, Response $response, array $args): Response
     {
         $id = (int)$args['id'];
@@ -276,7 +397,33 @@ class ProductController extends ApiController
     }
 
     /**
-     * Upload product image
+     * @OA\Post(
+     *     path="/products/{id}/upload-image",
+     *     summary="Upload product image",
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 @OA\Property(property="image", type="string", format="binary")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Image uploaded",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string"),
+     *             @OA\Property(property="file", type="object")
+     *         )
+     *     )
+     * )
      */
     public function uploadImage(Request $request, Response $response, array $args): Response
     {
@@ -304,10 +451,9 @@ class ProductController extends ApiController
             $productId = (int)$args['id'];
             $product = Product::find($productId);
             if ($product) {
-                // Assuming you add an image_url column to products table
-                // $product->image_url = $result['url'];
-                // $product->save();
-                // $this->cacheableProductService->invalidateProduct($productId);
+                $product->image_url = $result['url'];
+                $product->save();
+                $this->cacheableProductService->invalidateProduct($productId);
             }
 
             return $this->success($response, [

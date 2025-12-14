@@ -12,7 +12,23 @@ use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Respect\Validation\Validator as v;
+use OpenApi\Annotations as OA;
 
+/**
+ * @OA\Schema(
+ *     schema="Testimonial",
+ *     type="object",
+ *     @OA\Property(property="id", type="integer", example=1),
+ *     @OA\Property(property="customer_name", type="string", example="Jane Doe"),
+ *     @OA\Property(property="customer_email", type="string", example="jane@example.com"),
+ *     @OA\Property(property="testimonial_text", type="string", example="Great product!"),
+ *     @OA\Property(property="age_range", type="string", example="25-34"),
+ *     @OA\Property(property="image_url", type="string", example="http://example.com/photo.jpg"),
+ *     @OA\Property(property="published", type="boolean", example=true),
+ *     @OA\Property(property="created_at", type="string", format="date-time"),
+ *     @OA\Property(property="updated_at", type="string", format="date-time")
+ * )
+ */
 class TestimonialController extends ApiController
 {
     private PDO $db;
@@ -35,7 +51,18 @@ class TestimonialController extends ApiController
     }
 
     /**
-     * Get published testimonials only (public endpoint - no auth required)
+     * @OA\Get(
+     *     path="/testimonials/published",
+     *     summary="Get published testimonials",
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of published testimonials",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/Testimonial")),
+     *             @OA\Property(property="pagination", ref="#/components/schemas/Pagination")
+     *         )
+     *     )
+     * )
      */
     public function getPublished(Request $request, Response $response): Response
     {
@@ -55,7 +82,18 @@ class TestimonialController extends ApiController
     }
 
     /**
-     * Get all testimonials (requires authentication)
+     * @OA\Get(
+     *     path="/testimonials",
+     *     summary="Get all testimonials",
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of all testimonials",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/Testimonial")),
+     *             @OA\Property(property="pagination", ref="#/components/schemas/Pagination")
+     *         )
+     *     )
+     * )
      */
     public function getAll(Request $request, Response $response): Response
     {
@@ -73,6 +111,23 @@ class TestimonialController extends ApiController
         return $this->success($response, $result);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/testimonials/{id}",
+     *     summary="Get testimonial by ID",
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Testimonial details",
+     *         @OA\JsonContent(ref="#/components/schemas/Testimonial")
+     *     )
+     * )
+     */
     public function getById(Request $request, Response $response, array $args): Response
     {
         $id = (int)$args['id'];
@@ -86,6 +141,24 @@ class TestimonialController extends ApiController
         return $this->success($response, $testimonial);
     }
 
+    /**
+     * @OA\Post(
+     *     path="/testimonials",
+     *     summary="Create a new testimonial",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"customer_name", "testimonial_text"},
+     *             @OA\Property(property="customer_name", type="string"),
+     *             @OA\Property(property="testimonial_text", type="string"),
+     *             @OA\Property(property="customer_email", type="string"),
+     *             @OA\Property(property="age_range", type="string"),
+     *             @OA\Property(property="image_url", type="string")
+     *         )
+     *     ),
+     *     @OA\Response(response=201, description="Testimonial created", @OA\JsonContent(ref="#/components/schemas/Testimonial"))
+     * )
+     */
     public function create(Request $request, Response $response): Response
     {
         $body = $request->getParsedBody();
@@ -127,6 +200,25 @@ SQL;
         }
     }
 
+    /**
+     * @OA\Put(
+     *     path="/testimonials/{id}",
+     *     summary="Update a testimonial",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="customer_name", type="string"),
+     *             @OA\Property(property="testimonial_text", type="string"),
+     *             @OA\Property(property="customer_email", type="string"),
+     *             @OA\Property(property="age_range", type="string"),
+     *             @OA\Property(property="image_url", type="string"),
+     *             @OA\Property(property="published", type="boolean")
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Testimonial updated", @OA\JsonContent(ref="#/components/schemas/Testimonial"))
+     * )
+     */
     public function update(Request $request, Response $response, array $args): Response
     {
         $id = (int)$args['id'];
@@ -194,6 +286,14 @@ SQL;
         }
     }
 
+    /**
+     * @OA\Post(
+     *     path="/testimonials/{id}/publish",
+     *     summary="Publish a testimonial",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Testimonial published", @OA\JsonContent(ref="#/components/schemas/Testimonial"))
+     * )
+     */
     public function publish(Request $request, Response $response, array $args): Response
     {
         $id = (int)$args['id'];
@@ -208,6 +308,14 @@ SQL;
         return $this->getById($request, $response, ['id' => $id]);
     }
 
+    /**
+     * @OA\Post(
+     *     path="/testimonials/{id}/unpublish",
+     *     summary="Unpublish a testimonial",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Testimonial unpublished", @OA\JsonContent(ref="#/components/schemas/Testimonial"))
+     * )
+     */
     public function unpublish(Request $request, Response $response, array $args): Response
     {
         $id = (int)$args['id'];
@@ -222,6 +330,14 @@ SQL;
         return $this->getById($request, $response, ['id' => $id]);
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/testimonials/{id}",
+     *     summary="Delete a testimonial",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=204, description="Testimonial deleted")
+     * )
+     */
     public function delete(Request $request, Response $response, array $args): Response
     {
         $id = (int)$args['id'];
@@ -237,7 +353,19 @@ SQL;
     }
 
     /**
-     * Upload customer photo for testimonial
+     * @OA\Post(
+     *     path="/testimonials/{id}/upload-photo",
+     *     summary="Upload testimonial photo",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(@OA\Property(property="photo", type="string", format="binary"))
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Photo uploaded")
+     * )
      */
     public function uploadPhoto(Request $request, Response $response, array $args): Response
     {

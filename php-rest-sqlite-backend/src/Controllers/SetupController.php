@@ -125,6 +125,7 @@ class SetupController extends ApiController
                 all_ingredients TEXT,
                 size TEXT,
                 cost REAL,
+                image_url TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
@@ -543,8 +544,8 @@ class SetupController extends ApiController
             $imported = 0;
             foreach ($products as $product) {
                 $stmt = $db->prepare("
-                    INSERT INTO products (name, type, description, cost, featured_ingredients, all_ingredients, size, created_at)
-                    VALUES (:name, :type, :description, :cost, :featured_ingredients, :all_ingredients, :size, datetime('now'))
+                    INSERT INTO products (name, type, description, cost, featured_ingredients, all_ingredients, size, image_url, created_at)
+                    VALUES (:name, :type, :description, :cost, :featured_ingredients, :all_ingredients, :size, :image_url, datetime('now'))
                 ");
                 $stmt->execute([
                     ':name' => $product['name'],
@@ -553,7 +554,8 @@ class SetupController extends ApiController
                     ':cost' => $product['cost'] ?? 0,
                     ':featured_ingredients' => $product['featured_ingredients'] ?? null,
                     ':all_ingredients' => $product['all_ingredients'] ?? null,
-                    ':size' => $product['size'] ?? null
+                    ':size' => $product['size'] ?? null,
+                    ':image_url' => $product['image_url'] ?? null
                 ]);
                 $imported++;
             }
@@ -831,6 +833,16 @@ class SetupController extends ApiController
             if (!in_array('updated_at', $columnNames)) {
                 $db->exec("ALTER TABLE testimonials ADD COLUMN updated_at DATETIME;");
                 $migrations[] = "Added 'updated_at' column to testimonials table";
+            }
+
+            // Fix products table - add image_url
+            $stmt = $db->query("PRAGMA table_info(products);");
+            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $columnNames = array_column($columns, 'name');
+
+            if (!in_array('image_url', $columnNames)) {
+                $db->exec("ALTER TABLE products ADD COLUMN image_url TEXT;");
+                $migrations[] = "Added 'image_url' column to products table";
             }
 
             $db->exec('CREATE INDEX IF NOT EXISTS idx_testimonials_created ON testimonials(created_at);');
