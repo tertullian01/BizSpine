@@ -471,6 +471,68 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /products/types:
+    get:
+      summary: Get unique product types
+      description: Retrieve a list of all unique product types available in the catalog
+      tags:
+        - Products
+      responses:
+        '200':
+          description: List of unique product types
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: string
+
+  /products/type/{type}:
+    get:
+      summary: Get products by type
+      description: Retrieve a paginated list of products filtered by type
+      tags:
+        - Products
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product type
+        - name: page
+          in: query
+          description: Page number
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          required: false
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Paginated list of products by type
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
   /products/{id}:
     get:
       summary: Get product by ID
@@ -1546,6 +1608,28 @@ components:
       required:
         - message
 
+    Pagination:
+      type: object
+      properties:
+        current_page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
+        has_next:
+          type: boolean
+        has_prev:
+          type: boolean
+        next_page:
+          type: integer
+          nullable: true
+        prev_page:
+          type: integer
+          nullable: true
+
     HealthResponse:
       type: object
       properties:
@@ -1822,6 +1906,13 @@ components:
             size:
               type: string
               description: Product size/package
+            image_url:
+              type: string
+              description: URL to product image
+            state:
+              type: string
+              enum: [For Sale, Discontinued]
+              description: Product availability state
 
     ProductCreateRequest:
       type: object
@@ -1848,6 +1939,14 @@ components:
         size:
           type: string
           description: Product size/package
+        image_url:
+          type: string
+          description: URL to product image
+        state:
+          type: string
+          enum: [For Sale, Discontinued]
+          default: For Sale
+          description: Product availability state
       required:
         - name
 
@@ -1876,6 +1975,13 @@ components:
         size:
           type: string
           description: Product size/package
+        image_url:
+          type: string
+          description: URL to product image
+        state:
+          type: string
+          enum: [For Sale, Discontinued]
+          description: Product availability state
 
     # Store Schemas
     Store:

@@ -29,6 +29,7 @@ use Respect\Validation\Exceptions\NestedValidationException;
  *     @OA\Property(property="description", type="string", example="Product description"),
  *     @OA\Property(property="size", type="string", example="500ml"),
  *     @OA\Property(property="image_url", type="string", example="http://example.com/image.jpg"),
+ *     @OA\Property(property="state", type="string", enum={"For Sale", "Discontinued"}, example="For Sale"),
  *     @OA\Property(property="featured_ingredients", type="string", example="Aloe Vera, Honey"),
  *     @OA\Property(property="all_ingredients", type="string", example="Water, Aloe Vera, Honey, ..."),
  *     @OA\Property(property="created_at", type="string", format="date-time"),
@@ -112,7 +113,7 @@ class ProductController extends ApiController
         $total = Product::count();
 
         // Use optimized query with specific columns, excluding large text fields
-        $products = Product::select(['id', 'name', 'type', 'description', 'size', 'cost', 'image_url', 'created_at', 'updated_at'])
+        $products = Product::select(['id', 'name', 'type', 'description', 'size', 'cost', 'image_url', 'state', 'created_at', 'updated_at'])
                             ->orderBy('name')
                             ->limit($limit, $offset)
                             ->get();
@@ -168,7 +169,7 @@ class ProductController extends ApiController
         $total = Product::select()->where('type', '=', $type)->count();
 
         // Use optimized query with specific columns
-        $products = Product::select(['id', 'name', 'type', 'description', 'size', 'cost', 'image_url', 'created_at', 'updated_at'])
+        $products = Product::select(['id', 'name', 'type', 'description', 'size', 'cost', 'image_url', 'state', 'created_at', 'updated_at'])
                             ->where('type', '=', $type)
                             ->orderBy('name')
                             ->limit($limit, $offset)
@@ -177,6 +178,36 @@ class ProductController extends ApiController
         $result = $this->paginationService->formatPaginatedResponse($products, $total, $page, $limit);
 
         return $this->success($response, $result);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/products/types",
+     *     summary="Get unique product types",
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of unique product types",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="data", type="array", @OA\Items(type="string"))
+     *         )
+     *     )
+     * )
+     */
+    public function getUniqueTypes(Request $request, Response $response): Response
+    {
+        $products = Product::select(['type'])
+                            ->groupBy('type')
+                            ->orderBy('type')
+                            ->get();
+
+        $types = [];
+        foreach ($products as $product) {
+            if (!empty($product->type)) {
+                $types[] = $product->type;
+            }
+        }
+
+        return $this->success($response, ['data' => array_values(array_unique($types))]);
     }
 
     /**
@@ -228,6 +259,7 @@ class ProductController extends ApiController
      *             @OA\Property(property="description", type="string", example="Product description"),
      *             @OA\Property(property="size", type="string", example="500ml"),
      *             @OA\Property(property="image_url", type="string", example="http://example.com/image.jpg"),
+     *             @OA\Property(property="state", type="string", enum={"For Sale", "Discontinued"}, example="For Sale"),
      *             @OA\Property(property="featured_ingredients", type="string"),
      *             @OA\Property(property="all_ingredients", type="string")
      *         )
@@ -259,7 +291,8 @@ class ProductController extends ApiController
 
         $validator = v::key('name', v::stringType()->notEmpty())
                       ->key('cost', v::numericVal()->positive())
-                      ->key('image_url', v::url(), false);
+                      ->key('image_url', v::url(), false)
+                      ->key('state', v::in(['For Sale', 'Discontinued']), false);
 
         try {
             $validator->assert($data);
@@ -277,6 +310,7 @@ class ProductController extends ApiController
         $product->size = $data['size'] ?? null;
         $product->cost = $data['cost'] ?? null;
         $product->image_url = $data['image_url'] ?? null;
+        $product->state = $data['state'] ?? 'For Sale';
         $product->save();
 
         $this->logger->info('Product created', [
@@ -306,6 +340,7 @@ class ProductController extends ApiController
      *             @OA\Property(property="description", type="string"),
      *             @OA\Property(property="size", type="string"),
      *             @OA\Property(property="image_url", type="string"),
+     *             @OA\Property(property="state", type="string", enum={"For Sale", "Discontinued"}),
      *             @OA\Property(property="featured_ingredients", type="string"),
      *             @OA\Property(property="all_ingredients", type="string")
      *         )
@@ -338,7 +373,8 @@ class ProductController extends ApiController
 
         $validator = v::key('name', v::stringType()->notEmpty())
                       ->key('cost', v::numericVal()->positive(), false) // optional
-                      ->key('image_url', v::url(), false);
+                      ->key('image_url', v::url(), false)
+                      ->key('state', v::in(['For Sale', 'Discontinued']), false);
 
         try {
             $validator->assert($data);
@@ -359,6 +395,7 @@ class ProductController extends ApiController
         $product->size = $data['size'] ?? $product->size;
         $product->cost = $data['cost'] ?? $product->cost;
         $product->image_url = $data['image_url'] ?? $product->image_url;
+        $product->state = $data['state'] ?? $product->state;
         $product->save();
 
         // Invalidate cache

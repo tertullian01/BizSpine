@@ -126,6 +126,7 @@ class SetupController extends ApiController
                 size TEXT,
                 cost REAL,
                 image_url TEXT,
+                state TEXT DEFAULT 'For Sale',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
@@ -544,8 +545,8 @@ class SetupController extends ApiController
             $imported = 0;
             foreach ($products as $product) {
                 $stmt = $db->prepare("
-                    INSERT INTO products (name, type, description, cost, featured_ingredients, all_ingredients, size, image_url, created_at)
-                    VALUES (:name, :type, :description, :cost, :featured_ingredients, :all_ingredients, :size, :image_url, datetime('now'))
+                    INSERT INTO products (name, type, description, cost, featured_ingredients, all_ingredients, size, image_url, state, created_at)
+                    VALUES (:name, :type, :description, :cost, :featured_ingredients, :all_ingredients, :size, :image_url, :state, datetime('now'))
                 ");
                 $stmt->execute([
                     ':name' => $product['name'],
@@ -555,7 +556,8 @@ class SetupController extends ApiController
                     ':featured_ingredients' => $product['featured_ingredients'] ?? null,
                     ':all_ingredients' => $product['all_ingredients'] ?? null,
                     ':size' => $product['size'] ?? null,
-                    ':image_url' => $product['image_url'] ?? null
+                    ':image_url' => $product['image_url'] ?? null,
+                    ':state' => $product['state'] ?? 'For Sale'
                 ]);
                 $imported++;
             }
@@ -843,6 +845,11 @@ class SetupController extends ApiController
             if (!in_array('image_url', $columnNames)) {
                 $db->exec("ALTER TABLE products ADD COLUMN image_url TEXT;");
                 $migrations[] = "Added 'image_url' column to products table";
+            }
+
+            if (!in_array('state', $columnNames)) {
+                $db->exec("ALTER TABLE products ADD COLUMN state TEXT DEFAULT 'For Sale';");
+                $migrations[] = "Added 'state' column to products table";
             }
 
             $db->exec('CREATE INDEX IF NOT EXISTS idx_testimonials_created ON testimonials(created_at);');

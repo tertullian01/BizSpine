@@ -14,6 +14,8 @@ class Product extends BaseModel
     public ?string $all_ingredients = null;
     public ?string $size = null;
     public ?float $cost = null;
+    public ?string $image_url = null;
+    public ?string $state = null;
     public ?string $created_at = null;
     public ?string $updated_at = null;
 }

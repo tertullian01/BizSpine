@@ -285,6 +285,11 @@ SQL
                 $migrations[] = "Added 'image_url' column to products table";
             }
 
+            if (!in_array('state', $columnNames)) {
+                $this->db->exec("ALTER TABLE products ADD COLUMN state TEXT DEFAULT 'For Sale';");
+                $migrations[] = "Added 'state' column to products table";
+            }
+
             if (empty($migrations)) {
                 $output .= "<p>No migrations needed - database schema is up to date.</p>";
             } else {
