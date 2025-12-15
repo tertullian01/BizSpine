@@ -332,6 +332,25 @@ SQL
                 }
             }
 
+            // Fix coupon_usage table
+            $stmt = $this->db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='coupon_usage';");
+            if (!$stmt->fetch()) {
+                $this->db->exec(<<<'SQL'
+                CREATE TABLE coupon_usage (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    coupon_id INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    order_id INTEGER DEFAULT 0,
+                    discount_amount REAL NOT NULL,
+                    used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(coupon_id) REFERENCES coupons(id) ON DELETE CASCADE,
+                    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+                );
+                SQL);
+                $this->db->exec('CREATE INDEX IF NOT EXISTS idx_coupon_usage_order ON coupon_usage(order_id);');
+                $migrations[] = "Created 'coupon_usage' table";
+            }
+
             if (empty($migrations)) {
                 $output .= "<p>No migrations needed - database schema is up to date.</p>";
             } else {

@@ -232,6 +232,21 @@ class SetupController extends ApiController
             SQL
             );
 
+            // Create coupon_usage table
+            $db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS coupon_usage (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                coupon_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                order_id INTEGER DEFAULT 0,
+                discount_amount REAL NOT NULL,
+                used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(coupon_id) REFERENCES coupons(id) ON DELETE CASCADE,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            SQL
+            );
+
             // Create testimonials table
             $db->exec(<<<'SQL'
             CREATE TABLE IF NOT EXISTS testimonials (
@@ -414,6 +429,9 @@ class SetupController extends ApiController
             $db->exec('CREATE INDEX IF NOT EXISTS idx_referral_usage_referred ON referral_usage(referred_user_id);');
             $db->exec('CREATE INDEX IF NOT EXISTS idx_referral_usage_code ON referral_usage(referral_code);');
             $db->exec('CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_coupon_usage_coupon ON coupon_usage(coupon_id);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_coupon_usage_user ON coupon_usage(user_id);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_coupon_usage_order ON coupon_usage(order_id);');
 
             // Insert default tax rates
             $db->exec("INSERT OR IGNORE INTO tax_rates (name, rate, region, is_default, description) VALUES ('Germany VAT', 19.0, 'DE', 1, 'Standard German VAT rate')");
