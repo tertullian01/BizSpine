@@ -389,6 +389,40 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /customers/{id}:
+    get:
+      summary: Get customer by ID
+      description: Retrieve detailed information about a specific customer including order stats
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Customer ID
+      responses:
+        '200':
+          description: Customer details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Client'
+        '404':
+          description: Customer not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /users/{id}:
     get:
       summary: Get user by ID
@@ -874,6 +908,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Order'
+        '400':
+          description: Invalid input data or items unavailable
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ErrorResponse'
+                  - type: object
+                    properties:
+                      success:
+                        type: boolean
+                        example: false
+                      error:
+                        type: string
+                        example: "Some items are not available"
+                      unavailable_items:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            product_id:
+                              type: integer
+                            product_name:
+                              type: string
+                            requested_quantity:
+                              type: integer
+                            available_quantity:
+                              type: integer
+                            reason:
+                              type: string
 
   /orders/my:
     get:
@@ -2049,6 +2113,19 @@ components:
         min_quantity:
           type: integer
           description: Minimum stock level
+        max_quantity:
+          type: integer
+          nullable: true
+          description: Maximum stock level
+        last_restocked:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last restock timestamp
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
         product_name:
           type: string
           description: Product name
@@ -2081,6 +2158,10 @@ components:
           type: integer
           default: 0
           description: Minimum stock level
+        max_quantity:
+          type: integer
+          nullable: true
+          description: Maximum stock level
       required:
         - product_id
         - store_id
@@ -2094,6 +2175,13 @@ components:
         min_quantity:
           type: integer
           description: Minimum stock level
+        max_quantity:
+          type: integer
+          nullable: true
+          description: Maximum stock level
+        low_stock_threshold:
+          type: integer
+          description: Alias for min_quantity
 
     # Order Schemas
     Order:
@@ -2210,7 +2298,6 @@ components:
                 description: Quantity to order
             required:
               - product_id
-              - store_id
               - quantity
           description: Order items
       required:
@@ -2303,6 +2390,9 @@ components:
         age_range:
           type: string
           description: Customer age range
+        image_url:
+          type: string
+          description: URL to customer image
         published:
           type: boolean
           description: Whether testimonial is published
@@ -2310,6 +2400,10 @@ components:
           type: string
           format: date-time
           description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
       required:
         - id
         - customer_name
@@ -2331,6 +2425,9 @@ components:
         age_range:
           type: string
           description: Customer age range
+        image_url:
+          type: string
+          description: URL to customer image
       required:
         - customer_name
         - testimonial_text
