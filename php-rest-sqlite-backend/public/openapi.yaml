@@ -2169,6 +2169,12 @@ components:
     InventoryUpdateRequest:
       type: object
       properties:
+        product_id:
+          type: integer
+          description: Product ID (to move inventory to another product)
+        store_id:
+          type: integer
+          description: Store ID (to move inventory to another store)
         quantity:
           type: integer
           description: New stock quantity
@@ -2213,18 +2219,46 @@ components:
         phone_number:
           type: string
           description: Contact phone number
+        whatsapp_number:
+          type: string
+          description: WhatsApp contact number
         subtotal:
           type: number
           format: float
           description: Order subtotal
+        shipping_cost:
+          type: number
+          format: float
+          description: Shipping cost
         discount_amount:
           type: number
           format: float
           description: Total discount applied
+        tax_rate:
+          type: number
+          format: float
+          description: Tax rate applied
+        tax_amount:
+          type: number
+          format: float
+          description: Tax amount
+        coupon_code:
+          type: string
+          description: Coupon code applied
         total:
           type: number
           format: float
           description: Final order total
+        tracking_number:
+          type: string
+          description: Shipping tracking number
+        notes:
+          type: string
+          description: Order notes
+        shipping_date:
+          type: string
+          format: date-time
+          description: Date when order was shipped
         items:
           type: array
           items:
@@ -2282,6 +2316,29 @@ components:
         phone_number:
           type: string
           description: Contact phone number
+        whatsapp_number:
+          type: string
+          description: WhatsApp contact number
+        coupon_code:
+          type: string
+          description: Coupon code to apply
+        referral_code:
+          type: string
+          description: Referral code to apply
+        discount_amount:
+          type: number
+          format: float
+          description: Direct discount amount
+        shipping_cost:
+          type: number
+          format: float
+          description: Shipping cost
+        tax_region:
+          type: string
+          description: Region code for tax calculation
+        notes:
+          type: string
+          description: Order notes
         items:
           type: array
           items:
@@ -2317,6 +2374,16 @@ components:
         shipping_address:
           type: string
           description: Updated shipping address
+        tracking_number:
+          type: string
+          description: Shipping tracking number
+        shipping_cost:
+          type: number
+          format: float
+          description: Shipping cost
+        notes:
+          type: string
+          description: Order notes
 
     # Tax Schemas
     TaxRate:
