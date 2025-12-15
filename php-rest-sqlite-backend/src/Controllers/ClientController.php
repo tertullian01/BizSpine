@@ -46,6 +46,9 @@ SQL;
             $client['order_count'] = (int)$client['order_count'];
             $client['total_spent'] = (float)$client['total_spent'];
             $client['is_email_verified'] = isset($client['is_email_verified']) ? (int)$client['is_email_verified'] : 0;
+            unset($client['password_hash']);
+            unset($client['reset_token']);
+            unset($client['reset_expires_at']);
         }
 
         return $this->success($response, ['success' => true, 'data' => $clients]);
@@ -79,6 +82,9 @@ SQL;
         $client['order_count'] = (int)$client['order_count'];
         $client['total_spent'] = (float)$client['total_spent'];
         $client['is_email_verified'] = isset($client['is_email_verified']) ? (int)$client['is_email_verified'] : 0;
+        unset($client['password_hash']);
+        unset($client['reset_token']);
+        unset($client['reset_expires_at']);
 
         return $this->success($response, ['success' => true, 'data' => $client]);
     }

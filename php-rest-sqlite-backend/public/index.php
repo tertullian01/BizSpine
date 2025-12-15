@@ -94,7 +94,7 @@ $container->bind(\App\Controllers\TaxController::class, fn($c) => new \App\Contr
 $container->bind(\App\Controllers\ReturnController::class, fn($c) => new \App\Controllers\ReturnController($db));
 $container->bind(\App\Controllers\EmployeeController::class, fn($c) => new \App\Controllers\EmployeeController());
 $container->bind(\App\Controllers\SystemController::class, fn($c) => new \App\Controllers\SystemController($db));
-$container->bind(\App\Controllers\SetupController::class, fn($c) => new \App\Controllers\SetupController($config->getAll()));
+$container->bind(\App\Controllers\ClientController::class, fn($c) => new \App\Controllers\ClientController($db));
 
 // Add Metrics Middleware (must be first to measure all requests)
 $app->add(new \App\Middleware\MetricsMiddleware($container->get(\App\Services\Metrics::class)));
