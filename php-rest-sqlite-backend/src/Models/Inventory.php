@@ -15,7 +15,10 @@ class Inventory extends BaseModel
     public ?int $store_id;
     public ?int $quantity;
     public ?int $min_quantity;
+    public ?int $max_quantity = null;
     public ?string $last_restocked;
+    public ?string $created_at = null;
+    public ?string $updated_at = null;
 
     private static function getSelectQuery(): string
     {

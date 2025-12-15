@@ -114,6 +114,15 @@ SQL;
             return $this->error($response, 'Store not found', 404);
         }
 
+        // Check if inventory already exists
+        $existing = Inventory::fetchOne('SELECT id FROM inventory WHERE product_id = :pid AND store_id = :sid', [
+            ':pid' => (int)$body['product_id'],
+            ':sid' => (int)$body['store_id']
+        ]);
+        if ($existing) {
+            return $this->error($response, 'Inventory record already exists for this product and store', 409);
+        }
+
         $inventory = new Inventory();
         $inventory->product_id = (int)$body['product_id'];
         $inventory->store_id = (int)$body['store_id'];
@@ -135,29 +144,35 @@ SQL;
             return $this->error($response, 'Inventory record not found', 404);
         }
 
-        $updates = [];
-        $params = [':id' => $id];
-        if ($quantity !== null) {
-            $updates[] = 'quantity = :quantity';
-            $params[':quantity'] = $quantity;
-            $updates[] = 'last_restocked = datetime("now")';
-        }
-        if ($minQuantity !== null) {
-            $updates[] = 'min_quantity = :min_quantity';
-            $params[':min_quantity'] = $minQuantity;
-        }
-        if ($maxQuantity !== null) {
-            $updates[] = 'max_quantity = :max_quantity';
-            $params[':max_quantity'] = $maxQuantity;
+        // Handle alias for min_quantity
+        if (isset($body['low_stock_threshold']) && !isset($body['min_quantity'])) {
+            $body['min_quantity'] = $body['low_stock_threshold'];
         }
 
-        if (empty($updates)) {
+        $quantity = isset($body['quantity']) ? (int)$body['quantity'] : null;
+        $minQuantity = isset($body['min_quantity']) ? (int)$body['min_quantity'] : null;
+        $maxQuantity = isset($body['max_quantity']) ? (int)$body['max_quantity'] : null;
+
+        $hasUpdates = false;
+
+        if ($quantity !== null) {
+            $inventory->quantity = $quantity;
+            $inventory->last_restocked = date('Y-m-d H:i:s');
+            $hasUpdates = true;
+        }
+        if ($minQuantity !== null) {
+            $inventory->min_quantity = $minQuantity;
+            $hasUpdates = true;
+        }
+        if ($maxQuantity !== null) {
+            $inventory->max_quantity = $maxQuantity;
+            $hasUpdates = true;
+        }
+
+        if (!$hasUpdates) {
             throw new ValidationException('No valid fields to update');
         }
 
-        $inventory->quantity = $body['quantity'] ?? $inventory->quantity;
-        $inventory->min_quantity = $body['min_quantity'] ?? $inventory->min_quantity;
-        $inventory->max_quantity = $body['max_quantity'] ?? $inventory->max_quantity;
         $inventory->save();
 // Fetch the full record with names for the response
         $updatedInventory = Inventory::find($inventory->id);
