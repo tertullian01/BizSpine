@@ -291,6 +291,47 @@ SQL
                 $migrations[] = "Added 'state' column to products table";
             }
 
+            // Fix orders table - add store_id
+            $stmt = $this->db->query("PRAGMA table_info(orders);");
+            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $columnNames = array_column($columns, 'name');
+
+            if (!in_array('store_id', $columnNames)) {
+                $this->db->exec("ALTER TABLE orders ADD COLUMN store_id INTEGER REFERENCES stores(id) ON DELETE SET NULL;");
+                $migrations[] = "Added 'store_id' column to orders table";
+            }
+
+            // Fix users table - add profile columns
+            $stmt = $this->db->query("PRAGMA table_info(users);");
+            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $columnNames = array_column($columns, 'name');
+
+            $userColumns = [
+                'first_name' => 'TEXT',
+                'last_name' => 'TEXT',
+                'country' => 'TEXT',
+                'street_line_1' => 'TEXT',
+                'street_line_2' => 'TEXT',
+                'city' => 'TEXT',
+                'state' => 'TEXT',
+                'postal_code' => 'TEXT',
+                'mobile_number' => 'TEXT',
+                'whatsapp_number' => 'TEXT',
+                'instagram_link' => 'TEXT',
+                'facebook_link' => 'TEXT',
+                'is_email_verified' => 'INTEGER DEFAULT 0',
+                'last_login' => 'DATETIME',
+                'reset_token' => 'TEXT',
+                'reset_expires_at' => 'DATETIME'
+            ];
+
+            foreach ($userColumns as $col => $type) {
+                if (!in_array($col, $columnNames)) {
+                    $this->db->exec("ALTER TABLE users ADD COLUMN $col $type;");
+                    $migrations[] = "Added '$col' column to users table";
+                }
+            }
+
             if (empty($migrations)) {
                 $output .= "<p>No migrations needed - database schema is up to date.</p>";
             } else {

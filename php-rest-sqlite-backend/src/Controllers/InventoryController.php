@@ -152,8 +152,41 @@ SQL;
         $quantity = isset($body['quantity']) ? (int)$body['quantity'] : null;
         $minQuantity = isset($body['min_quantity']) ? (int)$body['min_quantity'] : null;
         $maxQuantity = isset($body['max_quantity']) ? (int)$body['max_quantity'] : null;
+        $storeId = isset($body['store_id']) ? (int)$body['store_id'] : null;
+        $productId = isset($body['product_id']) ? (int)$body['product_id'] : null;
 
         $hasUpdates = false;
+
+        // Handle store or product changes
+        if (($storeId !== null && $storeId !== $inventory->store_id) || 
+            ($productId !== null && $productId !== $inventory->product_id)) {
+            
+            $newStoreId = $storeId ?? $inventory->store_id;
+            $newProductId = $productId ?? $inventory->product_id;
+
+            // Verify existence
+            if ($storeId !== null && !Store::find($newStoreId)) {
+                return $this->error($response, 'Store not found', 404);
+            }
+            if ($productId !== null && !Product::find($newProductId)) {
+                return $this->error($response, 'Product not found', 404);
+            }
+
+            // Check uniqueness
+            $existing = Inventory::fetchOne('SELECT id FROM inventory WHERE product_id = :pid AND store_id = :sid AND id != :id', [
+                ':pid' => $newProductId,
+                ':sid' => $newStoreId,
+                ':id' => $id
+            ]);
+            if ($existing) {
+                return $this->error($response, 'Inventory record already exists for this product and store', 409);
+            }
+
+            if ($storeId !== null) $inventory->store_id = $storeId;
+            if ($productId !== null) $inventory->product_id = $productId;
+            
+            $hasUpdates = true;
+        }
 
         if ($quantity !== null) {
             $inventory->quantity = $quantity;
