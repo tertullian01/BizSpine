@@ -87,10 +87,10 @@ class SystemController extends ApiController
 
                     $stmt = $this->db->prepare(<<<'SQL'
 INSERT INTO orders (
-    user_id, order_number, order_date, fulfillment_status, shipping_address, 
+    user_id, store_id, order_number, order_date, fulfillment_status, shipping_address, 
     phone_number, whatsapp_number, subtotal, shipping_cost, total, created_at
 ) VALUES (
-    :user_id, :order_number, :order_date, :status, :address, 
+    :user_id, :store_id, :order_number, :order_date, :status, :address, 
     :phone, :whatsapp, :subtotal, :shipping, :total, :created_at
 )
 SQL
@@ -98,6 +98,7 @@ SQL
 
                     $stmt->execute([
                         ':user_id' => $userId,
+                        ':store_id' => $storeId,
                         ':order_number' => $orderData['order_number'],
                         ':order_date' => $orderData['timestamp'],
                         ':status' => 'pending',

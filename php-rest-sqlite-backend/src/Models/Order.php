@@ -15,6 +15,7 @@ class Order extends BaseModel
     protected static string $tableName = 'orders';
 
     public ?int $user_id;
+    public ?int $store_id;
     public ?string $order_number;
     public ?string $order_date;
     public ?string $fulfillment_status;
@@ -140,8 +141,12 @@ class Order extends BaseModel
             $taxRate = $taxCalc['tax_rate'];
             $taxAmount = $taxCalc['tax_amount'];
             $total = $taxCalc['total_with_tax'];
+
+            $orderStoreId = isset($body['store_id']) ? (int)$body['store_id'] : ($validatedItems[0]['store_id'] ?? null);
+
             $order = new Order([
                 'user_id' => $userId,
+                'store_id' => $orderStoreId,
                 'order_number' => $orderNumber,
                 'shipping_address' => $body['shipping_address'],
                 'phone_number' => $body['phone_number'] ?? null,

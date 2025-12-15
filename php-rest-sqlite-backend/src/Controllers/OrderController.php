@@ -228,19 +228,23 @@ SQL;
             $taxRate = $taxCalc['tax_rate'];
             $taxAmount = $taxCalc['tax_amount'];
             $total = $taxCalc['total_with_tax'];
+
+            $orderStoreId = isset($body['store_id']) ? (int)$body['store_id'] : ($validatedItems[0]['store_id'] ?? null);
+
             $sql = <<<'SQL'
 INSERT INTO orders
-    (user_id, order_number, shipping_address, phone_number, whatsapp_number,
+    (user_id, store_id, order_number, shipping_address, phone_number, whatsapp_number,
      subtotal, discount_amount, coupon_code, shipping_cost, tax_rate, tax_amount, total, notes,
      order_date, created_at, updated_at)
 VALUES
-    (:user_id, :order_number, :shipping_address, :phone_number, :whatsapp_number,
+    (:user_id, :store_id, :order_number, :shipping_address, :phone_number, :whatsapp_number,
      :subtotal, :discount_amount, :coupon_code, :shipping_cost, :tax_rate, :tax_amount, :total, :notes,
      datetime("now"), datetime("now"), datetime("now"))
 SQL;
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 ':user_id' => $userId,
+                ':store_id' => $orderStoreId,
                 ':order_number' => $orderNumber,
                 ':shipping_address' => $body['shipping_address'],
                 ':phone_number' => $body['phone_number'] ?? null,
@@ -364,6 +368,11 @@ SQL;
             if (isset($body['notes'])) {
                 $updates[] = 'notes = :notes';
                 $params[':notes'] = $body['notes'];
+            }
+
+            if (isset($body['store_id'])) {
+                $updates[] = 'store_id = :store_id';
+                $params[':store_id'] = (int) $body['store_id'];
             }
 
             if (empty($updates)) {

@@ -157,6 +157,7 @@ class SetupController extends ApiController
             CREATE TABLE IF NOT EXISTS orders (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
+                store_id INTEGER,
                 order_number TEXT UNIQUE NOT NULL,
                 order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
                 fulfillment_status TEXT DEFAULT 'pending',
@@ -173,7 +174,8 @@ class SetupController extends ApiController
                 notes TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY(store_id) REFERENCES stores(id) ON DELETE SET NULL
             );
             SQL
             );
@@ -611,11 +613,12 @@ class SetupController extends ApiController
 
                 // Create order
                 $stmt = $db->prepare("
-                    INSERT INTO orders (user_id, order_number, shipping_address, subtotal, total, order_date, created_at)
-                    VALUES (:user_id, :order_number, :shipping_address, :subtotal, :total, :order_date, datetime('now'))
+                    INSERT INTO orders (user_id, store_id, order_number, shipping_address, subtotal, total, order_date, created_at)
+                    VALUES (:user_id, :store_id, :order_number, :shipping_address, :subtotal, :total, :order_date, datetime('now'))
                 ");
                 $stmt->execute([
                     ':user_id' => $userId,
+                    ':store_id' => $order['store_id'] ?? 1,
                     ':order_number' => $order['order_number'] ?? 'ORD-' . uniqid(),
                     ':shipping_address' => $order['shipping_address'] ?? 'N/A',
                     ':subtotal' => $order['subtotal'] ?? 0,
@@ -850,6 +853,16 @@ class SetupController extends ApiController
             if (!in_array('state', $columnNames)) {
                 $db->exec("ALTER TABLE products ADD COLUMN state TEXT DEFAULT 'For Sale';");
                 $migrations[] = "Added 'state' column to products table";
+            }
+
+            // Fix orders table - add store_id
+            $stmt = $db->query("PRAGMA table_info(orders);");
+            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $columnNames = array_column($columns, 'name');
+
+            if (!in_array('store_id', $columnNames)) {
+                $db->exec("ALTER TABLE orders ADD COLUMN store_id INTEGER;");
+                $migrations[] = "Added 'store_id' column to orders table";
             }
 
             $db->exec('CREATE INDEX IF NOT EXISTS idx_testimonials_created ON testimonials(created_at);');
