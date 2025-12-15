@@ -151,8 +151,8 @@ SQL;
             if (!isset($item['product_id']) || !is_numeric($item['product_id'])) {
                 return $this->error($response, 'Product ID is required for all items', 400);
             }
-            if (!isset($item['store_id']) || !is_numeric($item['store_id'])) {
-                return $this->error($response, 'Store ID is required for all items', 400);
+            if ((!isset($item['store_id']) || !is_numeric($item['store_id'])) && (!isset($body['store_id']) || !is_numeric($body['store_id']))) {
+                return $this->error($response, 'Store ID is required for all items or at the order level', 400);
             }
             if (!isset($item['quantity']) || !is_numeric($item['quantity']) || $item['quantity'] <= 0) {
                 return $this->error($response, 'Valid quantity is required for all items', 400);
@@ -166,7 +166,7 @@ SQL;
             $validatedItems = [];
             foreach ($body['items'] as $item) {
                 $productId = (int) $item['product_id'];
-                $storeId = (int) $item['store_id'];
+                $storeId = isset($item['store_id']) ? (int) $item['store_id'] : (int) $body['store_id'];
                 $quantity = (int) $item['quantity'];
                 $stmt = $this->db->prepare('SELECT cost FROM products WHERE id = :id');
                 $stmt->execute([':id' => $productId]);

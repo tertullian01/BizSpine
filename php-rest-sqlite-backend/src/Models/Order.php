@@ -64,12 +64,14 @@ class Order extends BaseModel
             $subtotal = 0;
             $validatedItems = [];
             foreach ($body['items'] as $item) {
-                if (empty($item['product_id']) || empty($item['store_id']) || empty($item['quantity'])) {
-                    throw new \Exception('Each item must have product_id, store_id, and quantity');
+                $storeId = !empty($item['store_id']) ? $item['store_id'] : ($body['store_id'] ?? null);
+
+                if (empty($item['product_id']) || empty($storeId) || empty($item['quantity'])) {
+                    throw new \Exception('Each item must have product_id, store_id (or order store_id), and quantity');
                 }
 
                 $productId = (int) $item['product_id'];
-                $storeId = (int) $item['store_id'];
+                $storeId = (int) $storeId;
                 $quantity = (int) $item['quantity'];
                 if ($quantity <= 0) {
                     throw new \Exception('Quantity must be greater than 0');
