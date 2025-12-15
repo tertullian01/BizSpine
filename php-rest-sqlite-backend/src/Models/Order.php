@@ -63,6 +63,7 @@ class Order extends BaseModel
             $orderNumber = 'ORD-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
             $subtotal = 0;
             $validatedItems = [];
+            $unavailableItems = [];
             foreach ($body['items'] as $item) {
                 $storeId = !empty($item['store_id']) ? $item['store_id'] : ($body['store_id'] ?? null);
 
@@ -79,7 +80,14 @@ class Order extends BaseModel
 
                 $product = Product::find($productId);
                 if (!$product) {
-                    throw new \Exception("Product with ID $productId not found");
+                    $unavailableItems[] = [
+                        'product_id' => $productId,
+                        'product_name' => 'Unknown',
+                        'requested_quantity' => $quantity,
+                        'available_quantity' => 0,
+                        'reason' => "Product with ID $productId not found"
+                    ];
+                    continue;
                 }
 
                 $unitPrice = (float) $product->cost;
@@ -87,11 +95,25 @@ class Order extends BaseModel
                 $subtotal += $itemSubtotal;
                 $inventory = Inventory::fetchOne('SELECT * FROM inventory WHERE product_id = :product_id AND store_id = :store_id', [':product_id' => $productId, ':store_id' => $storeId]);
                 if (!$inventory) {
-                    throw new \Exception("Product not available at selected store");
+                    $unavailableItems[] = [
+                        'product_id' => $productId,
+                        'product_name' => $product->name,
+                        'requested_quantity' => $quantity,
+                        'available_quantity' => 0,
+                        'reason' => "Product '{$product->name}' (ID: $productId) is not available at the selected store"
+                    ];
+                    continue;
                 }
 
                 if ($inventory->quantity < $quantity) {
-                    throw new \Exception("Insufficient inventory for product ID $productId (available: {$inventory->quantity}, requested: $quantity)");
+                    $unavailableItems[] = [
+                        'product_id' => $productId,
+                        'product_name' => $product->name,
+                        'requested_quantity' => $quantity,
+                        'available_quantity' => $inventory->quantity,
+                        'reason' => "Insufficient inventory for product '{$product->name}' (ID: $productId). Available: {$inventory->quantity}, Requested: $quantity"
+                    ];
+                    continue;
                 }
 
                 $validatedItems[] = [
@@ -102,6 +124,13 @@ class Order extends BaseModel
                     'subtotal' => $itemSubtotal,
                     'inventory' => $inventory,
                 ];
+            }
+
+            if (!empty($unavailableItems)) {
+                throw new \Exception(json_encode([
+                    'error' => 'Some items are not available',
+                    'unavailable_items' => $unavailableItems
+                ]));
             }
 
             $hasCoupon = !empty($body['coupon_code']);

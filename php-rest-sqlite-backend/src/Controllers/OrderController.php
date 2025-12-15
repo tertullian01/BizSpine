@@ -164,31 +164,53 @@ SQL;
             $orderNumber = 'ORD-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
             $subtotal = 0;
             $validatedItems = [];
+            $unavailableItems = [];
             foreach ($body['items'] as $item) {
                 $productId = (int) $item['product_id'];
                 $storeId = isset($item['store_id']) ? (int) $item['store_id'] : (int) $body['store_id'];
                 $quantity = (int) $item['quantity'];
-                $stmt = $this->db->prepare('SELECT cost FROM products WHERE id = :id');
+                $stmt = $this->db->prepare('SELECT cost, name FROM products WHERE id = :id');
                 $stmt->execute([':id' => $productId]);
                 $product = $stmt->fetch(PDO::FETCH_ASSOC);
                 if (!$product) {
-                    throw new \Exception("Product with ID $productId not found");
+                    $unavailableItems[] = [
+                        'product_id' => $productId,
+                        'product_name' => 'Unknown',
+                        'requested_quantity' => $quantity,
+                        'available_quantity' => 0,
+                        'reason' => "Product with ID $productId not found"
+                    ];
+                    continue;
                 }
 
                 $unitPrice = (float) $product['cost'];
                 $itemSubtotal = $unitPrice * $quantity;
-                $subtotal += $itemSubtotal;
                 $stmt = $this->db->prepare('SELECT quantity FROM inventory WHERE product_id = :product_id AND store_id = :store_id');
                 $stmt->execute([':product_id' => $productId, ':store_id' => $storeId]);
                 $inventory = $stmt->fetch(PDO::FETCH_ASSOC);
                 if (!$inventory) {
-                    throw new \Exception("Product not available at selected store");
+                    $unavailableItems[] = [
+                        'product_id' => $productId,
+                        'product_name' => $product['name'],
+                        'requested_quantity' => $quantity,
+                        'available_quantity' => 0,
+                        'reason' => "Product '{$product['name']}' (ID: $productId) is not available at the selected store"
+                    ];
+                    continue;
                 }
 
                 if ($inventory['quantity'] < $quantity) {
-                    throw new \Exception("Insufficient inventory for product ID $productId (available: {$inventory['quantity']}, requested: $quantity)");
+                    $unavailableItems[] = [
+                        'product_id' => $productId,
+                        'product_name' => $product['name'],
+                        'requested_quantity' => $quantity,
+                        'available_quantity' => (int)$inventory['quantity'],
+                        'reason' => "Insufficient inventory for product '{$product['name']}' (ID: $productId). Available: {$inventory['quantity']}, Requested: $quantity"
+                    ];
+                    continue;
                 }
 
+                $subtotal += $itemSubtotal;
                 $validatedItems[] = [
                     'product_id' => $productId,
                     'store_id' => $storeId,
@@ -196,6 +218,16 @@ SQL;
                     'unit_price' => $unitPrice,
                     'subtotal' => $itemSubtotal
                 ];
+            }
+
+            if (!empty($unavailableItems)) {
+                $this->db->rollBack();
+                $response->getBody()->write(json_encode([
+                    'success' => false,
+                    'error' => 'Some items are not available',
+                    'unavailable_items' => $unavailableItems
+                ]));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
             }
 
             $hasCoupon = !empty($body['coupon_code']);
