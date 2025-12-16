@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\User;
+use App\Models\Order;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
@@ -18,6 +19,32 @@ class UserController extends ApiController
         }
 
         return $this->success($response, $user);
+    }
+
+    public function getUserOrders(Request $request, Response $response, array $args): Response
+    {
+        $id = (int) $args['id'];
+        $user = User::find($id);
+
+        if (!$user) {
+            return $this->error($response, 'User not found', 404);
+        }
+
+        $sql = <<<'SQL'
+SELECT 
+    o.*,
+    u.email as user_email
+FROM orders o
+LEFT JOIN users u ON o.user_id = u.id
+WHERE o.user_id = :user_id
+ORDER BY o.order_date DESC
+SQL;
+        $orders = Order::fetchAll($sql, [':user_id' => $id]);
+        foreach ($orders as $order) {
+            $order->items = $order->getItems();
+        }
+
+        return $this->success($response, $orders);
     }
 
     public function getAllUsers(Request $request, Response $response): Response

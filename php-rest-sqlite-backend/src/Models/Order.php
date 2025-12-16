@@ -29,6 +29,8 @@ class Order extends BaseModel
     public ?float $shipping_cost;
     public ?float $total;
     public ?string $tracking_number;
+    public ?string $shipping_carrier;
+    public ?string $shipping_method;
     public ?string $notes;
     public ?string $created_at;
     public ?string $updated_at;
@@ -264,6 +266,14 @@ class Order extends BaseModel
                         $createShippingExpense = true;
                     }
                 }
+            }
+
+            if (isset($body['shipping_carrier'])) {
+                $this->shipping_carrier = $body['shipping_carrier'];
+            }
+
+            if (isset($body['shipping_method'])) {
+                $this->shipping_method = $body['shipping_method'];
             }
 
             if (isset($body['tracking_number'])) {

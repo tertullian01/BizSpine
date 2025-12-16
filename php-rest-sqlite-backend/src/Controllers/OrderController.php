@@ -382,6 +382,16 @@ SQL;
                 }
             }
 
+            if (isset($body['shipping_carrier'])) {
+                $updates[] = 'shipping_carrier = :shipping_carrier';
+                $params[':shipping_carrier'] = $body['shipping_carrier'];
+            }
+
+            if (isset($body['shipping_method'])) {
+                $updates[] = 'shipping_method = :shipping_method';
+                $params[':shipping_method'] = $body['shipping_method'];
+            }
+
             if (isset($body['tracking_number'])) {
                 $updates[] = 'tracking_number = :tracking_number';
                 $params[':tracking_number'] = $body['tracking_number'];
