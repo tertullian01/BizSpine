@@ -13,6 +13,9 @@ class UserReferral extends BaseModel
     public int $points_earned;
     public int $points_redeemed;
     public ?string $created_at;
+    public ?string $discount_type = null;
+    public ?float $discount_amount = null;
+    public ?string $status = null;
 
     // Additional properties for joined data
     public ?string $user_email;
@@ -39,6 +42,9 @@ class UserReferral extends BaseModel
             'points_balance' => 0,
             'points_earned' => 0,
             'points_redeemed' => 0,
+            'discount_type' => 'percentage',
+            'discount_amount' => 10.0,
+            'status' => 'active',
         ]);
         $referral->save();
         return $referral;

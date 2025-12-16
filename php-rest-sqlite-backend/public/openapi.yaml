@@ -1425,13 +1425,86 @@ paths:
                         user_email:
                           type: string
                           format: email
-    delete:
-      summary: Delete my referral code
-      description: Delete the authenticated user's referral code
+
+  /referrals/{id}:
+    get:
+      summary: Get referral by ID
+      description: Retrieve a specific referral code details (admin only)
       tags:
         - Referrals
       security:
         - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Referral ID
+      responses:
+        '200':
+          description: Referral details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ReferralInfo'
+                  - type: object
+                    properties:
+                      user_email:
+                        type: string
+                        format: email
+        '404':
+          description: Referral code not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update referral
+      description: Update referral code or points balance (admin only)
+      tags:
+        - Referrals
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Referral ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReferralUpdateRequest'
+      responses:
+        '200':
+          description: Referral updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferralInfo'
+        '404':
+          description: Referral code not found
+        '409':
+          description: Referral code already exists
+    delete:
+      summary: Delete referral by ID
+      description: Delete a specific referral code (admin only)
+      tags:
+        - Referrals
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Referral ID
       responses:
         '200':
           description: Referral code deleted successfully
@@ -1461,6 +1534,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReferralInfo'
+    delete:
+      summary: Delete my referral code
+      description: Delete the authenticated user's referral code
+      tags:
+        - Referrals
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Referral code deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Referral code not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /referrals/my/usage:
     get:
@@ -2812,6 +2905,9 @@ components:
     ReferralInfo:
       type: object
       properties:
+        id:
+          type: integer
+          description: Referral Record ID
         user_id:
           type: integer
           description: User ID
@@ -2841,6 +2937,26 @@ components:
         - points_earned
         - points_redeemed
         - points_balance
+
+    ReferralUpdateRequest:
+      type: object
+      properties:
+        referral_code:
+          type: string
+          description: Unique referral code
+        points_balance:
+          type: integer
+          description: Points balance
+        discount_type:
+          type: string
+          enum: [percentage, fixed]
+          description: Type of discount
+        discount_amount:
+          type: number
+          description: Amount of discount
+        status:
+          type: string
+          description: Status (active/inactive)
 
     ReferralUsage:
       type: object

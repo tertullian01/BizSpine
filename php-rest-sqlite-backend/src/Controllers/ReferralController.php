@@ -22,6 +22,7 @@ class ReferralController extends ApiController
             $dbPath = $config['db_path'] ?? $config['database']['database_path'] ?? null;
             $this->db = Database::get($dbPath);
         }
+        $this->ensureSchema();
     }
 
     private const POINTS_PER_REFERRAL = 100;
@@ -38,6 +39,83 @@ SQL;
         $stmt = $this->db->query($sql);
         $referrals = $stmt->fetchAll(PDO::FETCH_ASSOC);
         return $this->success($response, $referrals);
+    }
+
+    public function getById(Request $request, Response $response, array $args): Response
+    {
+        $id = (int)$args['id'];
+        $sql = <<<'SQL'
+SELECT 
+    r.*,
+    u.email as user_email
+FROM user_referrals r
+LEFT JOIN users u ON r.user_id = u.id
+WHERE r.id = :id
+SQL;
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $id]);
+        $referral = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$referral) {
+            return $this->error($response, 'Referral code not found', 404);
+        }
+
+        return $this->success($response, $referral);
+    }
+
+    public function update(Request $request, Response $response, array $args): Response
+    {
+        $id = (int)$args['id'];
+        $body = $request->getParsedBody();
+
+        $stmt = $this->db->prepare('SELECT id FROM user_referrals WHERE id = :id');
+        $stmt->execute([':id' => $id]);
+        if (!$stmt->fetch()) {
+            return $this->error($response, 'Referral code not found', 404);
+        }
+
+        $updates = [];
+        $params = [':id' => $id];
+
+        if (isset($body['referral_code']) && !empty($body['referral_code'])) {
+            // Check uniqueness
+            $checkStmt = $this->db->prepare('SELECT id FROM user_referrals WHERE referral_code = :code AND id != :id');
+            $checkStmt->execute([':code' => $body['referral_code'], ':id' => $id]);
+            if ($checkStmt->fetch()) {
+                return $this->error($response, 'Referral code already exists', 409);
+            }
+            $updates[] = 'referral_code = :code';
+            $params[':code'] = $body['referral_code'];
+        }
+
+        if (isset($body['points_balance'])) {
+            $updates[] = 'points_balance = :points_balance';
+            $params[':points_balance'] = (int)$body['points_balance'];
+        }
+
+        if (isset($body['discount_type'])) {
+            $updates[] = 'discount_type = :discount_type';
+            $params[':discount_type'] = $body['discount_type'];
+        }
+
+        if (isset($body['discount_amount'])) {
+            $updates[] = 'discount_amount = :discount_amount';
+            $params[':discount_amount'] = (float)$body['discount_amount'];
+        }
+
+        if (isset($body['status'])) {
+            $updates[] = 'status = :status';
+            $params[':status'] = $body['status'];
+        }
+
+        if (!empty($updates)) {
+            $updates[] = 'updated_at = datetime("now")';
+            $sql = 'UPDATE user_referrals SET ' . implode(', ', $updates) . ' WHERE id = :id';
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+        }
+
+        return $this->getById($request, $response, ['id' => $id]);
     }
 
     public function getMyReferral(Request $request, Response $response): Response
@@ -93,6 +171,20 @@ SQL;
 
         $stmt = $this->db->prepare('DELETE FROM user_referrals WHERE user_id = :user_id');
         $stmt->execute([':user_id' => $userId]);
+
+        if ($stmt->rowCount() === 0) {
+            return $this->error($response, 'Referral code not found', 404);
+        }
+
+        return $this->success($response, ['message' => 'Referral code deleted successfully']);
+    }
+
+    public function delete(Request $request, Response $response, array $args): Response
+    {
+        $id = (int)$args['id'];
+
+        $stmt = $this->db->prepare('DELETE FROM user_referrals WHERE id = :id');
+        $stmt->execute([':id' => $id]);
 
         if ($stmt->rowCount() === 0) {
             return $this->error($response, 'Referral code not found', 404);
@@ -180,7 +272,7 @@ SQL;
         while ($attempt < $maxAttempts) {
             $code = $this->generateReferralCode();
             try {
-                $stmt = $this->db->prepare("INSERT INTO user_referrals (user_id, referral_code, created_at, updated_at) VALUES (:user_id, :code, datetime('now'), datetime('now'))");
+                $stmt = $this->db->prepare("INSERT INTO user_referrals (user_id, referral_code, discount_type, discount_amount, status, created_at, updated_at) VALUES (:user_id, :code, 'percentage', 10.0, 'active', datetime('now'), datetime('now'))");
                 $stmt->execute([':user_id' => $userId, ':code' => $code]);
 
                 $stmt = $this->db->prepare('SELECT * FROM user_referrals WHERE user_id = :user_id');
@@ -205,5 +297,22 @@ SQL;
             $code .= $characters[random_int(0, $max)];
         }
         return $code;
+    }
+
+    private function ensureSchema(): void
+    {
+        $stmt = $this->db->query("PRAGMA table_info(user_referrals)");
+        $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $columnNames = array_column($columns, 'name');
+
+        if (!in_array('discount_type', $columnNames)) {
+            $this->db->exec("ALTER TABLE user_referrals ADD COLUMN discount_type TEXT DEFAULT 'percentage'");
+        }
+        if (!in_array('discount_amount', $columnNames)) {
+            $this->db->exec("ALTER TABLE user_referrals ADD COLUMN discount_amount REAL DEFAULT 10.0");
+        }
+        if (!in_array('status', $columnNames)) {
+            $this->db->exec("ALTER TABLE user_referrals ADD COLUMN status TEXT DEFAULT 'active'");
+        }
     }
 }

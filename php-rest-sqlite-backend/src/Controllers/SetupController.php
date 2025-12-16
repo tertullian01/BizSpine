@@ -363,6 +363,9 @@ class SetupController extends ApiController
                 points_earned INTEGER DEFAULT 0,
                 points_redeemed INTEGER DEFAULT 0,
                 points_balance INTEGER DEFAULT 0,
+                discount_type TEXT DEFAULT 'percentage',
+                discount_amount REAL DEFAULT 10.0,
+                status TEXT DEFAULT 'active',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -881,6 +884,24 @@ class SetupController extends ApiController
             if (!in_array('store_id', $columnNames)) {
                 $db->exec("ALTER TABLE orders ADD COLUMN store_id INTEGER;");
                 $migrations[] = "Added 'store_id' column to orders table";
+            }
+
+            // Fix user_referrals table - add discount info and status
+            $stmt = $db->query("PRAGMA table_info(user_referrals);");
+            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $columnNames = array_column($columns, 'name');
+
+            if (!in_array('discount_type', $columnNames)) {
+                $db->exec("ALTER TABLE user_referrals ADD COLUMN discount_type TEXT DEFAULT 'percentage';");
+                $migrations[] = "Added 'discount_type' column to user_referrals table";
+            }
+            if (!in_array('discount_amount', $columnNames)) {
+                $db->exec("ALTER TABLE user_referrals ADD COLUMN discount_amount REAL DEFAULT 10.0;");
+                $migrations[] = "Added 'discount_amount' column to user_referrals table";
+            }
+            if (!in_array('status', $columnNames)) {
+                $db->exec("ALTER TABLE user_referrals ADD COLUMN status TEXT DEFAULT 'active';");
+                $migrations[] = "Added 'status' column to user_referrals table";
             }
 
             $db->exec('CREATE INDEX IF NOT EXISTS idx_testimonials_created ON testimonials(created_at);');
