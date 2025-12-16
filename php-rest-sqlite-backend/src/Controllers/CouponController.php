@@ -45,6 +45,19 @@ class CouponController extends ApiController
         return $this->success($response, $coupon);
     }
 
+    public function getByCode(Request $request, Response $response, array $args): Response
+    {
+        $code = $args['code'];
+        $stmt = $this->db->prepare('SELECT * FROM coupons WHERE UPPER(code) = :code');
+        $stmt->execute([':code' => strtoupper($code)]);
+        $coupon = $stmt->fetchObject('App\Models\Coupon');
+        if (!$coupon) {
+            return $this->error($response, "Coupon '{$code}' not found", 404);
+        }
+
+        return $this->success($response, $coupon);
+    }
+
     public function create(Request $request, Response $response): Response
     {
         $body = $request->getParsedBody();
@@ -237,7 +250,7 @@ SQL;
 
     public function validateCoupon(string $code, float $orderTotal, int $userId, int $orderId): array
     {
-        $stmt = $this->db->prepare('SELECT * FROM coupons WHERE code = :code AND is_active = 1');
+        $stmt = $this->db->prepare('SELECT * FROM coupons WHERE UPPER(code) = :code AND is_active = 1');
         $stmt->execute([':code' => strtoupper($code)]);
         $coupon = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$coupon) {

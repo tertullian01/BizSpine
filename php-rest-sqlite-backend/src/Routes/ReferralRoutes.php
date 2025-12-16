@@ -17,6 +17,7 @@ class ReferralRoutes
             $group->get('/my', [ReferralController::class, 'getMyReferral']);
             $group->get('/my/usage', [ReferralController::class, 'getMyReferralUsage']);
             $group->post('/redeem', [ReferralController::class, 'redeemPoints']);
+            $group->get('/code/{code}', [ReferralController::class, 'getByCode']);
             $group->get('/{id}', [ReferralController::class, 'getById']);
             $group->put('/{id}', [ReferralController::class, 'update']);
             $group->delete('/{id}', [ReferralController::class, 'delete']);

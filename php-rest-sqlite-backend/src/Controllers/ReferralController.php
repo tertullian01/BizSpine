@@ -63,6 +63,28 @@ SQL;
         return $this->success($response, $referral);
     }
 
+    public function getByCode(Request $request, Response $response, array $args): Response
+    {
+        $code = $args['code'];
+        $sql = <<<'SQL'
+SELECT 
+    r.*,
+    u.email as user_email
+FROM user_referrals r
+LEFT JOIN users u ON r.user_id = u.id
+WHERE r.referral_code = :code
+SQL;
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':code' => $code]);
+        $referral = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$referral) {
+            return $this->error($response, 'Referral code not found', 404);
+        }
+
+        return $this->success($response, $referral);
+    }
+
     public function update(Request $request, Response $response, array $args): Response
     {
         $id = (int)$args['id'];

@@ -1426,6 +1426,41 @@ paths:
                           type: string
                           format: email
 
+  /referrals/code/{code}:
+    get:
+      summary: Get referral by Code
+      description: Retrieve a specific referral code details by its code string
+      tags:
+        - Referrals
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Referral Code
+      responses:
+        '200':
+          description: Referral details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ReferralInfo'
+                  - type: object
+                    properties:
+                      user_email:
+                        type: string
+                        format: email
+        '404':
+          description: Referral code not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /referrals/{id}:
     get:
       summary: Get referral by ID
@@ -1633,6 +1668,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Coupon'
+
+  /coupons/code/{code}:
+    get:
+      summary: Get coupon by Code
+      description: Retrieve specific coupon details by code
+      tags:
+        - Coupons
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Coupon Code
+      responses:
+        '200':
+          description: Coupon details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Coupon'
+        '404':
+          description: Coupon not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /coupons/{id}:
     get:

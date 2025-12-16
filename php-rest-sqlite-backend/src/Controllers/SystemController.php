@@ -30,7 +30,7 @@ class SystemController extends ApiController
 
             foreach ($coupons as $code => $data) {
                 $stmt->execute([
-                    ':code' => $code,
+                    ':code' => strtoupper($code),
                     ':type' => 'percentage',
                     ':value' => $data['discount'],
                     ':desc' => $data['description']

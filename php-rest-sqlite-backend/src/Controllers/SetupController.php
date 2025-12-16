@@ -718,7 +718,7 @@ class SetupController extends ApiController
                     VALUES (:code, :discount_type, :discount_value, :min_purchase, :max_uses, :expires_at, 1, datetime('now'))
                 ");
                 $stmt->execute([
-                    ':code' => $coupon['code'],
+                    ':code' => strtoupper($coupon['code']),
                     ':discount_type' => $coupon['discount_type'] ?? 'percentage',
                     ':discount_value' => $coupon['discount_value'] ?? 0,
                     ':min_purchase' => $coupon['min_purchase'] ?? 0,
