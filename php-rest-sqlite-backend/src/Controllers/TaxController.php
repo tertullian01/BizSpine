@@ -19,11 +19,10 @@ class TaxController extends ApiController
     public function getAll(Request $request, Response $response): Response
     {
         $pagination = $this->paginationService->getPaginationParams($request);
-        $total = TaxRate::select()->where('is_active', '=', 1)->count();
+        $total = TaxRate::select()->count();
 
         // Use optimized query with specific columns and conditions
-        $rates = TaxRate::select(['id', 'name', 'rate', 'region', 'is_default', 'description'])
-                       ->where('is_active', '=', 1)
+        $rates = TaxRate::select(['id', 'name', 'rate', 'region', 'is_default', 'description', 'is_active'])
                        ->orderBy('name')
                        ->limit($pagination['limit'], $pagination['offset'])
                        ->get();
@@ -61,6 +60,57 @@ class TaxController extends ApiController
         }
 
         return $this->success($response, $rate);
+    }
+
+    public function getById(Request $request, Response $response, array $args): Response
+    {
+        $id = (int)$args['id'];
+        $rate = TaxRate::find($id);
+        if (!$rate) {
+            return $this->error($response, 'Tax rate not found', 404);
+        }
+        return $this->success($response, $rate);
+    }
+
+    public function update(Request $request, Response $response, array $args): Response
+    {
+        $id = (int)$args['id'];
+        $body = $request->getParsedBody();
+        
+        $rate = TaxRate::find($id);
+        if (!$rate) {
+            return $this->error($response, 'Tax rate not found', 404);
+        }
+
+        if (isset($body['name'])) $rate->name = $body['name'];
+        if (isset($body['rate'])) $rate->rate = (float)$body['rate'];
+        if (isset($body['region'])) $rate->region = $body['region'];
+        if (isset($body['is_default'])) $rate->is_default = $body['is_default'];
+        if (isset($body['is_active'])) $rate->is_active = $body['is_active'];
+        if (isset($body['description'])) $rate->description = $body['description'];
+
+        try {
+            $rate->save();
+            return $this->success($response, $rate);
+        } catch (\Exception $e) {
+            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function delete(Request $request, Response $response, array $args): Response
+    {
+        $id = (int)$args['id'];
+        $rate = TaxRate::find($id);
+        if (!$rate) {
+            return $this->error($response, 'Tax rate not found', 404);
+        }
+
+        try {
+            $rate->delete();
+            return $response->withStatus(204);
+        } catch (\Exception $e) {
+            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+        }
     }
 
     public function calculateTax(float $amount, ?string $region = null): array

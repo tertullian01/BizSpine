@@ -1078,7 +1078,7 @@ paths:
                 $ref: '#/components/schemas/Order'
 
   # Tax Rates
-  /tax-rates:
+  /tax/rates:
     get:
       summary: Get all tax rates
       description: Retrieve all configured tax rates
@@ -1114,7 +1114,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/TaxRate'
 
-  /tax-rates/default:
+  /tax/rates/default:
     get:
       summary: Get default tax rate
       description: Retrieve the default tax rate configuration
@@ -1127,6 +1127,81 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TaxRate'
+
+  /tax/rates/{id}:
+    get:
+      summary: Get tax rate by ID
+      description: Retrieve specific tax rate details
+      tags:
+        - Tax
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Tax Rate ID
+      responses:
+        '200':
+          description: Tax rate details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxRate'
+        '404':
+          description: Tax rate not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update tax rate
+      description: Modify tax rate configuration
+      tags:
+        - Tax
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Tax Rate ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaxRateUpdateRequest'
+      responses:
+        '200':
+          description: Tax rate updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxRate'
+        '404':
+          description: Tax rate not found
+    delete:
+      summary: Delete tax rate
+      description: Remove a tax rate
+      tags:
+        - Tax
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Tax Rate ID
+      responses:
+        '204':
+          description: Tax rate deleted
 
   # Testimonials
   /testimonials:
@@ -2643,6 +2718,9 @@ components:
         is_default:
           type: boolean
           description: Whether this is the default tax rate
+        is_active:
+          type: boolean
+          description: Whether this tax rate is active
         description:
           type: string
           description: Tax rate description
@@ -2674,6 +2752,29 @@ components:
       required:
         - name
         - rate
+
+    TaxRateUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Tax rate name
+        rate:
+          type: number
+          format: float
+          description: Tax rate percentage
+        region:
+          type: string
+          description: Geographic region
+        is_default:
+          type: boolean
+          description: Whether this is the default tax rate
+        is_active:
+          type: boolean
+          description: Whether this tax rate is active
+        description:
+          type: string
+          description: Tax rate description
 
     # Testimonial Schemas
     Testimonial:

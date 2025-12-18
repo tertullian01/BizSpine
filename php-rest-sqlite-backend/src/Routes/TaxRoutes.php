@@ -12,8 +12,14 @@ class TaxRoutes
 {
     public static function register(App $app): void
     {
-        $app->get('/tax/rates', [TaxController::class, 'getAll'])->add(AuthMiddleware::class);
-        $app->get('/tax/default', [TaxController::class, 'getDefault'])->add(AuthMiddleware::class);
-        $app->post('/tax/rates', [TaxController::class, 'create'])->add(AuthMiddleware::class);
+        $app->group('/tax/rates', function ($group) {
+            $group->get('', [TaxController::class, 'getAll']);
+            $group->post('', [TaxController::class, 'create']);
+            $group->get('/default', [TaxController::class, 'getDefault']);
+            $group->get('/region/{region}', [TaxController::class, 'getByRegion']);
+            $group->get('/{id:[0-9]+}', [TaxController::class, 'getById']);
+            $group->put('/{id:[0-9]+}', [TaxController::class, 'update']);
+            $group->delete('/{id:[0-9]+}', [TaxController::class, 'delete']);
+        })->add(AuthMiddleware::class);
     }
 }
