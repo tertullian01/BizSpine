@@ -475,19 +475,26 @@ SQL;
                 return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
             }
 
+            $paymentDate = $body['payment_date'] ?? date('Y-m-d H:i:s');
+            $notes = $body['notes'] ?? null;
+            if (!empty($body['transaction_id'])) {
+                $notes = ($notes ? $notes . "\n" : "") . "Transaction ID: " . $body['transaction_id'];
+            }
+
             $incomeSql = <<<'SQL'
 INSERT INTO income
     (order_id, amount, payment_method, payment_date, description, notes, created_at, updated_at)
 VALUES
-    (:order_id, :amount, :payment_method, datetime("now"), :description, :notes, datetime("now"), datetime("now"))
+    (:order_id, :amount, :payment_method, :payment_date, :description, :notes, datetime("now"), datetime("now"))
 SQL;
             $incomeStmt = $this->db->prepare($incomeSql);
             $incomeStmt->execute([
                 ':order_id' => $id,
                 ':amount' => (float) $body['amount'],
                 ':payment_method' => $body['payment_method'] ?? 'Unknown',
+                ':payment_date' => $paymentDate,
                 ':description' => "Payment for order {$order['order_number']}",
-                ':notes' => $body['notes'] ?? null,
+                ':notes' => $notes,
             ]);
             $this->db->commit();
             $response->getBody()->write(json_encode([
