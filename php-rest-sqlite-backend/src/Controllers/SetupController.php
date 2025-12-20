@@ -405,6 +405,21 @@ class SetupController extends ApiController
             SQL
             );
 
+            // Create settings table
+            $db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                key TEXT UNIQUE NOT NULL,
+                value TEXT,
+                group_name TEXT DEFAULT 'general',
+                type TEXT DEFAULT 'string',
+                description TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            SQL
+            );
+
             // Insert default store
             $db->exec("INSERT OR IGNORE INTO stores (name, description) VALUES ('Default Store', 'Default store location')");
 

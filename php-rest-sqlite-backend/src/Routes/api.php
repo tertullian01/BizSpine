@@ -39,6 +39,7 @@ $app->get('/cors-test', function ($request, $response) {
 \App\Routes\HealthRoutes::register($app);
 \App\Routes\SystemRoutes::register($app);
 \App\Routes\CategoryRoutes::register($app);
+\App\Routes\SettingsRoutes::register($app);
 
 // Customer routes
 $app->get('/customers/{id}', [\App\Controllers\ClientController::class, 'getById'])->add(\App\Middleware\AuthMiddleware::class);

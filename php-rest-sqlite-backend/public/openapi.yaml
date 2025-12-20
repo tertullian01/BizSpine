@@ -1533,6 +1533,120 @@ paths:
               schema:
                 $ref: '#/components/schemas/Expense'
 
+  /bookkeeping/expenses/{id}:
+    get:
+      summary: Get expense record by ID
+      description: Retrieve a specific expense transaction
+      tags:
+        - Bookkeeping
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Expense record ID
+      responses:
+        '200':
+          description: Expense record details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+        '404':
+          description: Expense record not found
+    put:
+      summary: Update expense record
+      description: Update an existing expense transaction
+      tags:
+        - Bookkeeping
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Expense record ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenseUpdateRequest'
+      responses:
+        '200':
+          description: Expense record updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+        '404':
+          description: Expense record not found
+    delete:
+      summary: Delete expense record
+      description: Remove an expense transaction
+      tags:
+        - Bookkeeping
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Expense record ID
+      responses:
+        '204':
+          description: Expense record deleted
+        '404':
+          description: Expense record not found
+
+  /bookkeeping/expenses/{id}/upload-receipt:
+    post:
+      summary: Upload expense receipt
+      description: Upload a receipt image for an expense
+      tags:
+        - Bookkeeping
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Expense record ID
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                receipt:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Receipt uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  file:
+                    type: object
+                    properties:
+                      url:
+                        type: string
+
   /bookkeeping/summary:
     get:
       summary: Get financial summary
@@ -1660,6 +1774,89 @@ paths:
           description: Category deleted
         '404':
           description: Category not found
+
+  # Settings
+  /settings:
+    get:
+      summary: Get all settings
+      description: Retrieve all application settings
+      tags:
+        - Settings
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of settings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Setting'
+    put:
+      summary: Update settings
+      description: Update one or more settings
+      tags:
+        - Settings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: string
+              example:
+                site_name: "My Awesome Shop"
+                site_email: "admin@example.com"
+                smtp_host: "smtp.mailtrap.io"
+                smtp_port: "2525"
+                smtp_username: "user"
+                smtp_password: "password"
+                smtp_encryption: "tls"
+      responses:
+        '200':
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated:
+                    type: object
+                    additionalProperties:
+                      type: string
+
+  /settings/logo:
+    post:
+      summary: Upload site logo
+      description: Upload a new logo for the site
+      tags:
+        - Settings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                logo:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Logo uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
 
   # Referrals
   /referrals:
@@ -3273,6 +3470,33 @@ components:
         - category
         - amount
 
+    ExpenseUpdateRequest:
+      type: object
+      properties:
+        vendor:
+          type: string
+          description: Vendor/supplier name
+        category:
+          type: string
+          description: Expense category
+        amount:
+          type: number
+          format: float
+          description: Expense amount
+        expense_date:
+          type: string
+          format: date-time
+          description: Expense date
+        description:
+          type: string
+          description: Expense description
+        receipt_image_url:
+          type: string
+          description: URL to receipt image
+        notes:
+          type: string
+          description: Additional notes
+
     FinancialSummary:
       type: object
       properties:
@@ -3725,3 +3949,5 @@ tags:
     description: Return and refund processing
   - name: Categories
     description: Bookkeeping category management
+  - name: Settings
+    description: Application configuration settings
