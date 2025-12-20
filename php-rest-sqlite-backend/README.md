@@ -148,16 +148,25 @@ php-rest-sqlite-backend/
    # Edit .env with your settings
    ```
 
-4. **Database setup:**
+4. **Initial Setup Script:**
    ```bash
    # Initialize database
    php protected/scripts/init_db.php
+   ```
 
+   **Additional Setup Scripts:**
+   ```bash
    # Add user roles
    php protected/scripts/add_user_roles.php
 
    # Add password reset functionality
    php protected/scripts/add_password_reset.php
+   ```
+
+   **Server Update Utility:**
+   To run all update scripts (useful for deployments):
+   ```bash
+   composer db:update
    ```
 
 5. **Run database migrations:**
@@ -227,12 +236,17 @@ The API will be available at `http://localhost:8000`
 # Run all tests
 composer test
 
-# Run specific test suite
-./vendor/bin/phpunit tests/Unit/
-./vendor/bin/phpunit tests/Integration/
+# Run with code coverage
+composer test:coverage
+```
+The coverage report will be generated in the `coverage-report/` directory. Open `index.html` to view it.
 
-# Run with coverage
-./vendor/bin/phpunit --coverage-html coverage/
+## Database Management
+
+### Migrations (Command Line)
+Run Phinx migrations to update the database schema:
+```bash
+./vendor/bin/phinx migrate
 ```
 
 ### Test Structure
