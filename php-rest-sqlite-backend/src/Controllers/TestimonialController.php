@@ -98,9 +98,39 @@ class TestimonialController extends ApiController
     public function getAll(Request $request, Response $response): Response
     {
         $pagination = $this->paginationService->getPaginationParams($request);
-        $total = Testimonial::count();
+        $total = Testimonial::select()->where('published', '=', 1)->count();
 
         // Include all columns with ordering
+        $testimonials = Testimonial::select(['*'])
+                                  ->where('published', '=', 1)
+                                  ->orderBy('created_at', 'DESC')
+                                  ->limit($pagination['limit'], $pagination['offset'])
+                                  ->get();
+
+        $result = $this->paginationService->formatPaginatedResponse($testimonials, $total, $pagination['page'], $pagination['limit']);
+
+        return $this->success($response, $result);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/testimonials/admin",
+     *     summary="Get all testimonials (Admin)",
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of all testimonials",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/Testimonial")),
+     *             @OA\Property(property="pagination", ref="#/components/schemas/Pagination")
+     *         )
+     *     )
+     * )
+     */
+    public function getAllAdmin(Request $request, Response $response): Response
+    {
+        $pagination = $this->paginationService->getPaginationParams($request);
+        $total = Testimonial::count();
+
         $testimonials = Testimonial::select(['*'])
                                   ->orderBy('created_at', 'DESC')
                                   ->limit($pagination['limit'], $pagination['offset'])
@@ -176,6 +206,12 @@ class TestimonialController extends ApiController
         // Validate email format only if provided
         if (isset($body['customer_email']) && !empty($body['customer_email']) && !filter_var($body['customer_email'], FILTER_VALIDATE_EMAIL)) {
             return $this->error($response, 'Invalid email format', 400);
+        }
+
+        // Validate age range
+        $validAgeRanges = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
+        if (isset($body['age_range']) && !empty($body['age_range']) && !in_array($body['age_range'], $validAgeRanges)) {
+            return $this->error($response, 'Invalid age range', 400);
         }
 
         try {

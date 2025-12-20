@@ -55,6 +55,30 @@ class DatabaseTestCase extends TestCase
             self::$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             self::$db->exec('PRAGMA foreign_keys = ON;');
 
+            // Patch schema for tests to ensure all columns exist
+            $schemaPatches = [
+                "ALTER TABLE income ADD COLUMN category TEXT",
+                "ALTER TABLE products ADD COLUMN image_url TEXT",
+                "ALTER TABLE product_reviews ADD COLUMN verified INTEGER DEFAULT 0",
+                "ALTER TABLE testimonials ADD COLUMN customer_email TEXT",
+                "ALTER TABLE products ADD COLUMN state TEXT DEFAULT 'For Sale'",
+                "ALTER TABLE testimonials ADD COLUMN published INTEGER DEFAULT 0",
+                "ALTER TABLE product_reviews ADD COLUMN published INTEGER DEFAULT 0",
+                "ALTER TABLE orders ADD COLUMN store_id INTEGER",
+                "ALTER TABLE testimonials ADD COLUMN updated_at DATETIME",
+                "ALTER TABLE product_reviews ADD COLUMN updated_at DATETIME",
+                "ALTER TABLE product_reviews ADD COLUMN order_id INTEGER",
+                "ALTER TABLE testimonials ADD COLUMN age_range TEXT",
+                "ALTER TABLE testimonials ADD COLUMN image_url TEXT"
+            ];
+            foreach ($schemaPatches as $patch) {
+                try {
+                    self::$db->exec($patch);
+                } catch (\PDOException $e) {
+                    // Ignore error if column already exists
+                }
+            }
+
             // Set the database connection for models
             BaseModel::setDatabase(self::$db);
 

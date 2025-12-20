@@ -235,7 +235,7 @@ SQL;
                 $this->db->rollBack();
                 $response->getBody()->write(json_encode([
                     'success' => false,
-                    'error' => 'Some items are not available',
+                    'error' => 'Insufficient inventory',
                     'unavailable_items' => $unavailableItems
                 ]));
                 return $response->withHeader('Content-Type', 'application/json')->withStatus(400);

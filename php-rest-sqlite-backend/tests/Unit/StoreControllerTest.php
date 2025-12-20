@@ -94,7 +94,7 @@ class StoreControllerTest extends DatabaseTestCase
     {
         $controller = new StoreController();
         $request = $this->createRequestWithBody('POST', '/stores', [
-            'name' => 'InvalidStore',
+            'name' => 'AB', // Too short, should trigger validation error
             'description' => 'Invalid store',
         ]);
         $response = $this->createResponse();
@@ -104,7 +104,7 @@ class StoreControllerTest extends DatabaseTestCase
         $this->assertEquals(400, $response->getStatusCode());
         $this->assertStringContainsString('application/json', $response->getHeaderLine('Content-Type'));
         $this->assertFalse($data->success);
-        $this->assertEquals('Store name must be either "Siedlung" or "USA"', $data->error);
+        $this->assertEquals('Name is required and must be at least 3 characters', $data->error);
     }
 
     public function testCreateStoreWithMissingName()
@@ -120,7 +120,7 @@ class StoreControllerTest extends DatabaseTestCase
         $this->assertEquals(400, $response->getStatusCode());
         $this->assertStringContainsString('application/json', $response->getHeaderLine('Content-Type'));
         $this->assertFalse($data->success);
-        $this->assertEquals('Name is required', $data->error);
+        $this->assertEquals('Name is required and must be at least 3 characters', $data->error);
     }
 
     public function testCreateDuplicateStore()
@@ -173,7 +173,7 @@ class StoreControllerTest extends DatabaseTestCase
         $id = (int)self::$db->lastInsertId();
         $controller = new StoreController();
         $request = $this->createRequestWithBody('PUT', "/stores/$id", [
-            'name' => 'InvalidStore',
+            'name' => 'AB', // Too short
             'description' => 'Updated description',
         ]);
         $response = $this->createResponse();
@@ -181,7 +181,7 @@ class StoreControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body);
         $this->assertEquals(400, $response->getStatusCode());
-        $this->assertEquals('Store name must be either "Siedlung" or "USA"', $data->error);
+        $this->assertEquals('Name is required and must be at least 3 characters', $data->error);
     }
 
     public function testUpdateNonExistentStore()

@@ -45,8 +45,8 @@ class StoreController extends ApiController
     public function create(Request $request, Response $response): Response
     {
         $body = $request->getParsedBody();
-        if (!isset($body['name']) || empty(trim($body['name']))) {
-            return $this->error($response, 'Name is required', 400);
+        if (!isset($body['name']) || empty(trim($body['name'])) || strlen(trim($body['name'])) < 3) {
+            return $this->error($response, 'Name is required and must be at least 3 characters', 400);
         }
 
         $name = trim($body['name']);
@@ -69,8 +69,8 @@ class StoreController extends ApiController
     {
         $id = (int)$args['id'];
         $body = $request->getParsedBody();
-        if (!isset($body['name']) || empty(trim($body['name']))) {
-            return $this->error($response, 'Name is required', 400);
+        if (!isset($body['name']) || empty(trim($body['name'])) || strlen(trim($body['name'])) < 3) {
+            return $this->error($response, 'Name is required and must be at least 3 characters', 400);
         }
 
         $name = trim($body['name']);

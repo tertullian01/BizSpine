@@ -64,7 +64,7 @@ class EmailService
         <body>
             <h2>Password Reset Request</h2>
             <p>You have requested to reset your password. Click the link below to reset it:</p>
-            <p><a href='https://nakednettle.com/reset.html?token={$token}'>Reset Password</a></p>
+            <p><a href='https://nakednettle.com/reset-password?token={$token}'>Reset Password</a></p>
             <p>If you didn't request this, please ignore this email.</p>
             <p>This link will expire in 1 hour.</p>
         </body>
