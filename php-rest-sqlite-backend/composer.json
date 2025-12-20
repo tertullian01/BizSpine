@@ -41,6 +41,7 @@
             "@stan",
             "@test"
         ],
-        "db:update": "php apply_updates.php"
+        "db:update": "php apply_updates.php",
+        "test:coverage": "phpunit --coverage-html coverage-report"
     }
 }
