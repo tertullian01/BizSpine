@@ -301,6 +301,34 @@ SQL
                 $migrations[] = "Added 'store_id' column to orders table";
             }
 
+            // Fix income table - add category
+            $stmt = $this->db->query("PRAGMA table_info(income);");
+            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $columnNames = array_column($columns, 'name');
+
+            if (!in_array('category', $columnNames)) {
+                $this->db->exec("ALTER TABLE income ADD COLUMN category TEXT;");
+                $this->db->exec('CREATE INDEX IF NOT EXISTS idx_income_category ON income(category);');
+                $migrations[] = "Added 'category' column to income table";
+            }
+
+            // Create categories table if not exists
+            $stmt = $this->db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='categories';");
+            if (!$stmt->fetch()) {
+                $this->db->exec(<<<'SQL'
+                CREATE TABLE categories (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    type TEXT NOT NULL,
+                    color TEXT,
+                    icon TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                SQL);
+                $migrations[] = "Created 'categories' table";
+            }
+
             // Fix users table - add profile columns
             $stmt = $this->db->query("PRAGMA table_info(users);");
             $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);

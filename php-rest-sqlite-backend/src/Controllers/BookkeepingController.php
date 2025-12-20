@@ -75,21 +75,81 @@ SQL;
         ]);
         $sql = <<<'SQL'
 INSERT INTO income 
-    (order_id, amount, payment_method, payment_date, description, notes, created_at, updated_at) 
+    (order_id, amount, payment_method, category, payment_date, description, notes, created_at, updated_at) 
 VALUES 
-    (:order_id, :amount, :payment_method, :payment_date, :description, :notes, datetime("now"), datetime("now"))
+    (:order_id, :amount, :payment_method, :category, :payment_date, :description, :notes, datetime("now"), datetime("now"))
 SQL;
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             ':order_id' => $body['order_id'] ?? null,
             ':amount' => (float) $body['amount'],
             ':payment_method' => $body['payment_method'] ?? null,
-            ':payment_date' => $body['payment_date'] ?? date('Y-m-d H:i:s'),
+            ':category' => $body['category'] ?? 'Sales',
+            ':payment_date' => $body['payment_date'] ?? $body['date'] ?? date('Y-m-d H:i:s'),
             ':description' => $body['description'] ?? null,
             ':notes' => $body['notes'] ?? null,
         ]);
         $id = (int) $this->db->lastInsertId();
         return $this->getIncomeById($request, $response->withStatus(201), ['id' => $id]);
+    }
+
+    public function updateIncome(Request $request, Response $response, array $args): Response
+    {
+        $id = (int) $args['id'];
+        $body = $request->getParsedBody();
+
+        $checkStmt = $this->db->prepare('SELECT id FROM income WHERE id = :id');
+        $checkStmt->execute([':id' => $id]);
+        if (!$checkStmt->fetch()) {
+            return $this->error($response, 'Income record not found', 404);
+        }
+
+        $this->validator->validate($body, [
+            'amount' => v::optional(v::floatVal()->positive()->setName('Amount')),
+        ]);
+
+        $updates = [];
+        $params = [':id' => $id];
+
+        if (isset($body['amount'])) {
+            $updates[] = 'amount = :amount';
+            $params[':amount'] = (float) $body['amount'];
+        }
+        if (isset($body['payment_method'])) {
+            $updates[] = 'payment_method = :payment_method';
+            $params[':payment_method'] = $body['payment_method'];
+        }
+        if (isset($body['category'])) {
+            $updates[] = 'category = :category';
+            $params[':category'] = $body['category'];
+        }
+        if (isset($body['payment_date']) || isset($body['date'])) {
+            $updates[] = 'payment_date = :payment_date';
+            $params[':payment_date'] = $body['payment_date'] ?? $body['date'];
+        }
+        if (isset($body['description'])) {
+            $updates[] = 'description = :description';
+            $params[':description'] = $body['description'];
+        }
+        if (isset($body['notes'])) {
+            $updates[] = 'notes = :notes';
+            $params[':notes'] = $body['notes'];
+        }
+
+        if (empty($updates)) {
+            return $this->getIncomeById($request, $response, ['id' => $id]);
+        }
+
+        $updates[] = 'updated_at = datetime("now")';
+        $sql = 'UPDATE income SET ' . implode(', ', $updates) . ' WHERE id = :id';
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            return $this->getIncomeById($request, $response, ['id' => $id]);
+        } catch (\PDOException $e) {
+            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+        }
     }
 
     public function deleteIncome(Request $request, Response $response, array $args): Response
@@ -119,7 +179,7 @@ LEFT JOIN orders o ON e.order_id = o.id
 ORDER BY e.expense_date DESC
 SQL;
         $stmt = $this->db->query($sql);
-        $expenses = $stmt->fetchAll(PDO::FETCH_CLASS, 'App\Models\Expense');
+        $expenses = $stmt->fetchAll(PDO::FETCH_OBJ);
         return $this->success($response, $expenses);
     }
 
@@ -142,7 +202,7 @@ ORDER BY e.expense_date DESC
 SQL;
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':category' => $category]);
-        $expenses = $stmt->fetchAll(PDO::FETCH_CLASS, 'App\Models\Expense');
+        $expenses = $stmt->fetchAll(PDO::FETCH_OBJ);
         return $this->success($response, $expenses);
     }
 
@@ -159,7 +219,7 @@ WHERE e.id = :id
 SQL;
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':id' => $id]);
-        $expense = $stmt->fetchObject('App\Models\Expense');
+        $expense = $stmt->fetchObject();
         if (!$expense) {
             return $this->error($response, 'Expense record not found', 404);
         }
@@ -186,7 +246,7 @@ SQL;
             ':vendor' => $body['vendor'] ?? null,
             ':category' => $body['category'],
             ':amount' => (float) $body['amount'],
-            ':expense_date' => $body['expense_date'] ?? date('Y-m-d H:i:s'),
+            ':expense_date' => $body['expense_date'] ?? $body['date'] ?? date('Y-m-d H:i:s'),
             ':description' => $body['description'] ?? null,
             ':receipt_image_url' => $body['receipt_image_url'] ?? null,
             ':notes' => $body['notes'] ?? null,
@@ -224,6 +284,11 @@ SQL;
         if (isset($body['amount'])) {
             $updates[] = 'amount = :amount';
             $params[':amount'] = (float) $body['amount'];
+        }
+
+        if (isset($body['expense_date']) || isset($body['date'])) {
+            $updates[] = 'expense_date = :expense_date';
+            $params[':expense_date'] = $body['expense_date'] ?? $body['date'];
         }
 
         if (isset($body['description'])) {

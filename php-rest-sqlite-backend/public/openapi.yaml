@@ -1422,6 +1422,79 @@ paths:
               schema:
                 $ref: '#/components/schemas/Income'
 
+  /bookkeeping/income/{id}:
+    get:
+      summary: Get income record by ID
+      description: Retrieve a specific income transaction
+      tags:
+        - Bookkeeping
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Income record ID
+      responses:
+        '200':
+          description: Income record details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Income'
+        '404':
+          description: Income record not found
+    put:
+      summary: Update income record
+      description: Update an existing income transaction
+      tags:
+        - Bookkeeping
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Income record ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncomeUpdateRequest'
+      responses:
+        '200':
+          description: Income record updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Income'
+        '404':
+          description: Income record not found
+    delete:
+      summary: Delete income record
+      description: Remove an income transaction
+      tags:
+        - Bookkeeping
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Income record ID
+      responses:
+        '204':
+          description: Income record deleted
+        '404':
+          description: Income record not found
+
   /bookkeeping/expenses:
     get:
       summary: Get all expense records
@@ -1475,6 +1548,118 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FinancialSummary'
+
+  # Categories
+  /bookkeeping/categories:
+    get:
+      summary: Get all categories
+      description: Retrieve a list of all bookkeeping categories
+      tags:
+        - Categories
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+    post:
+      summary: Create category
+      description: Create a new bookkeeping category
+      tags:
+        - Categories
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreateRequest'
+      responses:
+        '201':
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+
+  /bookkeeping/categories/{id}:
+    get:
+      summary: Get category by ID
+      description: Retrieve a specific category
+      tags:
+        - Categories
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Category ID
+      responses:
+        '200':
+          description: Category details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '404':
+          description: Category not found
+    put:
+      summary: Update category
+      description: Update an existing category
+      tags:
+        - Categories
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Category ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryUpdateRequest'
+      responses:
+        '200':
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '404':
+          description: Category not found
+    delete:
+      summary: Delete category
+      description: Delete a category
+      tags:
+        - Categories
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Category ID
+      responses:
+        '204':
+          description: Category deleted
+        '404':
+          description: Category not found
 
   # Referrals
   /referrals:
@@ -2932,6 +3117,9 @@ components:
         payment_method:
           type: string
           description: Payment method
+        category:
+          type: string
+          description: Income category
         payment_date:
           type: string
           format: date-time
@@ -2939,10 +3127,17 @@ components:
         description:
           type: string
           description: Income description
+        notes:
+          type: string
+          description: Additional notes
         created_at:
           type: string
           format: date-time
           description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
       required:
         - id
         - amount
@@ -2960,6 +3155,9 @@ components:
         payment_method:
           type: string
           description: Payment method
+        category:
+          type: string
+          description: Income category
         payment_date:
           type: string
           format: date-time
@@ -2967,8 +3165,35 @@ components:
         description:
           type: string
           description: Income description
+        notes:
+          type: string
+          description: Additional notes
       required:
         - amount
+
+    IncomeUpdateRequest:
+      type: object
+      properties:
+        amount:
+          type: number
+          format: float
+          description: Income amount
+        payment_method:
+          type: string
+          description: Payment method
+        category:
+          type: string
+          description: Income category
+        payment_date:
+          type: string
+          format: date-time
+          description: Payment date
+        description:
+          type: string
+          description: Income description
+        notes:
+          type: string
+          description: Additional notes
 
     Expense:
       type: object
@@ -2996,10 +3221,20 @@ components:
         description:
           type: string
           description: Expense description
+        receipt_image_url:
+          type: string
+          description: URL to receipt image
+        notes:
+          type: string
+          description: Additional notes
         created_at:
           type: string
           format: date-time
           description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
       required:
         - id
         - category
@@ -3028,6 +3263,12 @@ components:
         description:
           type: string
           description: Expense description
+        receipt_image_url:
+          type: string
+          description: URL to receipt image
+        notes:
+          type: string
+          description: Additional notes
       required:
         - category
         - amount
@@ -3065,6 +3306,76 @@ components:
         - total_expenses
         - profit
         - expenses_by_category
+
+    # Category Schemas
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Category ID
+        name:
+          type: string
+          description: Category name
+        type:
+          type: string
+          enum: [income, expense]
+          description: Category type
+        color:
+          type: string
+          description: Color code (hex)
+        icon:
+          type: string
+          description: Icon identifier
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - name
+        - type
+
+    CategoryCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Category name
+        type:
+          type: string
+          enum: [income, expense]
+          description: Category type
+        color:
+          type: string
+          description: Color code (hex)
+        icon:
+          type: string
+          description: Icon identifier
+      required:
+        - name
+        - type
+
+    CategoryUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Category name
+        type:
+          type: string
+          enum: [income, expense]
+          description: Category type
+        color:
+          type: string
+          description: Color code (hex)
+        icon:
+          type: string
+          description: Icon identifier
 
     # Referral Schemas
     ReferralInfo:
@@ -3412,3 +3723,5 @@ tags:
     description: Coupon and discount management
   - name: Returns
     description: Return and refund processing
+  - name: Categories
+    description: Bookkeeping category management

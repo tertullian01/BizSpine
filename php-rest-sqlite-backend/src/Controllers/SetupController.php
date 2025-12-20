@@ -266,6 +266,7 @@ class SetupController extends ApiController
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 order_id INTEGER,
                 amount REAL NOT NULL,
+                category TEXT,
                 payment_method TEXT,
                 payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
                 description TEXT,
@@ -273,6 +274,20 @@ class SetupController extends ApiController
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE SET NULL
+            );
+            SQL
+            );
+
+            // Create categories table
+            $db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                type TEXT NOT NULL,
+                color TEXT,
+                icon TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
             SQL
             );
@@ -416,6 +431,7 @@ class SetupController extends ApiController
             // Create indexes
             $db->exec('CREATE INDEX IF NOT EXISTS idx_income_order ON income(order_id);');
             $db->exec('CREATE INDEX IF NOT EXISTS idx_income_date ON income(payment_date);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_income_category ON income(category);');
             $db->exec('CREATE INDEX IF NOT EXISTS idx_expenses_order ON expenses(order_id);');
             $db->exec('CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category);');
             $db->exec('CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(expense_date);');

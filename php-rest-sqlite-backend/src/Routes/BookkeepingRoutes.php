@@ -17,6 +17,7 @@ class BookkeepingRoutes
             $group->get('/income/{id}', [BookkeepingController::class, 'getIncomeById']);
             $group->post('/income', [BookkeepingController::class, 'createIncome']);
             $group->delete('/income/{id}', [BookkeepingController::class, 'deleteIncome']);
+            $group->put('/income/{id}', [BookkeepingController::class, 'updateIncome']);
             $group->get('/expenses', [BookkeepingController::class, 'getAllExpenses']);
             $group->get('/expenses/{id}', [BookkeepingController::class, 'getExpenseById']);
             $group->post('/expenses', [BookkeepingController::class, 'createExpense']);

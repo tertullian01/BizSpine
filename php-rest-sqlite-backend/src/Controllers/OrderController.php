@@ -54,9 +54,10 @@ SQL;
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
-        $orders = $stmt->fetchAll(PDO::FETCH_CLASS, 'App\Models\Order');
+        $orders = $stmt->fetchAll(PDO::FETCH_OBJ);
         foreach ($orders as $order) {
             $order->items = $this->getOrderItems($order->id);
+            $order->payments = $this->getOrderPayments($order->id);
         }
 
         $result = $this->paginationService->formatPaginatedResponse($orders, $total, $page, $limit);
@@ -83,9 +84,10 @@ ORDER BY o.order_date DESC
 SQL;
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':user_id' => $userId]);
-        $orders = $stmt->fetchAll(PDO::FETCH_CLASS, 'App\Models\Order');
+        $orders = $stmt->fetchAll(PDO::FETCH_OBJ);
         foreach ($orders as $order) {
             $order->items = $this->getOrderItems($order->id);
+            $order->payments = $this->getOrderPayments($order->id);
         }
 
         return $this->success($response, $orders);
@@ -104,12 +106,13 @@ WHERE o.id = :id
 SQL;
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':id' => $id]);
-        $order = $stmt->fetchObject('App\Models\Order');
+        $order = $stmt->fetchObject();
         if (!$order) {
             return $this->error($response, 'Order not found', 404);
         }
 
         $order->items = $this->getOrderItems($order->id);
+        $order->payments = $this->getOrderPayments($order->id);
         return $this->success($response, $order);
     }
 
@@ -127,7 +130,15 @@ WHERE oi.order_id = :order_id
 SQL;
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':order_id' => $orderId]);
-        return $stmt->fetchAll(PDO::FETCH_CLASS, 'App\Models\OrderItem');
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    private function getOrderPayments(int $orderId): array
+    {
+        $sql = 'SELECT * FROM income WHERE order_id = :order_id ORDER BY payment_date DESC';
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':order_id' => $orderId]);
+        return $stmt->fetchAll(PDO::FETCH_CLASS, 'App\Models\Income');
     }
 
     public function create(Request $request, Response $response): Response

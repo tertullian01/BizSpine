@@ -95,6 +95,7 @@ $container->bind(\App\Controllers\ReturnController::class, fn($c) => new \App\Co
 $container->bind(\App\Controllers\EmployeeController::class, fn($c) => new \App\Controllers\EmployeeController());
 $container->bind(\App\Controllers\SystemController::class, fn($c) => new \App\Controllers\SystemController($db));
 $container->bind(\App\Controllers\ClientController::class, fn($c) => new \App\Controllers\ClientController($db));
+$container->bind(\App\Controllers\CategoryController::class, fn($c) => new \App\Controllers\CategoryController());
 
 // Add Metrics Middleware (must be first to measure all requests)
 $app->add(new \App\Middleware\MetricsMiddleware($container->get(\App\Services\Metrics::class)));
