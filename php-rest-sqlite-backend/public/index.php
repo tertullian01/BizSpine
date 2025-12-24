@@ -137,5 +137,22 @@ $app->add(new \App\Middleware\FileUploadMiddleware(
 // Load app routes
 require __DIR__ . '/../src/Routes/api.php';
 
+// Endpoint to retrieve database design
+$app->get('/db-design', function ($request, $response) use ($db) {
+    $design = [];
+    $tables = $db->query("SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($tables as $table) {
+        $tableName = $table['name'];
+        $design[$tableName] = [
+            'create_statement' => $table['sql'],
+            'columns' => $db->query("PRAGMA table_info(\"$tableName\")")->fetchAll(PDO::FETCH_ASSOC)
+        ];
+    }
+
+    $response->getBody()->write(json_encode($design, JSON_PRETTY_PRINT));
+    return $response->withHeader('Content-Type', 'application/json');
+});
+
 // Run app
 $app->run();

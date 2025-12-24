@@ -20,10 +20,12 @@ return [
         'production' => [
             'adapter' => 'sqlite',
             'name' => $dbPath,
+            'suffix' => '',
         ],
         'testing' => [
             'adapter' => 'sqlite',
             'name' => $testingDbPath,
+            'suffix' => '',
         ]
     ],
     'version_order' => 'creation'
