@@ -2,121 +2,117 @@
 
 namespace App\Controllers;
 
-use App\Services\Config;
-use App\Models\Setting;
-use App\Services\FileUploadService;
+use App\Services\Database;
+use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
 class SettingsController extends ApiController
 {
-    private FileUploadService $fileUploadService;
+    private PDO $db;
 
-    public function __construct(?FileUploadService $fileUploadService = null)
+    public function __construct(?PDO $db = null)
     {
-        $this->fileUploadService = $fileUploadService ?? new FileUploadService(new \App\Services\Logger());
+        if ($db) {
+            $this->db = $db;
+        } else {
+            $config = require __DIR__ . '/../../protected/config/config.php';
+            $dbPath = $config['db_path'] ?? $config['database']['database_path'] ?? null;
+            $this->db = Database::get($dbPath);
+        }
     }
 
     public function getAll(Request $request, Response $response): Response
     {
-        $settings = Setting::fetchAll("SELECT * FROM settings ORDER BY group_name, key");
-        foreach ($settings as $setting) {
-            if ($setting->key === 'smtp_password' && !empty($setting->value)) {
-                $setting->value = '********';
-            }
+        // Check if user is admin for full access, otherwise filter by is_public
+        $userId = $request->getAttribute('user_id');
+        $isAdmin = false;
+        
+        if ($userId) {
+            $stmt = $this->db->prepare('SELECT role FROM users WHERE id = :id');
+            $stmt->execute([':id' => $userId]);
+            $role = $stmt->fetchColumn();
+            $isAdmin = ($role === 'admin');
         }
-        return $this->success($response, $settings);
+
+        $sql = "SELECT * FROM settings";
+        if (!$isAdmin) {
+            $sql .= " WHERE is_public = 1";
+        }
+        $sql .= " ORDER BY group_name, key";
+
+        $stmt = $this->db->query($sql);
+        $settings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Group settings by group_name
+        $grouped = [];
+        foreach ($settings as $setting) {
+            $group = $setting['group_name'] ?? 'general';
+            if (!isset($grouped[$group])) {
+                $grouped[$group] = [];
+            }
+            $grouped[$group][] = $setting;
+        }
+
+        return $this->success($response, $grouped);
     }
 
     public function update(Request $request, Response $response): Response
     {
-        $body = $request->getParsedBody();
-        $updated = [];
-        $emailSettings = ['smtp_host', 'smtp_port', 'smtp_username', 'smtp_password', 'smtp_encryption', 'smtp_from_email', 'smtp_from_name'];
+        // Admin only
+        $userId = $request->getAttribute('user_id');
+        $stmt = $this->db->prepare('SELECT role FROM users WHERE id = :id');
+        $stmt->execute([':id' => $userId]);
+        $role = $stmt->fetchColumn();
 
-        foreach ($body as $key => $value) {
-            // Skip empty password updates to avoid overwriting with empty string
-            if ($key === 'smtp_password' && empty($value)) {
-                continue;
-            }
-
-            $strValue = is_array($value) ? json_encode($value) : (string)$value;
-            
-            // Encrypt SMTP password
-            if ($key === 'smtp_password') {
-                $strValue = $this->encrypt($strValue);
-            }
-
-            $setting = Setting::fetchOne("SELECT * FROM settings WHERE key = :key", [':key' => $key]);
-            
-            $groupName = in_array($key, $emailSettings) ? 'email' : 'general';
-
-            if ($setting) {
-                $setting->value = $strValue;
-                if (in_array($key, $emailSettings)) {
-                    $setting->group_name = 'email';
-                }
-                $setting->updated_at = date('Y-m-d H:i:s');
-                $setting->save();
-            } else {
-                $setting = new Setting([
-                    'key' => $key,
-                    'value' => $strValue,
-                    'group_name' => $groupName,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'updated_at' => date('Y-m-d H:i:s')
-                ]);
-                $setting->save();
-            }
-            
-            if ($key === 'smtp_password') {
-                $updated[$key] = '********';
-            } else {
-                $updated[$key] = $setting->value;
-            }
+        if ($role !== 'admin') {
+            return $this->error($response, 'Unauthorized. Admin access required.', 403);
         }
 
-        return $this->success($response, ['updated' => $updated]);
-    }
-
-    public function uploadLogo(Request $request, Response $response): Response
-    {
-        $uploadedFiles = $request->getUploadedFiles();
-
-        if (!isset($uploadedFiles['logo'])) {
-            return $this->error($response, 'No logo uploaded', 400);
+        $body = $request->getParsedBody();
+        if (!is_array($body)) {
+            return $this->error($response, 'Invalid request body', 400);
         }
 
         try {
-            $result = $this->fileUploadService->uploadFile($uploadedFiles['logo'], 'logo', [
-                'allowed_extensions' => ['jpg', 'jpeg', 'png', 'svg', 'webp'],
-                'max_file_size' => 2 * 1024 * 1024 // 2MB
-            ]);
+            $this->db->beginTransaction();
 
-            $key = 'site_logo';
-            $setting = Setting::fetchOne("SELECT * FROM settings WHERE key = :key", [':key' => $key]);
-            if (!$setting) {
-                $setting = new Setting(['key' => $key, 'group_name' => 'appearance']);
+            foreach ($body as $key => $data) {
+                // Check if setting exists
+                $stmt = $this->db->prepare('SELECT id FROM settings WHERE key = :key');
+                $stmt->execute([':key' => $key]);
+                
+                if ($stmt->fetch()) {
+                    // Update
+                    $sql = 'UPDATE settings SET value = :value, updated_at = datetime("now") WHERE key = :key';
+                    $updateStmt = $this->db->prepare($sql);
+                    $updateStmt->execute([
+                        ':value' => is_array($data) ? $data['value'] : $data,
+                        ':key' => $key
+                    ]);
+                } else {
+                    // Create (if passing full object)
+                    if (is_array($data) && isset($data['value'])) {
+                        $sql = 'INSERT INTO settings (key, value, type, group_name, description, is_public) VALUES (:key, :value, :type, :group_name, :description, :is_public)';
+                        $insertStmt = $this->db->prepare($sql);
+                        $insertStmt->execute([
+                            ':key' => $key,
+                            ':value' => $data['value'],
+                            ':type' => $data['type'] ?? 'string',
+                            ':group_name' => $data['group_name'] ?? 'general',
+                            ':description' => $data['description'] ?? null,
+                            ':is_public' => $data['is_public'] ?? 0
+                        ]);
+                    }
+                }
             }
-            $setting->value = $result['url'];
-            $setting->updated_at = date('Y-m-d H:i:s');
-            $setting->save();
 
-            return $this->success($response, ['url' => $result['url']]);
+            $this->db->commit();
+            return $this->success($response, ['message' => 'Settings updated successfully']);
 
         } catch (\Exception $e) {
-            return $this->error($response, 'Upload failed: ' . $e->getMessage(), 400);
+            $this->db->rollBack();
+            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
         }
-    }
-
-    private function encrypt(string $value): string
-    {
-        $config = Config::getInstance();
-        $key = $config->get('jwt.secret') ?? 'default_secret_key';
-        $cipher = "aes-256-cbc";
-        $ivlen = openssl_cipher_iv_length($cipher);
-        $iv = openssl_random_pseudo_bytes($ivlen);
-        $ciphertext = openssl_encrypt($value, $cipher, $key, 0, $iv);
-        return base64_encode($iv . $ciphertext);
     }
 }

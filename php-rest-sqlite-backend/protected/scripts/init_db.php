@@ -73,6 +73,21 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 SQL
     );
 
+    $pdo->exec(<<<'SQL'
+CREATE TABLE IF NOT EXISTS settings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  key TEXT NOT NULL UNIQUE,
+  value TEXT,
+  type TEXT DEFAULT 'string',
+  group_name TEXT DEFAULT 'general',
+  description TEXT,
+  is_public INTEGER DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+SQL
+    );
+
     echo "Database initialized at: $dbPath\n";
 
     $stmt = $pdo->query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;");

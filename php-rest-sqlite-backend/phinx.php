@@ -1,30 +1,29 @@
 <?php
 
-$config = require __DIR__ . '/protected/config/config.php';
-$dbPath = $config['db_path'] ?? $config['database']['database_path'] ?? null;
+// Load the main application config to get the database path
+$appConfig = require __DIR__ . '/protected/config/config.php';
 
-if (!$dbPath) {
-    throw new \Exception("Database path not found in config.php");
-}
+// Get the database path from the app config
+$dbPath = $appConfig['database']['database_path'];
 
-return
-[
+// The testing database path (used for local testing, but good to have)
+$testingDbPath = __DIR__ . '/protected/database/testing.db';
+
+return [
     'paths' => [
         'migrations' => '%%PHINX_CONFIG_DIR%%/db/migrations',
         'seeds' => '%%PHINX_CONFIG_DIR%%/db/seeds'
     ],
     'environments' => [
         'default_migration_table' => 'phinxlog',
-        'default_environment' => 'development',
-        'development' => [
+        'default_environment' => 'production',
+        'production' => [
             'adapter' => 'sqlite',
             'name' => $dbPath,
-            'suffix' => ''
         ],
         'testing' => [
             'adapter' => 'sqlite',
-            'name' => __DIR__ . '/protected/database/testing',
-            'suffix' => ''
+            'name' => $testingDbPath,
         ]
     ],
     'version_order' => 'creation'

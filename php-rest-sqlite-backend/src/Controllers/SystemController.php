@@ -6,6 +6,8 @@ use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Exception;
+use Phinx\Console\PhinxApplication;
+use Phinx\Wrapper\TextWrapper;
 
 class SystemController extends ApiController
 {
@@ -242,149 +244,18 @@ SQL
         $output = "<h1>Database Migration Log</h1>";
 
         try {
-            $migrations = [];
-
-            // Fix testimonials table - add missing columns
-            $stmt = $this->db->query("PRAGMA table_info(testimonials);");
-            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $columnNames = array_column($columns, 'name');
-
-            if (!in_array('published', $columnNames)) {
-                $this->db->exec("ALTER TABLE testimonials ADD COLUMN published INTEGER DEFAULT 0;");
-                $this->db->exec('CREATE INDEX IF NOT EXISTS idx_testimonials_published ON testimonials(published);');
-                $migrations[] = "Added 'published' column to testimonials table";
+            if (!class_exists(TextWrapper::class)) {
+                throw new Exception("Phinx is not installed. Please run 'composer require robmorgan/phinx'");
             }
 
-            if (!in_array('customer_email', $columnNames)) {
-                $this->db->exec("ALTER TABLE testimonials ADD COLUMN customer_email TEXT;");
-                $this->db->exec('CREATE INDEX IF NOT EXISTS idx_testimonials_email ON testimonials(customer_email);');
-                $migrations[] = "Added 'customer_email' column to testimonials table";
-            }
+            $app = new PhinxApplication();
+            $wrapper = new TextWrapper($app, [
+                'configuration' => __DIR__ . '/../../phinx.php',
+                'parser' => 'php'
+            ]);
 
-            if (!in_array('age_range', $columnNames)) {
-                $this->db->exec("ALTER TABLE testimonials ADD COLUMN age_range TEXT;");
-                $migrations[] = "Added 'age_range' column to testimonials table";
-            }
-
-            if (!in_array('image_url', $columnNames)) {
-                $this->db->exec("ALTER TABLE testimonials ADD COLUMN image_url TEXT;");
-                $migrations[] = "Added 'image_url' column to testimonials table";
-            }
-
-            if (!in_array('updated_at', $columnNames)) {
-                $this->db->exec("ALTER TABLE testimonials ADD COLUMN updated_at DATETIME;");
-                $migrations[] = "Added 'updated_at' column to testimonials table";
-            }
-
-            // Fix products table - add image_url
-            $stmt = $this->db->query("PRAGMA table_info(products);");
-            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $columnNames = array_column($columns, 'name');
-
-            if (!in_array('image_url', $columnNames)) {
-                $this->db->exec("ALTER TABLE products ADD COLUMN image_url TEXT;");
-                $migrations[] = "Added 'image_url' column to products table";
-            }
-
-            if (!in_array('state', $columnNames)) {
-                $this->db->exec("ALTER TABLE products ADD COLUMN state TEXT DEFAULT 'For Sale';");
-                $migrations[] = "Added 'state' column to products table";
-            }
-
-            // Fix orders table - add store_id
-            $stmt = $this->db->query("PRAGMA table_info(orders);");
-            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $columnNames = array_column($columns, 'name');
-
-            if (!in_array('store_id', $columnNames)) {
-                $this->db->exec("ALTER TABLE orders ADD COLUMN store_id INTEGER REFERENCES stores(id) ON DELETE SET NULL;");
-                $migrations[] = "Added 'store_id' column to orders table";
-            }
-
-            // Fix income table - add category
-            $stmt = $this->db->query("PRAGMA table_info(income);");
-            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $columnNames = array_column($columns, 'name');
-
-            if (!in_array('category', $columnNames)) {
-                $this->db->exec("ALTER TABLE income ADD COLUMN category TEXT;");
-                $this->db->exec('CREATE INDEX IF NOT EXISTS idx_income_category ON income(category);');
-                $migrations[] = "Added 'category' column to income table";
-            }
-
-            // Create categories table if not exists
-            $stmt = $this->db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='categories';");
-            if (!$stmt->fetch()) {
-                $this->db->exec(<<<'SQL'
-                CREATE TABLE categories (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL,
-                    type TEXT NOT NULL,
-                    color TEXT,
-                    icon TEXT,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                );
-                SQL);
-                $migrations[] = "Created 'categories' table";
-            }
-
-            // Fix users table - add profile columns
-            $stmt = $this->db->query("PRAGMA table_info(users);");
-            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $columnNames = array_column($columns, 'name');
-
-            $userColumns = [
-                'first_name' => 'TEXT',
-                'last_name' => 'TEXT',
-                'country' => 'TEXT',
-                'street_line_1' => 'TEXT',
-                'street_line_2' => 'TEXT',
-                'city' => 'TEXT',
-                'state' => 'TEXT',
-                'postal_code' => 'TEXT',
-                'mobile_number' => 'TEXT',
-                'whatsapp_number' => 'TEXT',
-                'instagram_link' => 'TEXT',
-                'facebook_link' => 'TEXT',
-                'is_email_verified' => 'INTEGER DEFAULT 0',
-                'last_login' => 'DATETIME',
-                'reset_token' => 'TEXT',
-                'reset_expires_at' => 'DATETIME'
-            ];
-
-            foreach ($userColumns as $col => $type) {
-                if (!in_array($col, $columnNames)) {
-                    $this->db->exec("ALTER TABLE users ADD COLUMN $col $type;");
-                    $migrations[] = "Added '$col' column to users table";
-                }
-            }
-
-            // Fix coupon_usage table
-            $stmt = $this->db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='coupon_usage';");
-            if (!$stmt->fetch()) {
-                $this->db->exec(<<<'SQL'
-                CREATE TABLE coupon_usage (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    coupon_id INTEGER NOT NULL,
-                    user_id INTEGER NOT NULL,
-                    order_id INTEGER DEFAULT 0,
-                    discount_amount REAL NOT NULL,
-                    used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY(coupon_id) REFERENCES coupons(id) ON DELETE CASCADE,
-                    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-                );
-                SQL);
-                $this->db->exec('CREATE INDEX IF NOT EXISTS idx_coupon_usage_order ON coupon_usage(order_id);');
-                $migrations[] = "Created 'coupon_usage' table";
-            }
-
-            if (empty($migrations)) {
-                $output .= "<p>No migrations needed - database schema is up to date.</p>";
-            } else {
-                $output .= "<ul><li>" . implode("</li><li>", $migrations) . "</li></ul>";
-                $output .= "<p><strong>Migrations completed successfully.</strong></p>";
-            }
+            $log = $wrapper->getMigrate();
+            $output .= "<pre>" . htmlspecialchars($log) . "</pre>";
 
         } catch (Exception $e) {
             $output .= "<p style='color:red'><strong>Error:</strong> " . $e->getMessage() . "</p>";
