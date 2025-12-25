@@ -110,9 +110,6 @@ $app->add(new \App\Middleware\CorsMiddleware(
     allowCredentials: $corsConfig['allow_credentials'] ?? true
 ));
 
-// Add Body Parsing Middleware
-$app->addBodyParsingMiddleware();
-
 // Add Routing Middleware
 $app->addRoutingMiddleware();
 
@@ -133,6 +130,9 @@ $app->add(new \App\Middleware\FileUploadMiddleware(
     $container->get(\App\Services\Logger::class),
     $config->get('file_upload_middleware', [])
 ));
+
+// Add Body Parsing Middleware (Must run before FileUploadMiddleware to ensure parsed body is available and not overwritten)
+$app->addBodyParsingMiddleware();
 
 // Load app routes
 require __DIR__ . '/../src/Routes/api.php';
