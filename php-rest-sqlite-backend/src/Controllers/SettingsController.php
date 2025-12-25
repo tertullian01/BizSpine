@@ -124,17 +124,27 @@ class SettingsController extends ApiController
                         ':key' => $key
                     ]);
                 } else {
-                    // Create (if passing full object)
-                    if (is_array($data) && isset($data['value'])) {
-                        $sql = 'INSERT INTO settings (key, value, type, group_name, description, is_public) VALUES (:key, :value, :type, :group_name, :description, :is_public)';
+                    // Create
+                    $value = is_array($data) ? ($data['value'] ?? null) : $data;
+
+                    if ($value !== null) {
+                        $type = is_array($data) ? ($data['type'] ?? 'string') : 'string';
+                        $groupName = is_array($data) ? ($data['group_name'] ?? 'general') : 'general';
+
+                        // Auto-assign group for email settings
+                        if (!is_array($data) && (strpos($key, 'smtp_') === 0 || strpos($key, 'email_') === 0 || strpos($key, 'from_') === 0)) {
+                            $groupName = 'email';
+                        }
+
+                        $sql = 'INSERT INTO settings (key, value, type, group_name, description, is_public, created_at, updated_at) VALUES (:key, :value, :type, :group_name, :description, :is_public, datetime("now"), datetime("now"))';
                         $insertStmt = $this->db->prepare($sql);
                         $insertStmt->execute([
                             ':key' => $key,
-                            ':value' => $data['value'],
-                            ':type' => $data['type'] ?? 'string',
-                            ':group_name' => $data['group_name'] ?? 'general',
-                            ':description' => $data['description'] ?? null,
-                            ':is_public' => $data['is_public'] ?? 0
+                            ':value' => $value,
+                            ':type' => $type,
+                            ':group_name' => $groupName,
+                            ':description' => is_array($data) ? ($data['description'] ?? null) : null,
+                            ':is_public' => is_array($data) ? ($data['is_public'] ?? 0) : 0
                         ]);
                     }
                 }
@@ -277,8 +287,7 @@ class SettingsController extends ApiController
             if ($this->logger) {
                 $this->logger->info("Sending verification email to: " . $recipient);
             }
-            // Pass true for debug to see SMTP logs in the log file
-            $this->emailService->send($recipient, 'Email Verification', "Your verification code is: $code", true, true);
+            $this->emailService->send($recipient, 'Email Verification', "Your verification code is: $code", true);
             return $this->success($response, ['message' => 'Verification email sent to ' . $recipient]);
         } catch (\Exception $e) {
             if ($this->logger) {

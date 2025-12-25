@@ -29,17 +29,18 @@ class EmailService
     public function send(string $to, string $subject, string $body, bool $isHtml = true, bool $debug = false): void
     {
         $settings = $this->getSettings();
+        $password = $this->decrypt($settings['smtp_password'] ?? '');
 
         if ($this->logger) {
-            $this->logger->info("Attempting to send email", [
+            $context = [
                 'to' => $to,
                 'subject' => $subject,
                 'smtp_host' => $settings['smtp_host'] ?? 'not set',
                 'smtp_port' => $settings['smtp_port'] ?? 'not set',
-                'smtp_user' => $settings['smtp_username'] ?? 'not set',
                 'smtp_enc' => $settings['smtp_encryption'] ?? 'not set',
                 'from' => $settings['from_email'] ?? 'not set'
-            ]);
+            ];
+            $this->logger->info("Attempting to send email", $context);
         }
 
         if (!class_exists('PHPMailer\PHPMailer\PHPMailer')) {
@@ -59,7 +60,7 @@ class EmailService
         $mail->Host       = $settings['smtp_host'] ?? '';
         $mail->SMTPAuth   = true;
         $mail->Username   = $settings['smtp_username'] ?? '';
-        $mail->Password   = $this->decrypt($settings['smtp_password'] ?? '');
+        $mail->Password   = $password;
         $mail->SMTPSecure = $settings['smtp_encryption'] ?? 'tls';
         $mail->Port       = $settings['smtp_port'] ?? 587;
         
