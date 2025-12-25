@@ -16,6 +16,8 @@ class SettingsRoutes
             $group->get('', [SettingsController::class, 'getAll']);
             $group->put('', [SettingsController::class, 'update']);
             $group->post('/logo', [SettingsController::class, 'uploadLogo']);
+            $group->post('/verify-email', [SettingsController::class, 'sendVerificationEmail']);
+            $group->post('/verify-email/check', [SettingsController::class, 'verifyEmailCode']);
         })->add(AuthMiddleware::class);
     }
 }
