@@ -82,7 +82,11 @@ $container->bind(\App\Controllers\StoreController::class, fn($c) => new \App\Con
 $container->bind(\App\Controllers\BookkeepingController::class, fn($c) => new \App\Controllers\BookkeepingController(null, $c->get(\App\Services\FileUploadService::class)));
 $container->bind(\App\Controllers\TestimonialController::class, fn($c) => new \App\Controllers\TestimonialController(null, null, $c->get(\App\Services\FileUploadService::class)));
 $container->bind(\App\Controllers\ProductController::class, fn($c) => new \App\Controllers\ProductController($c->get(\App\Services\CacheableProductService::class), $c->get(\App\Services\Logger::class), $c->get(\App\Services\PaginationService::class)));
-$container->bind(\App\Controllers\OrderController::class, fn($c) => new \App\Controllers\OrderController($db, $c->get(\App\Services\PaginationService::class)));
+$container->bind(\App\Controllers\OrderController::class, fn($c) => new \App\Controllers\OrderController(
+    $db, 
+    $c->get(\App\Services\PaginationService::class),
+    $c->get(\App\Services\EmailService::class)
+));
 $container->bind(\App\Controllers\InventoryController::class, fn($c) => new \App\Controllers\InventoryController($db));
 $container->bind(\App\Controllers\ReviewController::class, fn($c) => new \App\Controllers\ReviewController($db));
 $container->bind(\App\Controllers\CouponController::class, fn($c) => new \App\Controllers\CouponController($db));

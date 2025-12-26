@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Exceptions\ValidationException;
 use App\Services\Database;
+use App\Services\EmailService;
 use App\Services\PaginationService;
 use App\Services\Validator;
 use PDO;
@@ -16,8 +17,9 @@ class OrderController extends ApiController
     private PDO $db;
     private Validator $validator;
     private PaginationService $paginationService;
+    private ?EmailService $emailService;
 
-    public function __construct(?PDO $db = null, ?PaginationService $paginationService = null)
+    public function __construct(?PDO $db = null, ?PaginationService $paginationService = null, ?EmailService $emailService = null)
     {
         if ($db) {
             $this->db = $db;
@@ -28,6 +30,7 @@ class OrderController extends ApiController
         }
         $this->validator = new Validator();
         $this->paginationService = $paginationService ?? new PaginationService();
+        $this->emailService = $emailService ?? new EmailService($this->db);
     }
 
     public function getAll(Request $request, Response $response): Response
@@ -149,6 +152,8 @@ SQL;
             return $this->error($response, 'Unauthorized', 401);
         }
 
+        $sendEmail = isset($body['sendEmail']) && $body['sendEmail'] === true;
+
         // Custom validation for order creation
         if (!isset($body['shipping_address']) || empty(trim($body['shipping_address']))) {
             return $this->error($response, 'Shipping Address is required', 400);
@@ -224,6 +229,7 @@ SQL;
                 $subtotal += $itemSubtotal;
                 $validatedItems[] = [
                     'product_id' => $productId,
+                    'product_name' => $product['name'],
                     'store_id' => $storeId,
                     'quantity' => $quantity,
                     'unit_price' => $unitPrice,
@@ -349,6 +355,33 @@ SQL;
             }
 
             $this->db->commit();
+
+            if ($sendEmail && $this->emailService) {
+                try {
+                    $stmt = $this->db->prepare('SELECT email FROM users WHERE id = :id');
+                    $stmt->execute([':id' => $userId]);
+                    $userEmail = $stmt->fetchColumn();
+
+                    if ($userEmail) {
+                        $subject = "Order Confirmation - $orderNumber";
+                        $content = "<h2>Thank you for your order!</h2>";
+                        $content .= "<p>Order Number: <strong>$orderNumber</strong></p>";
+                        $content .= "<h3>Items:</h3><ul>";
+                        foreach ($validatedItems as $item) {
+                            $content .= "<li>{$item['product_name']} (x{$item['quantity']}) - " . number_format($item['subtotal'], 2) . "</li>";
+                        }
+                        $content .= "</ul>";
+                        $content .= "<p><strong>Total: " . number_format($total, 2) . "</strong></p>";
+                        $content .= "<p>Shipping Address: {$body['shipping_address']}</p>";
+                        
+                        $this->emailService->send($userEmail, $subject, $content, true);
+                    }
+                } catch (\Exception $e) {
+                    // Log error but do not fail the request
+                    error_log('Failed to send order confirmation email: ' . $e->getMessage());
+                }
+            }
+
             return $this->getById($request, $response->withStatus(201), ['id' => $orderId]);
         } catch (\Exception $e) {
             $this->db->rollBack();
