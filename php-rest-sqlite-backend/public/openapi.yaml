@@ -3225,6 +3225,12 @@ components:
           type: number
           format: float
           description: Shipping cost
+        shipping_method:
+          type: string
+          description: Shipping method (e.g. Ground, Express)
+        shipping_carrier:
+          type: string
+          description: Shipping carrier (e.g. UPS, FedEx)
         tax_region:
           type: string
           description: Region code for tax calculation

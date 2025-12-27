@@ -122,7 +122,7 @@ class EmailTemplateController extends ApiController
         $body = $request->getParsedBody();
         try {
             $this->validator->validate($body, [
-                'name' => v::notEmpty()->slug()->setName('Name'),
+                'name' => v::notEmpty()->alnum('-_')->noWhitespace()->setName('Name'),
                 'subject' => v::notEmpty()->setName('Subject'),
                 'body' => v::notEmpty()->setName('Body'),
                 'store_id' => v::optional(v::intVal())->setName('Store ID'),

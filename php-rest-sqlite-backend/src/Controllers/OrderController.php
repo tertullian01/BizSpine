@@ -181,11 +181,13 @@ SQL;
             $subtotal = 0;
             $validatedItems = [];
             $unavailableItems = [];
+            $inventoryTracker = []; // Track reserved inventory within this request
+
             foreach ($body['items'] as $item) {
                 $productId = (int) $item['product_id'];
                 $storeId = isset($item['store_id']) ? (int) $item['store_id'] : (int) $body['store_id'];
                 $quantity = (int) $item['quantity'];
-                $stmt = $this->db->prepare('SELECT cost, name FROM products WHERE id = :id');
+                $stmt = $this->db->prepare('SELECT cost, name, size FROM products WHERE id = :id');
                 $stmt->execute([':id' => $productId]);
                 $product = $stmt->fetch(PDO::FETCH_ASSOC);
                 if (!$product) {
@@ -201,35 +203,42 @@ SQL;
 
                 $unitPrice = (float) $product['cost'];
                 $itemSubtotal = $unitPrice * $quantity;
-                $stmt = $this->db->prepare('SELECT quantity FROM inventory WHERE product_id = :product_id AND store_id = :store_id');
+                $stmt = $this->db->prepare('SELECT i.quantity, s.name as store_name FROM inventory i JOIN stores s ON i.store_id = s.id WHERE i.product_id = :product_id AND i.store_id = :store_id');
                 $stmt->execute([':product_id' => $productId, ':store_id' => $storeId]);
                 $inventory = $stmt->fetch(PDO::FETCH_ASSOC);
+
                 if (!$inventory) {
                     $unavailableItems[] = [
                         'product_id' => $productId,
                         'product_name' => $product['name'],
                         'requested_quantity' => $quantity,
                         'available_quantity' => 0,
-                        'reason' => "Product '{$product['name']}' (ID: $productId) is not available at the selected store"
+                        'reason' => "Product '{$product['name']}' (ID: $productId) is not available at Store ID $storeId"
                     ];
                     continue;
                 }
 
-                if ($inventory['quantity'] < $quantity) {
+                $trackerKey = "p{$productId}_s{$storeId}";
+                $reservedQuantity = $inventoryTracker[$trackerKey] ?? 0;
+                $availableQuantity = (int)$inventory['quantity'] - $reservedQuantity;
+
+                if ($availableQuantity < $quantity) {
                     $unavailableItems[] = [
                         'product_id' => $productId,
                         'product_name' => $product['name'],
                         'requested_quantity' => $quantity,
-                        'available_quantity' => (int)$inventory['quantity'],
-                        'reason' => "Insufficient inventory for product '{$product['name']}' (ID: $productId). Available: {$inventory['quantity']}, Requested: $quantity"
+                        'available_quantity' => $availableQuantity,
+                        'reason' => "Insufficient inventory for product '{$product['name']}' (ID: $productId) at {$inventory['store_name']}. Available: {$availableQuantity}, Requested: $quantity"
                     ];
                     continue;
                 }
 
+                $inventoryTracker[$trackerKey] = $reservedQuantity + $quantity;
                 $subtotal += $itemSubtotal;
                 $validatedItems[] = [
                     'product_id' => $productId,
                     'product_name' => $product['name'],
+                    'product_size' => $product['size'],
                     'store_id' => $storeId,
                     'quantity' => $quantity,
                     'unit_price' => $unitPrice,
@@ -360,29 +369,81 @@ SQL;
 
             $this->db->commit();
 
-            if ($sendEmail && $this->emailService) {
+            if ($this->emailService) {
                 try {
-                    $stmt = $this->db->prepare('SELECT email FROM users WHERE id = :id');
+                    $stmt = $this->db->prepare('SELECT email, display_name, first_name FROM users WHERE id = :id');
                     $stmt->execute([':id' => $userId]);
-                    $userEmail = $stmt->fetchColumn();
+                    $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                    if ($userEmail) {
-                        $itemsList = "<ul>";
-                        foreach ($validatedItems as $item) {
-                            $itemsList .= "<li>{$item['product_name']} (x{$item['quantity']}) - " . number_format($item['subtotal'], 2) . "</li>";
+                    $customerName = 'Customer';
+                    $customerEmail = null;
+                    if ($user) {
+                        $customerName = !empty($user['first_name']) ? $user['first_name'] : (!empty($user['display_name']) ? $user['display_name'] : 'Customer');
+                        $customerEmail = $user['email'];
+                    }
+
+                    $itemsTable = '<table width="100%" cellpadding="5" cellspacing="0" style="border-collapse: collapse;"><thead><tr><th align="left" style="border-bottom: 1px solid #eee;">Item</th><th align="center" style="border-bottom: 1px solid #eee;">Qty</th><th align="right" style="border-bottom: 1px solid #eee;">Price</th></tr></thead><tbody>';
+                    $itemsList = "<ul>";
+                    foreach ($validatedItems as $item) {
+                        $displayName = $item['product_name'];
+                        if (!empty($item['product_size'])) {
+                            $displayName .= " ({$item['product_size']})";
                         }
-                        $itemsList .= "</ul>";
-                        
-                        $this->emailService->sendTemplate($userEmail, 'order_confirmation', [
-                            'order_number' => $orderNumber,
-                            'items_list' => $itemsList,
-                            'total' => number_format($total, 2),
-                            'shipping_address' => $body['shipping_address']
-                        ], $orderStoreId);
+                        $formattedPrice = number_format($item['subtotal'], 2);
+                        $itemsList .= "<li>{$displayName} (x{$item['quantity']}) - " . $formattedPrice . "</li>";
+                        $itemsTable .= '<tr><td style="border-bottom: 1px solid #eee;">' . htmlspecialchars($displayName) . '</td><td align="center" style="border-bottom: 1px solid #eee;">' . $item['quantity'] . '</td><td align="right" style="border-bottom: 1px solid #eee;">' . $formattedPrice . '</td></tr>';
+                    }
+                    $itemsList .= "</ul>";
+                    $itemsTable .= '</tbody></table>';
+
+                    $placeholders = [
+                        'customer_name' => $customerName,
+                        'order_id' => $orderNumber,
+                        'order_number' => $orderNumber,
+                        'order_date' => date('Y-m-d H:i:s'),
+                        'customer_email' => $customerEmail,
+                        'customer_phone' => $body['phone_number'] ?? 'N/A',
+                        'items_table' => $itemsTable,
+                        'items_list' => $itemsList,
+                        'total_amount' => number_format($total, 2),
+                        'total' => number_format($total, 2),
+                        'shipping_method' => $body['shipping_method'] ?? 'Standard',
+                        'shipping_address' => $body['shipping_address']
+                    ];
+
+                    // Send to Customer
+                    if ($sendEmail && $customerEmail) {
+                        try {
+                            $this->emailService->sendTemplate($customerEmail, 'order_confirmation', $placeholders, $orderStoreId);
+                        } catch (\Exception $e) {
+                            error_log('Failed to send customer order confirmation: ' . $e->getMessage());
+                        }
+                    }
+
+                    // Send to Store/Admin
+                    $stmt = $this->db->query("SELECT value FROM settings WHERE key = 'order_confirmation_email'");
+                    $storeEmail = $stmt->fetchColumn();
+
+                    if (!$storeEmail) {
+                        $stmt = $this->db->query("SELECT value FROM settings WHERE key = 'site_email'");
+                        $storeEmail = $stmt->fetchColumn();
+                    }
+
+                    if ($storeEmail) {
+                        $emails = array_map('trim', explode(',', $storeEmail));
+                        foreach ($emails as $email) {
+                            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                                try {
+                                    $this->emailService->sendTemplate($email, 'store_order_confirmation', $placeholders, $orderStoreId);
+                                } catch (\Exception $e) {
+                                    error_log('Failed to send store order confirmation to ' . $email . ': ' . $e->getMessage());
+                                }
+                            }
+                        }
                     }
                 } catch (\Exception $e) {
                     // Log error but do not fail the request
-                    error_log('Failed to send order confirmation email: ' . $e->getMessage());
+                    error_log('Error preparing order emails: ' . $e->getMessage());
                 }
             }
 
