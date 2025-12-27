@@ -284,10 +284,12 @@ SQL;
 INSERT INTO orders
     (user_id, store_id, order_number, shipping_address, phone_number, whatsapp_number,
      subtotal, discount_amount, coupon_code, shipping_cost, tax_rate, tax_amount, total, notes,
+     shipping_method, shipping_carrier,
      order_date, created_at, updated_at)
 VALUES
     (:user_id, :store_id, :order_number, :shipping_address, :phone_number, :whatsapp_number,
      :subtotal, :discount_amount, :coupon_code, :shipping_cost, :tax_rate, :tax_amount, :total, :notes,
+     :shipping_method, :shipping_carrier,
      datetime("now"), datetime("now"), datetime("now"))
 SQL;
             $stmt = $this->db->prepare($sql);
@@ -306,6 +308,8 @@ SQL;
                 ':tax_amount' => $taxAmount,
                 ':total' => $total,
                 ':notes' => $body['notes'] ?? null,
+                ':shipping_method' => $body['shipping_method'] ?? null,
+                ':shipping_carrier' => $body['shipping_carrier'] ?? null,
             ]);
             $orderId = (int) $this->db->lastInsertId();
             $itemSql = <<<'SQL'

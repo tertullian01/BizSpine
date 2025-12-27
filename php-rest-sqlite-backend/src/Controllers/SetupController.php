@@ -171,6 +171,8 @@ class SetupController extends ApiController
                 shipping_cost REAL DEFAULT 0,
                 total REAL NOT NULL DEFAULT 0,
                 tracking_number TEXT,
+                shipping_method TEXT,
+                shipping_carrier TEXT,
                 notes TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -915,6 +917,16 @@ class SetupController extends ApiController
             if (!in_array('store_id', $columnNames)) {
                 $db->exec("ALTER TABLE orders ADD COLUMN store_id INTEGER;");
                 $migrations[] = "Added 'store_id' column to orders table";
+            }
+
+            if (!in_array('shipping_method', $columnNames)) {
+                $db->exec("ALTER TABLE orders ADD COLUMN shipping_method TEXT;");
+                $migrations[] = "Added 'shipping_method' column to orders table";
+            }
+
+            if (!in_array('shipping_carrier', $columnNames)) {
+                $db->exec("ALTER TABLE orders ADD COLUMN shipping_carrier TEXT;");
+                $migrations[] = "Added 'shipping_carrier' column to orders table";
             }
 
             // Fix user_referrals table - add discount info and status
