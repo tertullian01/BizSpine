@@ -363,18 +363,18 @@ SQL;
                     $userEmail = $stmt->fetchColumn();
 
                     if ($userEmail) {
-                        $subject = "Order Confirmation - $orderNumber";
-                        $content = "<h2>Thank you for your order!</h2>";
-                        $content .= "<p>Order Number: <strong>$orderNumber</strong></p>";
-                        $content .= "<h3>Items:</h3><ul>";
+                        $itemsList = "<ul>";
                         foreach ($validatedItems as $item) {
-                            $content .= "<li>{$item['product_name']} (x{$item['quantity']}) - " . number_format($item['subtotal'], 2) . "</li>";
+                            $itemsList .= "<li>{$item['product_name']} (x{$item['quantity']}) - " . number_format($item['subtotal'], 2) . "</li>";
                         }
-                        $content .= "</ul>";
-                        $content .= "<p><strong>Total: " . number_format($total, 2) . "</strong></p>";
-                        $content .= "<p>Shipping Address: {$body['shipping_address']}</p>";
+                        $itemsList .= "</ul>";
                         
-                        $this->emailService->send($userEmail, $subject, $content, true);
+                        $this->emailService->sendTemplate($userEmail, 'order_confirmation', [
+                            'order_number' => $orderNumber,
+                            'items_list' => $itemsList,
+                            'total' => number_format($total, 2),
+                            'shipping_address' => $body['shipping_address']
+                        ], $orderStoreId);
                     }
                 } catch (\Exception $e) {
                     // Log error but do not fail the request

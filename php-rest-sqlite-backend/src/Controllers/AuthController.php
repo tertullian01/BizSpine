@@ -243,4 +243,23 @@ class AuthController extends ApiController
 
         return $this->success($response, ['message' => 'Password changed successfully']);
     }
+
+    public function me(Request $request, Response $response): Response
+    {
+        $userId = $request->getAttribute('user_id');
+
+        if (!$userId) {
+            return $this->error($response, 'Unauthorized', 401);
+        }
+
+        $stmt = $this->db->prepare('SELECT id, email, display_name, role, created_at, first_name, last_name, country, street_line_1, street_line_2, city, state, postal_code, mobile_number, whatsapp_number, instagram_link, facebook_link, is_email_verified, last_login FROM users WHERE id = :id');
+        $stmt->execute([':id' => $userId]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$user) {
+            return $this->error($response, 'User not found', 404);
+        }
+
+        return $this->success($response, $user);
+    }
 }

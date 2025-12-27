@@ -103,6 +103,7 @@ $container->bind(\App\Controllers\SettingsController::class, fn($c) => new \App\
     $c->get(\App\Services\EmailService::class),
     $c->get(\App\Services\Logger::class)
 ));
+$container->bind(\App\Controllers\EmailTemplateController::class, fn($c) => new \App\Controllers\EmailTemplateController($db));
 
 // Add Metrics Middleware (must be first to measure all requests)
 $app->add(new \App\Middleware\MetricsMiddleware($container->get(\App\Services\Metrics::class)));
@@ -142,6 +143,7 @@ $app->addBodyParsingMiddleware();
 
 // Load app routes
 require __DIR__ . '/../src/Routes/api.php';
+require __DIR__ . '/../src/Routes/EmailTemplateRoutes.php';
 
 // Endpoint to retrieve database design
 $app->get('/db-design', function ($request, $response) use ($db) {

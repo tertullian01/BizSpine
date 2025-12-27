@@ -80,6 +80,27 @@ class EmailService
         $mail->send();
     }
 
+    public function sendTemplate(string $to, string $templateName, array $placeholders, ?int $storeId = null): void
+    {
+        // Try to find a store-specific template first, fallback to default (store_id IS NULL)
+        // SQLite sorts NULLs first in ASC, so DESC puts specific IDs before NULLs.
+        $sql = "SELECT subject, body FROM email_templates WHERE name = :name AND (store_id = :store_id OR store_id IS NULL) ORDER BY store_id DESC LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':name' => $templateName, ':store_id' => $storeId]);
+        $template = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$template) {
+            // Fallback to logging error, or throw exception. 
+            // For now, we throw to alert the caller that configuration is missing.
+            throw new \Exception("Email template '$templateName' not found.");
+        }
+
+        $subject = $this->replacePlaceholders($template['subject'], $placeholders);
+        $body = $this->replacePlaceholders($template['body'], $placeholders);
+
+        $this->send($to, $subject, $body, true);
+    }
+
     public function sendPasswordResetEmail(string $to, string $token): bool
     {
         // In a real app, you would use a frontend URL from config
@@ -88,7 +109,7 @@ class EmailService
         $body = "Click the following link to reset your password: <a href='{$resetLink}'>{$resetLink}</a>";
 
         try {
-            $this->send($to, $subject, $body);
+            $this->sendTemplate($to, 'password_reset', ['reset_link' => $resetLink]);
             return true;
         } catch (\Exception $e) {
             return false;
@@ -107,5 +128,13 @@ class EmailService
         
         list($encrypted_data, $iv) = explode('::', $payload, 2);
         return openssl_decrypt($encrypted_data, 'aes-256-cbc', $key, 0, $iv) ?: $value;
+    }
+
+    private function replacePlaceholders(string $content, array $placeholders): string
+    {
+        foreach ($placeholders as $key => $value) {
+            $content = str_replace('{{' . $key . '}}', (string)$value, $content);
+        }
+        return $content;
     }
 }
