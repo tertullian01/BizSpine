@@ -417,12 +417,24 @@ SQL;
                         'order_date' => date('Y-m-d H:i:s'),
                         'customer_email' => $customerEmail,
                         'customer_phone' => $body['phone_number'] ?? 'N/A',
+                        'whatsapp_number' => $body['whatsapp_number'] ?? 'N/A',
                         'items_table' => $itemsTable,
                         'items_list' => $itemsList,
+                        'subtotal' => number_format($subtotal, 2),
+                        'discount_amount' => number_format($discountAmount, 2),
+                        'coupon_code' => $couponCode ?? '',
+                        'shipping_cost' => number_format($shippingCost, 2),
+                        'tax_amount' => number_format($taxAmount, 2),
                         'total_amount' => number_format($total, 2),
                         'total' => number_format($total, 2),
                         'shipping_method' => $body['shipping_method'] ?? 'Standard',
-                        'shipping_address' => $body['shipping_address']
+                        'shipping_carrier' => $body['shipping_carrier'] ?? '',
+                        'shipping_address' => $body['shipping_address'],
+                        'city' => $body['city'] ?? '',
+                        'state' => $body['state'] ?? '',
+                        'postal_code' => $body['postal_code'] ?? '',
+                        'country' => $body['country'] ?? '',
+                        'notes' => $body['notes'] ?? ''
                     ];
 
                     // Send to Customer
