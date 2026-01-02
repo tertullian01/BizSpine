@@ -3084,7 +3084,14 @@ components:
           description: Order ID
         user_id:
           type: integer
-          description: User ID
+          nullable: true
+          description: User ID (null for guest orders)
+        customer_email:
+          type: string
+          description: Customer email (for guest orders)
+        customer_name:
+          type: string
+          description: Customer name (for guest orders)
         store_id:
           type: integer
           description: Store ID
@@ -3158,7 +3165,6 @@ components:
           description: Order items
       required:
         - id
-        - user_id
         - store_id
         - order_number
         - fulfillment_status
@@ -3202,6 +3208,13 @@ components:
         store_id:
           type: integer
           description: Store ID (optional, defaults to store of first item)
+        customer_email:
+          type: string
+          format: email
+          description: Customer email (required for guest checkout)
+        customer_name:
+          type: string
+          description: Customer name (required for guest checkout)
         shipping_address:
           type: string
           description: Shipping address

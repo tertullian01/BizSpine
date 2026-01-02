@@ -248,7 +248,7 @@ SQL;
         return $this->success($response, $usage);
     }
 
-    public function validateCoupon(string $code, float $orderTotal, int $userId, int $orderId): array
+    public function validateCoupon(string $code, float $orderTotal, ?int $userId, int $orderId): array
     {
         $stmt = $this->db->prepare('SELECT * FROM coupons WHERE UPPER(code) = :code AND is_active = 1');
         $stmt->execute([':code' => strtoupper($code)]);
@@ -286,14 +286,16 @@ SQL;
 
         // Record usage
         try {
-            $usageSql = 'INSERT INTO coupon_usage (coupon_id, user_id, order_id, discount_amount, used_at) VALUES (:coupon_id, :user_id, :order_id, :discount, datetime("now"))';
-            $usageStmt = $this->db->prepare($usageSql);
-            $usageStmt->execute([
-                ':coupon_id' => $coupon['id'],
-                ':user_id' => $userId,
-                ':order_id' => $orderId,
-                ':discount' => $discountAmount,
-            ]);
+            if ($userId) {
+                $usageSql = 'INSERT INTO coupon_usage (coupon_id, user_id, order_id, discount_amount, used_at) VALUES (:coupon_id, :user_id, :order_id, :discount, datetime("now"))';
+                $usageStmt = $this->db->prepare($usageSql);
+                $usageStmt->execute([
+                    ':coupon_id' => $coupon['id'],
+                    ':user_id' => $userId,
+                    ':order_id' => $orderId,
+                    ':discount' => $discountAmount,
+                ]);
+            }
             // Update coupon times_used
             $updateSql = 'UPDATE coupons SET times_used = times_used + 1, updated_at = datetime("now") WHERE id = :id';
             $updateStmt = $this->db->prepare($updateSql);

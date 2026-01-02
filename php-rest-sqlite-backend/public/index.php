@@ -74,6 +74,7 @@ $container->bind(\App\Services\EmailService::class, fn($c) => new \App\Services\
 
 // Bind middleware
 $container->bind(\App\Middleware\AuthMiddleware::class, fn($c) => new \App\Middleware\AuthMiddleware($config->get('jwt.secret')));
+$container->bind(\App\Middleware\OptionalAuthMiddleware::class, fn($c) => new \App\Middleware\OptionalAuthMiddleware($config->get('jwt.secret')));
 
 // Bind controllers with dependencies
 $container->bind(\App\Controllers\AuthController::class, fn($c) => new \App\Controllers\AuthController($config->getAll(), $c->get(\App\Services\EmailService::class)));

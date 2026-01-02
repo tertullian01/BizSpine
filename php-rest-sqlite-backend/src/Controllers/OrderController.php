@@ -47,7 +47,8 @@ class OrderController extends ApiController
         $sql = <<<'SQL'
 SELECT
     o.*,
-    u.email as user_email
+    COALESCE(u.email, o.customer_email) as user_email,
+    COALESCE(u.display_name, o.customer_name) as customer_name_display
 FROM orders o
 LEFT JOIN users u ON o.user_id = u.id
 ORDER BY o.order_date DESC
@@ -102,7 +103,8 @@ SQL;
         $sql = <<<'SQL'
 SELECT 
     o.*,
-    u.email as user_email
+    COALESCE(u.email, o.customer_email) as user_email,
+    COALESCE(u.display_name, o.customer_name) as customer_name_display
 FROM orders o
 LEFT JOIN users u ON o.user_id = u.id
 WHERE o.id = :id
@@ -148,9 +150,11 @@ SQL;
     {
         $body = $request->getParsedBody();
         $userId = $request->getAttribute('user_id');
-        if (!$userId) {
-            return $this->error($response, 'Unauthorized', 401);
-        }
+        
+        // For guest checkout, require customer details
+        if (!$userId && (empty($body['customer_email']) || empty($body['customer_name']))) {
+            return $this->error($response, 'Customer email and name are required for guest checkout', 400);
+        } 
 
         $sendEmail = isset($body['sendEmail']) && $body['sendEmail'] === true;
 
@@ -259,7 +263,7 @@ SQL;
             $hasCoupon = !empty($body['coupon_code']);
             $hasReferral = !empty($body['referral_code']);
             if ($hasCoupon && $hasReferral) {
-                throw new ValidationException('Cannot use both coupon code and referral code on the same order');
+                throw new \Exception('Cannot use both coupon code and referral code on the same order');
             }
 
             $discountAmount = 0;
@@ -267,7 +271,7 @@ SQL;
             if ($hasCoupon) {
                 require_once __DIR__ . '/CouponController.php';
                 $couponController = new CouponController($this->db);
-                $couponResult = $couponController->validateCoupon($body['coupon_code'], $subtotal, (int) $userId, 0);
+                $couponResult = $couponController->validateCoupon($body['coupon_code'], $subtotal, $userId, 0);
                 if (!$couponResult['valid']) {
                     throw new \Exception($couponResult['error']);
                 }
@@ -278,7 +282,7 @@ SQL;
                 $discountAmount = (float) $body['discount_amount'];
             }
 
-            $shippingCost = isset($body['shipping_cost']) ? (float) $body['shipping_cost'] : 0;
+            $shippingCost = isset($body['shipping_cost']) ? (float) $body['shipping_cost'] : (isset($body['shipping']) ? (float) $body['shipping'] : 0);
             require_once __DIR__ . '/TaxController.php';
             $taxController = new TaxController();
             $taxableAmount = $subtotal - $discountAmount + $shippingCost;
@@ -291,12 +295,12 @@ SQL;
 
             $sql = <<<'SQL'
 INSERT INTO orders
-    (user_id, store_id, order_number, shipping_address, phone_number, whatsapp_number,
+    (user_id, customer_email, customer_name, store_id, order_number, shipping_address, city, state, postal_code, country, phone_number, whatsapp_number,
      subtotal, discount_amount, coupon_code, shipping_cost, tax_rate, tax_amount, total, notes,
      shipping_method, shipping_carrier,
      order_date, created_at, updated_at)
 VALUES
-    (:user_id, :store_id, :order_number, :shipping_address, :phone_number, :whatsapp_number,
+    (:user_id, :customer_email, :customer_name, :store_id, :order_number, :shipping_address, :city, :state, :postal_code, :country, :phone_number, :whatsapp_number,
      :subtotal, :discount_amount, :coupon_code, :shipping_cost, :tax_rate, :tax_amount, :total, :notes,
      :shipping_method, :shipping_carrier,
      datetime("now"), datetime("now"), datetime("now"))
@@ -304,9 +308,15 @@ SQL;
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 ':user_id' => $userId,
+                ':customer_email' => $body['customer_email'] ?? null,
+                ':customer_name' => $body['customer_name'] ?? null,
                 ':store_id' => $orderStoreId,
                 ':order_number' => $orderNumber,
                 ':shipping_address' => $body['shipping_address'],
+                ':city' => $body['city'] ?? null,
+                ':state' => $body['state'] ?? null,
+                ':postal_code' => $body['postal_code'] ?? null,
+                ':country' => $body['country'] ?? null,
                 ':phone_number' => $body['phone_number'] ?? null,
                 ':whatsapp_number' => $body['whatsapp_number'] ?? null,
                 ':subtotal' => $subtotal,
@@ -346,7 +356,7 @@ SQL;
                 ]);
             }
 
-            if ($hasCoupon && isset($couponResult) && $couponResult['valid']) {
+            if ($hasCoupon && isset($couponResult) && $couponResult['valid'] && $userId) {
                 $updateUsageSql = 'UPDATE coupon_usage SET order_id = :order_id WHERE coupon_id = :coupon_id AND user_id = :user_id AND order_id = 0';
                 $updateUsageStmt = $this->db->prepare($updateUsageSql);
                 $updateUsageStmt->execute([
@@ -356,7 +366,7 @@ SQL;
                 ]);
             }
 
-            if ($hasReferral) {
+            if ($hasReferral && $userId) {
                 $orderCountStmt = $this->db->prepare('SELECT COUNT(*) FROM orders WHERE user_id = :user_id');
                 $orderCountStmt->execute([':user_id' => $userId]);
                 $orderCount = (int) $orderCountStmt->fetchColumn();
@@ -372,11 +382,15 @@ SQL;
             if ($this->emailService) {
                 try {
                     $stmt = $this->db->prepare('SELECT email, display_name, first_name FROM users WHERE id = :id');
-                    $stmt->execute([':id' => $userId]);
-                    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                    $user = null;
+                    if ($userId) {
+                        $stmt->execute([':id' => $userId]);
+                        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                    }
 
-                    $customerName = 'Customer';
-                    $customerEmail = null;
+                    $customerName = $body['customer_name'] ?? 'Customer';
+                    $customerEmail = $body['customer_email'] ?? null;
+
                     if ($user) {
                         $customerName = !empty($user['first_name']) ? $user['first_name'] : (!empty($user['display_name']) ? $user['display_name'] : 'Customer');
                         $customerEmail = $user['email'];
@@ -513,12 +527,57 @@ SQL;
             if (isset($body['shipping_cost'])) {
                 $updates[] = 'shipping_cost = :shipping_cost';
                 $params[':shipping_cost'] = (float) $body['shipping_cost'];
-                $updates[] = 'total = subtotal - discount_amount + :shipping_cost';
+                $updates[] = 'total = subtotal - discount_amount + tax_amount + :shipping_cost';
             }
 
             if (isset($body['notes'])) {
                 $updates[] = 'notes = :notes';
                 $params[':notes'] = $body['notes'];
+            }
+
+            if (isset($body['customer_email'])) {
+                $updates[] = 'customer_email = :customer_email';
+                $params[':customer_email'] = $body['customer_email'];
+            }
+
+            if (isset($body['customer_name'])) {
+                $updates[] = 'customer_name = :customer_name';
+                $params[':customer_name'] = $body['customer_name'];
+            }
+
+            if (isset($body['shipping_address'])) {
+                $updates[] = 'shipping_address = :shipping_address';
+                $params[':shipping_address'] = $body['shipping_address'];
+            }
+
+            if (isset($body['phone_number'])) {
+                $updates[] = 'phone_number = :phone_number';
+                $params[':phone_number'] = $body['phone_number'];
+            }
+
+            if (isset($body['whatsapp_number'])) {
+                $updates[] = 'whatsapp_number = :whatsapp_number';
+                $params[':whatsapp_number'] = $body['whatsapp_number'];
+            }
+
+            if (isset($body['city'])) {
+                $updates[] = 'city = :city';
+                $params[':city'] = $body['city'];
+            }
+
+            if (isset($body['state'])) {
+                $updates[] = 'state = :state';
+                $params[':state'] = $body['state'];
+            }
+
+            if (isset($body['postal_code'])) {
+                $updates[] = 'postal_code = :postal_code';
+                $params[':postal_code'] = $body['postal_code'];
+            }
+
+            if (isset($body['country'])) {
+                $updates[] = 'country = :country';
+                $params[':country'] = $body['country'];
             }
 
             if (isset($body['store_id'])) {

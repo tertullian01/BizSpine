@@ -156,13 +156,19 @@ class SetupController extends ApiController
             $db->exec(<<<'SQL'
             CREATE TABLE IF NOT EXISTS orders (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
+                user_id INTEGER,
+                customer_email TEXT,
+                customer_name TEXT,
                 store_id INTEGER,
                 order_number TEXT UNIQUE NOT NULL,
                 order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
                 fulfillment_status TEXT DEFAULT 'pending',
                 shipping_date DATETIME,
                 shipping_address TEXT NOT NULL,
+                city TEXT,
+                state TEXT,
+                postal_code TEXT,
+                country TEXT,
                 phone_number TEXT,
                 whatsapp_number TEXT,
                 subtotal REAL NOT NULL DEFAULT 0,
@@ -927,6 +933,36 @@ class SetupController extends ApiController
             if (!in_array('shipping_carrier', $columnNames)) {
                 $db->exec("ALTER TABLE orders ADD COLUMN shipping_carrier TEXT;");
                 $migrations[] = "Added 'shipping_carrier' column to orders table";
+            }
+
+            if (!in_array('customer_email', $columnNames)) {
+                $db->exec("ALTER TABLE orders ADD COLUMN customer_email TEXT;");
+                $migrations[] = "Added 'customer_email' column to orders table";
+            }
+
+            if (!in_array('customer_name', $columnNames)) {
+                $db->exec("ALTER TABLE orders ADD COLUMN customer_name TEXT;");
+                $migrations[] = "Added 'customer_name' column to orders table";
+            }
+
+            if (!in_array('city', $columnNames)) {
+                $db->exec("ALTER TABLE orders ADD COLUMN city TEXT;");
+                $migrations[] = "Added 'city' column to orders table";
+            }
+
+            if (!in_array('state', $columnNames)) {
+                $db->exec("ALTER TABLE orders ADD COLUMN state TEXT;");
+                $migrations[] = "Added 'state' column to orders table";
+            }
+
+            if (!in_array('postal_code', $columnNames)) {
+                $db->exec("ALTER TABLE orders ADD COLUMN postal_code TEXT;");
+                $migrations[] = "Added 'postal_code' column to orders table";
+            }
+
+            if (!in_array('country', $columnNames)) {
+                $db->exec("ALTER TABLE orders ADD COLUMN country TEXT;");
+                $migrations[] = "Added 'country' column to orders table";
             }
 
             // Fix user_referrals table - add discount info and status
