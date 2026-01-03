@@ -7,6 +7,7 @@ use App\Services\CacheableProductService;
 use App\Services\Logger;
 use App\Middleware\FileUploadMiddleware;
 use App\Services\PaginationService;
+use PDO;
 use OpenApi\Annotations as OA;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -63,12 +64,14 @@ use Respect\Validation\Exceptions\NestedValidationException;
  */
 class ProductController extends ApiController
 {
+    private PDO $db;
     private CacheableProductService $cacheableProductService;
     private Logger $logger;
     private PaginationService $paginationService;
 
-    public function __construct(CacheableProductService $cacheableProductService, Logger $logger, PaginationService $paginationService)
+    public function __construct(PDO $db, CacheableProductService $cacheableProductService, Logger $logger, PaginationService $paginationService)
     {
+        $this->db = $db;
         $this->cacheableProductService = $cacheableProductService;
         $this->logger = $logger;
         $this->paginationService = $paginationService;
@@ -147,6 +150,13 @@ class ProductController extends ApiController
      *         required=false,
      *         @OA\Schema(type="integer", default=20, maximum=100)
      *     ),
+     *     @OA\Parameter(
+     *         name="store_id",
+     *         in="query",
+     *         description="Store ID to fetch inventory data",
+     *         required=false,
+     *         @OA\Schema(type="integer")
+     *     ),
      *     @OA\Response(
      *         response=200,
      *         description="Paginated list of products by type",
@@ -160,6 +170,9 @@ class ProductController extends ApiController
     public function getByType(Request $request, Response $response, array $args): Response
     {
         $type = $args['type'];
+        $queryParams = $request->getQueryParams();
+        $storeId = isset($queryParams['store_id']) ? (int)$queryParams['store_id'] : null;
+
         $pagination = $this->paginationService->getPaginationParams($request);
         $page = $pagination['page'];
         $limit = $pagination['limit'];
@@ -168,12 +181,33 @@ class ProductController extends ApiController
         // Get total count for pagination
         $total = Product::select()->where('type', '=', $type)->count();
 
-        // Use optimized query with specific columns
-        $products = Product::select(['id', 'name', 'type', 'description', 'size', 'cost', 'image_url', 'state', 'created_at', 'updated_at'])
-                            ->where('type', '=', $type)
-                            ->orderBy('name')
-                            ->limit($limit, $offset)
-                            ->get();
+        if ($storeId) {
+            $sql = <<<'SQL'
+SELECT 
+    p.id, p.name, p.type, p.description, p.size, p.cost, p.image_url, p.state, p.created_at, p.updated_at,
+    i.quantity, i.min_quantity, i.max_quantity, i.last_restocked
+FROM products p
+LEFT JOIN inventory i ON p.id = i.product_id AND i.store_id = :store_id
+WHERE p.type = :type
+ORDER BY p.name
+LIMIT :limit OFFSET :offset
+SQL;
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([
+                ':store_id' => $storeId,
+                ':type' => $type,
+                ':limit' => $limit,
+                ':offset' => $offset
+            ]);
+            $products = $stmt->fetchAll(PDO::FETCH_OBJ);
+        } else {
+            // Use optimized query with specific columns
+            $products = Product::select(['id', 'name', 'type', 'description', 'size', 'cost', 'image_url', 'state', 'created_at', 'updated_at'])
+                                ->where('type', '=', $type)
+                                ->orderBy('name')
+                                ->limit($limit, $offset)
+                                ->get();
+        }
 
         $result = $this->paginationService->formatPaginatedResponse($products, $total, $page, $limit);
 

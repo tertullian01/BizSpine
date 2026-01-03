@@ -577,6 +577,12 @@ paths:
             type: integer
             default: 20
             maximum: 100
+        - name: store_id
+          in: query
+          description: Store ID to fetch inventory data
+          required: false
+          schema:
+            type: integer
       responses:
         '200':
           description: Paginated list of products by type
@@ -920,6 +926,7 @@ paths:
         - Orders
       security:
         - bearerAuth: []
+        - {}
       requestBody:
         required: true
         content:
@@ -2863,6 +2870,21 @@ components:
               type: string
               enum: [For Sale, Discontinued]
               description: Product availability state
+            quantity:
+              type: integer
+              description: Current stock quantity (if store_id provided)
+            min_quantity:
+              type: integer
+              description: Minimum stock level (if store_id provided)
+            max_quantity:
+              type: integer
+              nullable: true
+              description: Maximum stock level (if store_id provided)
+            last_restocked:
+              type: string
+              format: date-time
+              nullable: true
+              description: Last restock timestamp (if store_id provided)
 
     ProductCreateRequest:
       type: object
@@ -3109,6 +3131,18 @@ components:
         shipping_address:
           type: string
           description: Shipping address
+        city:
+          type: string
+          description: City
+        state:
+          type: string
+          description: State/Province
+        postal_code:
+          type: string
+          description: Postal/ZIP code
+        country:
+          type: string
+          description: Country
         phone_number:
           type: string
           description: Contact phone number
@@ -3218,6 +3252,18 @@ components:
         shipping_address:
           type: string
           description: Shipping address
+        city:
+          type: string
+          description: City
+        state:
+          type: string
+          description: State/Province
+        postal_code:
+          type: string
+          description: Postal/ZIP code
+        country:
+          type: string
+          description: Country
         phone_number:
           type: string
           description: Contact phone number
@@ -3282,6 +3328,13 @@ components:
         store_id:
           type: integer
           description: Store ID
+        customer_email:
+          type: string
+          format: email
+          description: Customer email
+        customer_name:
+          type: string
+          description: Customer name
         fulfillment_status:
           type: string
           enum: [pending, processing, shipped, delivered, cancelled]
@@ -3289,6 +3342,24 @@ components:
         shipping_address:
           type: string
           description: Updated shipping address
+        city:
+          type: string
+          description: City
+        state:
+          type: string
+          description: State/Province
+        postal_code:
+          type: string
+          description: Postal/ZIP code
+        country:
+          type: string
+          description: Country
+        phone_number:
+          type: string
+          description: Contact phone number
+        whatsapp_number:
+          type: string
+          description: WhatsApp contact number
         tracking_number:
           type: string
           description: Shipping tracking number

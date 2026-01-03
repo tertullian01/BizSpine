@@ -82,7 +82,7 @@ $container->bind(\App\Controllers\SetupController::class, fn($c) => new \App\Con
 $container->bind(\App\Controllers\StoreController::class, fn($c) => new \App\Controllers\StoreController($c->get(\App\Services\FileUploadService::class)));
 $container->bind(\App\Controllers\BookkeepingController::class, fn($c) => new \App\Controllers\BookkeepingController(null, $c->get(\App\Services\FileUploadService::class)));
 $container->bind(\App\Controllers\TestimonialController::class, fn($c) => new \App\Controllers\TestimonialController(null, null, $c->get(\App\Services\FileUploadService::class)));
-$container->bind(\App\Controllers\ProductController::class, fn($c) => new \App\Controllers\ProductController($c->get(\App\Services\CacheableProductService::class), $c->get(\App\Services\Logger::class), $c->get(\App\Services\PaginationService::class)));
+$container->bind(\App\Controllers\ProductController::class, fn($c) => new \App\Controllers\ProductController($db, $c->get(\App\Services\CacheableProductService::class), $c->get(\App\Services\Logger::class), $c->get(\App\Services\PaginationService::class)));
 $container->bind(\App\Controllers\OrderController::class, fn($c) => new \App\Controllers\OrderController(
     $db, 
     $c->get(\App\Services\PaginationService::class),
