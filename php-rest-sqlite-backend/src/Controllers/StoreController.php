@@ -24,7 +24,7 @@ class StoreController extends ApiController
     public function getAll(Request $request, Response $response): Response
     {
         // Use optimized query with specific columns
-        $stores = Store::select(['id', 'name', 'description', 'created_at', 'updated_at'])
+        $stores = Store::select(['id', 'name', 'description', 'currency_symbol', 'created_at', 'updated_at'])
                       ->orderBy('name')
                       ->get();
         return $this->success($response, $stores);
@@ -34,7 +34,9 @@ class StoreController extends ApiController
     {
         $id = (int)$args['id'];
 // Use optimized query for single store
-        $store = Store::findWithColumns($id);
+        $store = Store::select(['id', 'name', 'description', 'currency_symbol', 'created_at', 'updated_at'])
+                      ->where('id', '=', $id)
+                      ->first();
         if (!$store) {
             return $this->error($response, 'Store not found', 404);
         }
@@ -61,6 +63,7 @@ class StoreController extends ApiController
         $store->address = $body['address'] ?? null;
         $store->phone = $body['phone'] ?? null;
         $store->email = $body['email'] ?? null;
+        $store->currency_symbol = $body['currency_symbol'] ?? '$';
         $store->save();
         return $this->success($response, $store, 201);
     }
@@ -92,6 +95,7 @@ class StoreController extends ApiController
         $store->address = $body['address'] ?? $store->address;
         $store->phone = $body['phone'] ?? $store->phone;
         $store->email = $body['email'] ?? $store->email;
+        $store->currency_symbol = $body['currency_symbol'] ?? $store->currency_symbol;
         $store->save();
         return $this->success($response, $store);
     }

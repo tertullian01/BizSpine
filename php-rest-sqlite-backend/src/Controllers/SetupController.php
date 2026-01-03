@@ -108,6 +108,7 @@ class SetupController extends ApiController
                 address TEXT,
                 phone TEXT,
                 email TEXT,
+                currency_symbol TEXT DEFAULT '$',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
@@ -963,6 +964,16 @@ class SetupController extends ApiController
             if (!in_array('country', $columnNames)) {
                 $db->exec("ALTER TABLE orders ADD COLUMN country TEXT;");
                 $migrations[] = "Added 'country' column to orders table";
+            }
+
+            // Fix stores table - add currency_symbol
+            $stmt = $db->query("PRAGMA table_info(stores);");
+            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $columnNames = array_column($columns, 'name');
+
+            if (!in_array('currency_symbol', $columnNames)) {
+                $db->exec("ALTER TABLE stores ADD COLUMN currency_symbol TEXT DEFAULT '$';");
+                $migrations[] = "Added 'currency_symbol' column to stores table";
             }
 
             // Fix user_referrals table - add discount info and status

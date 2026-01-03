@@ -12,6 +12,7 @@ class Store extends BaseModel
     public ?string $address = null;
     public ?string $phone = null;
     public ?string $email = null;
+    public ?string $currency_symbol = '$';
     public ?string $created_at = null;
     public ?string $updated_at = null;
 

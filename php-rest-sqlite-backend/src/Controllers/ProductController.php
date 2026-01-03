@@ -184,7 +184,7 @@ class ProductController extends ApiController
         if ($storeId) {
             $sql = <<<'SQL'
 SELECT 
-    p.id, p.name, p.type, p.description, p.size, p.cost, p.image_url, p.state, p.created_at, p.updated_at,
+    p.id, p.name, p.type, p.description, p.size, p.cost, p.image_url, p.state, p.featured_ingredients, p.all_ingredients, p.created_at, p.updated_at,
     i.quantity, i.min_quantity, i.max_quantity, i.last_restocked
 FROM products p
 LEFT JOIN inventory i ON p.id = i.product_id AND i.store_id = :store_id
@@ -202,7 +202,7 @@ SQL;
             $products = $stmt->fetchAll(PDO::FETCH_OBJ);
         } else {
             // Use optimized query with specific columns
-            $products = Product::select(['id', 'name', 'type', 'description', 'size', 'cost', 'image_url', 'state', 'created_at', 'updated_at'])
+            $products = Product::select(['id', 'name', 'type', 'description', 'size', 'cost', 'image_url', 'state', 'featured_ingredients', 'all_ingredients', 'created_at', 'updated_at'])
                                 ->where('type', '=', $type)
                                 ->orderBy('name')
                                 ->limit($limit, $offset)

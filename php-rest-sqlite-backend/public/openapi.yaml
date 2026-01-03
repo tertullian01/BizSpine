@@ -2968,6 +2968,9 @@ components:
         description:
           type: string
           description: Store description
+        currency_symbol:
+          type: string
+          description: Currency symbol (e.g. $, €, £)
         created_at:
           type: string
           format: date-time
@@ -2989,6 +2992,9 @@ components:
         description:
           type: string
           description: Store description
+        currency_symbol:
+          type: string
+          description: Currency symbol (e.g. $, €, £)
       required:
         - name
 
@@ -3001,6 +3007,9 @@ components:
         description:
           type: string
           description: Store description
+        currency_symbol:
+          type: string
+          description: Currency symbol (e.g. $, €, £)
 
     # Inventory Schemas
     InventoryItem:
