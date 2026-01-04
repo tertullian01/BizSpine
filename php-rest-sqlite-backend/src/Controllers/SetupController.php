@@ -237,7 +237,8 @@ class SetupController extends ApiController
                 times_used INTEGER DEFAULT 0,
                 expires_at DATETIME,
                 is_active INTEGER DEFAULT 1,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
             SQL
             );
@@ -1001,6 +1002,26 @@ class SetupController extends ApiController
             }
 
             $db->exec('CREATE INDEX IF NOT EXISTS idx_testimonials_created ON testimonials(created_at);');
+
+            // Fix coupons table - add updated_at
+            $stmt = $db->query("PRAGMA table_info(coupons);");
+            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $columnNames = array_column($columns, 'name');
+
+            if (!in_array('updated_at', $columnNames)) {
+                $db->exec("ALTER TABLE coupons ADD COLUMN updated_at DATETIME;");
+                $migrations[] = "Added 'updated_at' column to coupons table";
+            }
+
+            // Fix inventory table - add updated_at
+            $stmt = $db->query("PRAGMA table_info(inventory);");
+            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $columnNames = array_column($columns, 'name');
+
+            if (!in_array('updated_at', $columnNames)) {
+                $db->exec("ALTER TABLE inventory ADD COLUMN updated_at DATETIME;");
+                $migrations[] = "Added 'updated_at' column to inventory table";
+            }
 
             // Fix coupon_usage table - allow NULL user_id for guest checkouts
             $stmt = $db->query("PRAGMA table_info(coupon_usage)");
