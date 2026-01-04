@@ -695,7 +695,7 @@ vendor\bin\phpunit --coverage-html coverage
 | **InventoryController** | 9 | 30 | 100% |
 | **StoreController** | 13 | 42 | 100% |
 | **ProductController** | 6 | 15+ | High |
-| **AuthController** | 5+ | 10+ | High |
+| **AuthController** | 11+ | 20+ | High |
 | **AuthMiddleware** | 3+ | 8+ | High |
 
 ### Test Structure
@@ -801,6 +801,9 @@ SmallBusinessWebBackend/
     │   ├── Middleware/                # Request interceptors
     │   │   └── AuthMiddleware.php     # JWT authentication
     │   │
+    │   ├── Exceptions/                # Custom exceptions
+    │   │   └── ValidationException.php
+    │   │
     │   └── Services/                  # Business services
     │       └── Database.php           # Database connection service
     │
@@ -827,6 +830,7 @@ SmallBusinessWebBackend/
         ├── ExampleTest.php            # Example test
         └── Unit/                      # Unit tests
             ├── AuthControllerTest.php
+            ├── AuthControllerExtendedTest.php
             ├── AuthMiddlewareTest.php
             ├── ProductControllerTest.php
             ├── StoreControllerTest.php
