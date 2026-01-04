@@ -595,9 +595,11 @@ return_items
 
 ### HTTP Security Headers
 
-Configured in [`.htaccess`](php-rest-sqlite-backend/public/.htaccess:1):
-- CORS headers for cross-origin requests
-- Content-Type enforcement
+**CORS (Cross-Origin Resource Sharing)**:
+- Handled by `CorsMiddleware`
+- Allowed Origins configured in `protected/config/config.php` (e.g., `https://siedlung.nakednettle.com`, `https://nakednettle.com`, `https://dashboard.nakednettle.com`)
+
+**Apache Configuration** (`.htaccess`):
 - URL rewriting for clean API endpoints
 
 ## 📦 Installation & Setup

@@ -45,6 +45,7 @@ class CorsMiddleware implements MiddlewareInterface
             if ($allowedOrigin) {
                 $response = $response->withHeader('Access-Control-Allow-Origin', $allowedOrigin);
             }
+            $response = $response->withHeader('Vary', 'Origin');
 
             $response = $response->withHeader('Access-Control-Allow-Methods', implode(', ', $this->allowedMethods));
             $response = $response->withHeader('Access-Control-Allow-Headers', implode(', ', $this->allowedHeaders));
@@ -63,6 +64,7 @@ class CorsMiddleware implements MiddlewareInterface
         if ($allowedOrigin) {
             $response = $response->withHeader('Access-Control-Allow-Origin', $allowedOrigin);
         }
+        $response = $response->withHeader('Vary', 'Origin');
 
         $response = $response->withHeader('Access-Control-Allow-Methods', implode(', ', $this->allowedMethods));
         $response = $response->withHeader('Access-Control-Allow-Headers', implode(', ', $this->allowedHeaders));

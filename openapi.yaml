@@ -6,6 +6,8 @@ info:
 servers:
   - url: http://localhost:8000
     description: Local Development Server
+  - url: https://siedlung.nakednettle.com/
+    description: Production Server
 components:
   securitySchemes:
     bearerAuth:

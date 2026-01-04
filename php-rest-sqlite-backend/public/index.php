@@ -31,21 +31,6 @@ require $autoloader;
 // Initialize Config service
 $config = Config::getInstance();
 
-// Handle CORS headers in PHP for shared hosting compatibility
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-$allowedOrigins = $config->get('cors.allowed_origins', []);
-if (in_array($origin, $allowedOrigins)) {
-    header('Access-Control-Allow-Origin: ' . $origin);
-    header('Access-Control-Allow-Credentials: true');
-    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    header('Access-Control-Max-Age: 86400');
-}
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit(0);
-}
-
 // Initialize database connection
 $dbPath = $config->get('database.database_path');
 $db = Database::get($dbPath);
@@ -109,20 +94,30 @@ $container->bind(\App\Controllers\EmailTemplateController::class, fn($c) => new 
 // Add Metrics Middleware (must be first to measure all requests)
 $app->add(new \App\Middleware\MetricsMiddleware($container->get(\App\Services\Metrics::class)));
 
-// Add CORS Middleware
-$corsConfig = $config->get('cors', []);
-$app->add(new \App\Middleware\CorsMiddleware(
-    allowedOrigins: $corsConfig['allowed_origins'] ?? ['*'],
-    allowedMethods: $corsConfig['allowed_methods'] ?? ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: $corsConfig['allowed_headers'] ?? ['Content-Type', 'Authorization', 'X-Requested-With'],
-    allowCredentials: $corsConfig['allow_credentials'] ?? true
-));
-
 // Add Routing Middleware
 $app->addRoutingMiddleware();
 
 // Add Error Middleware
 $errorMiddleware = $app->addErrorMiddleware(true, true, true);
+
+// Add CORS Middleware
+$corsConfig = $config->get('cors', []);
+$allowedOrigins = array_unique(array_merge(
+    $corsConfig['allowed_origins'] ?? [],
+    [
+        'https://siedlung.nakednettle.com',
+        'https://nakednettle.com',
+        'https://dashboard.nakednettle.com',
+        'http://localhost:8000'
+    ]
+));
+
+$app->add(new \App\Middleware\CorsMiddleware(
+    allowedOrigins: $allowedOrigins,
+    allowedMethods: $corsConfig['allowed_methods'] ?? ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: $corsConfig['allowed_headers'] ?? ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowCredentials: $corsConfig['allow_credentials'] ?? true
+));
 
 // Add Security Headers Middleware
 $app->add(new \App\Middleware\SecurityHeadersMiddleware([
