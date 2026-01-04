@@ -51,7 +51,10 @@ class AuthController extends ApiController
             $stmt->execute([':e' => $email, ':p' => $hash]);
             return $this->success($response, ['message' => 'User created', 'email' => $email], 201);
         } catch (\PDOException $ex) {
-            return $this->error($response, 'User already exists', 409);
+            if ($ex->getCode() == '23000') {
+                return $this->error($response, 'User already exists', 409);
+            }
+            throw $ex;
         }
     }
 

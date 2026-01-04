@@ -331,7 +331,8 @@ SQL;
             $validator->assert($data);
             // Process valid data
         } catch (NestedValidationException $e) {
-            return $this->error($response, json_encode($e->getMessages()), 400);
+            $errors = $e->getMessages();
+            return $this->error($response, reset($errors), 400);
         }
 
         $product = new Product();
@@ -412,7 +413,8 @@ SQL;
         try {
             $validator->assert($data);
         } catch (NestedValidationException $e) {
-            return $this->error($response, json_encode($e->getMessages()), 400);
+            $errors = $e->getMessages();
+            return $this->error($response, reset($errors), 400);
         }
 
         $product = Product::find($id);

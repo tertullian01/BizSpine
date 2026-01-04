@@ -226,8 +226,7 @@ class SettingsController extends ApiController
                 // Sanitize filename to prevent directory traversal
                 $filename = basename($filename);
 
-                $config = require __DIR__ . '/../../protected/config/config.php';
-                $uploadPath = $config['file_upload']['upload_path'];
+                $uploadPath = Config::getInstance()->get('file_upload.upload_path');
                 $filePath = $uploadPath . $filename;
                 if (file_exists($filePath)) {
                     $content = file_get_contents($filePath);
