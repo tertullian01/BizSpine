@@ -85,6 +85,51 @@ SQL;
         return $this->success($response, $referral);
     }
 
+    public function create(Request $request, Response $response): Response
+    {
+        $body = $request->getParsedBody();
+
+        if (empty($body['client_id'])) {
+            return $this->error($response, 'Client ID is required', 400);
+        }
+
+        $userId = (int)$body['client_id'];
+        $code = $body['code'] ?? $this->generateReferralCode();
+        $discountType = $body['discount_type'] ?? 'percentage';
+        $discountAmount = $body['discount_value'] ?? 10.0;
+        $status = $body['status'] ?? 'active';
+
+        // Check if referral exists for user
+        $stmt = $this->db->prepare('SELECT id FROM user_referrals WHERE user_id = :user_id');
+        $stmt->execute([':user_id' => $userId]);
+        if ($stmt->fetch()) {
+            return $this->error($response, 'Referral code already exists for this user', 409);
+        }
+
+        // Check code uniqueness
+        $stmt = $this->db->prepare('SELECT id FROM user_referrals WHERE referral_code = :code');
+        $stmt->execute([':code' => $code]);
+        if ($stmt->fetch()) {
+            return $this->error($response, 'Referral code already exists', 409);
+        }
+
+        try {
+            $stmt = $this->db->prepare("INSERT INTO user_referrals (user_id, referral_code, discount_type, discount_amount, status, created_at, updated_at) VALUES (:user_id, :code, :discount_type, :discount_amount, :status, datetime('now'), datetime('now'))");
+            $stmt->execute([
+                ':user_id' => $userId,
+                ':code' => $code,
+                ':discount_type' => $discountType,
+                ':discount_amount' => $discountAmount,
+                ':status' => $status
+            ]);
+            
+            $id = (int)$this->db->lastInsertId();
+            return $this->getById($request, $response->withStatus(201), ['id' => $id]);
+        } catch (\PDOException $e) {
+            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+        }
+    }
+
     public function update(Request $request, Response $response, array $args): Response
     {
         $id = (int)$args['id'];

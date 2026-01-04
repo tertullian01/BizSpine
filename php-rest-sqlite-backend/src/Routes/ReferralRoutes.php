@@ -14,6 +14,7 @@ class ReferralRoutes
     {
         $app->group('/referrals', function ($group) {
             $group->get('', [ReferralController::class, 'getAll']);
+            $group->post('', [ReferralController::class, 'create']);
             $group->get('/my', [ReferralController::class, 'getMyReferral']);
             $group->get('/my/usage', [ReferralController::class, 'getMyReferralUsage']);
             $group->post('/redeem', [ReferralController::class, 'redeemPoints']);
