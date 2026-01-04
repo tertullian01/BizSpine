@@ -95,6 +95,27 @@ class ProductController extends ApiController
      *         required=false,
      *         @OA\Schema(type="integer", default=20, maximum=100)
      *     ),
+     *     @OA\Parameter(
+     *         name="search",
+     *         in="query",
+     *         description="Search term (name, description, type)",
+     *         required=false,
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
+     *         name="sort",
+     *         in="query",
+     *         description="Sort field",
+     *         required=false,
+     *         @OA\Schema(type="string", enum={"name", "cost", "type", "created_at", "updated_at", "state"}, default="name")
+     *     ),
+     *     @OA\Parameter(
+     *         name="order",
+     *         in="query",
+     *         description="Sort order",
+     *         required=false,
+     *         @OA\Schema(type="string", enum={"ASC", "DESC"}, default="ASC")
+     *     ),
      *     @OA\Response(
      *         response=200,
      *         description="Paginated list of products",
@@ -112,14 +133,45 @@ class ProductController extends ApiController
         $limit = $pagination['limit'];
         $offset = $pagination['offset'];
 
-        // Get total count for pagination
-        $total = Product::count();
+        $queryParams = $request->getQueryParams();
+        $search = isset($queryParams['search']) ? trim($queryParams['search']) : null;
+        $sort = $queryParams['sort'] ?? 'name';
+        $order = strtoupper($queryParams['order'] ?? 'ASC');
 
-        // Use optimized query with specific columns, excluding large text fields
-        $products = Product::select(['id', 'name', 'type', 'description', 'size', 'cost', 'image_url', 'state', 'created_at', 'updated_at'])
-                            ->orderBy('name')
-                            ->limit($limit, $offset)
-                            ->get();
+        // Validate sort and order
+        $allowedSorts = ['name', 'cost', 'type', 'created_at', 'updated_at', 'state'];
+        if (!in_array($sort, $allowedSorts)) {
+            $sort = 'name';
+        }
+        if (!in_array($order, ['ASC', 'DESC'])) {
+            $order = 'ASC';
+        }
+
+        $whereClause = "";
+        $params = [];
+
+        if ($search) {
+            $whereClause = "WHERE name LIKE :search OR description LIKE :search OR type LIKE :search";
+            $params[':search'] = '%' . $search . '%';
+        }
+
+        // Get total count
+        $countSql = "SELECT COUNT(*) as total FROM products $whereClause";
+        $countStmt = $this->db->prepare($countSql);
+        $countStmt->execute($params);
+        $total = (int)$countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+
+        // Use optimized query with specific columns
+        $sql = "SELECT id, name, type, description, size, cost, image_url, state, created_at, updated_at FROM products $whereClause ORDER BY $sort $order LIMIT :limit OFFSET :offset";
+        
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        $products = $stmt->fetchAll(PDO::FETCH_OBJ);
 
         $result = $this->paginationService->formatPaginatedResponse($products, $total, $page, $limit);
 
