@@ -73,8 +73,7 @@ SQL;
     {
         $userId = $request->getAttribute('user_id');
         if (!$userId) {
-            $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+            return $this->error($response, 'Unauthorized', 401);
         }
 
         $sql = <<<'SQL'
@@ -491,8 +490,7 @@ SQL;
             $order = $checkStmt->fetch(PDO::FETCH_ASSOC);
             if (!$order) {
                 $this->db->rollBack();
-                $response->getBody()->write(json_encode(['error' => 'Order not found']));
-                return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+                return $this->error($response, 'Order not found', 404);
             }
 
             $updates = [];
@@ -503,8 +501,7 @@ SQL;
                 $validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
                 if (!in_array($body['fulfillment_status'], $validStatuses)) {
                     $this->db->rollBack();
-                    $response->getBody()->write(json_encode(['error' => 'Invalid fulfillment status']));
-                    return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+                    return $this->error($response, 'Invalid fulfillment status', 400);
                 }
                 $updates[] = 'fulfillment_status = :fulfillment_status';
                 $params[':fulfillment_status'] = $body['fulfillment_status'];
@@ -599,8 +596,7 @@ SQL;
 
             if (empty($updates)) {
                 $this->db->rollBack();
-                $response->getBody()->write(json_encode(['error' => 'No valid fields to update']));
-                return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+                return $this->error($response, 'No valid fields to update', 400);
             }
 
             $updates[] = 'updated_at = datetime("now")';
@@ -626,8 +622,7 @@ SQL;
             return $this->getById($request, $response, ['id' => $id]);
         } catch (\PDOException $e) {
             $this->db->rollBack();
-            $response->getBody()->write(json_encode(['error' => 'Database error: ' . $e->getMessage()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
         }
     }
 
@@ -640,8 +635,7 @@ SQL;
                 'amount' => v::notEmpty()->floatVal()->positive()->setName('Amount'),
             ]);
         } catch (ValidationException $e) {
-            $response->getBody()->write(json_encode(['error' => $e->getFirstError()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, $e->getFirstError(), 400);
         }
 
         try {
@@ -651,8 +645,7 @@ SQL;
             $order = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$order) {
                 $this->db->rollBack();
-                $response->getBody()->write(json_encode(['error' => 'Order not found']));
-                return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+                return $this->error($response, 'Order not found', 404);
             }
 
             $paymentDate = $body['payment_date'] ?? date('Y-m-d H:i:s');
@@ -677,17 +670,15 @@ SQL;
                 ':notes' => $notes,
             ]);
             $this->db->commit();
-            $response->getBody()->write(json_encode([
+            return $this->success($response, [
                 'message' => 'Payment recorded successfully',
                 'order_id' => $id,
                 'amount' => (float) $body['amount'],
                 'income_id' => (int) $this->db->lastInsertId(),
-            ]));
-            return $response->withHeader('Content-Type', 'application/json');
+            ]);
         } catch (\Exception $e) {
             $this->db->rollBack();
-            $response->getBody()->write(json_encode(['error' => 'Error recording payment: ' . $e->getMessage()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+            return $this->error($response, 'Error recording payment: ' . $e->getMessage(), 500);
         }
     }
 
@@ -701,20 +692,17 @@ SQL;
             $order = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$order) {
                 $this->db->rollBack();
-                $response->getBody()->write(json_encode(['error' => 'Order not found']));
-                return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+                return $this->error($response, 'Order not found', 404);
             }
 
             if ($order['fulfillment_status'] === 'cancelled') {
                 $this->db->rollBack();
-                $response->getBody()->write(json_encode(['error' => 'Order is already cancelled']));
-                return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+                return $this->error($response, 'Order is already cancelled', 400);
             }
 
             if (in_array($order['fulfillment_status'], ['shipped', 'delivered'])) {
                 $this->db->rollBack();
-                $response->getBody()->write(json_encode(['error' => 'Cannot cancel order that has been shipped or delivered']));
-                return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+                return $this->error($response, 'Cannot cancel order that has been shipped or delivered', 400);
             }
 
             $stmt = $this->db->prepare('SELECT product_id, store_id, quantity FROM order_items WHERE order_id = :order_id');
@@ -736,8 +724,7 @@ SQL;
             return $this->getById($request, $response, ['id' => $id]);
         } catch (\Exception $e) {
             $this->db->rollBack();
-            $response->getBody()->write(json_encode(['error' => 'Error cancelling order: ' . $e->getMessage()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+            return $this->error($response, 'Error cancelling order: ' . $e->getMessage(), 500);
         }
     }
 

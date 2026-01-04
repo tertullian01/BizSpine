@@ -306,7 +306,7 @@ SQL;
         }
 
         if (empty($updates)) {
-            throw new ValidationException('No valid fields to update');
+            return $this->error($response, 'No valid fields to update', 400);
         }
 
         $updates[] = 'updated_at = datetime("now")';

@@ -153,7 +153,7 @@ SQL;
         $stmt = $this->db->prepare('SELECT id FROM products WHERE id = :id');
         $stmt->execute([':id' => $productId]);
         if (!$stmt->fetch()) {
-            throw new ValidationException('Product not found', 404);
+            return $this->error($response, 'Product not found', 404);
         }
 
         $purchaseCheckSql = <<<'SQL'
@@ -238,7 +238,7 @@ SQL;
         }
 
         if (empty($updates)) {
-            throw new ValidationException('No valid fields to update');
+            return $this->error($response, 'No valid fields to update', 400);
         }
 
         $updates[] = 'updated_at = datetime("now")';
