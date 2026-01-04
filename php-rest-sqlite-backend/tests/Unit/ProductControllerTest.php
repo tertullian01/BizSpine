@@ -32,7 +32,7 @@ class ProductControllerTest extends DatabaseTestCase
         self::$db->exec("INSERT INTO products (name, cost) VALUES ('Product 1', 10.99)");
         self::$db->exec("INSERT INTO products (name, cost) VALUES ('Product 2', 20.99)");
 
-        $controller = new ProductController($this->cacheableProductService, $this->logger, $this->paginationService, self::$db);
+        $controller = new ProductController(self::$db, $this->cacheableProductService, $this->logger, $this->paginationService);
         $request = $this->createRequest('GET', '/products');
         $response = $this->createResponse();
 
@@ -57,7 +57,7 @@ class ProductControllerTest extends DatabaseTestCase
         self::$db->exec("INSERT INTO products (name, cost) VALUES ('Product 1', 10.99)");
         $id = (int)self::$db->lastInsertId();
 
-        $controller = new ProductController($this->cacheableProductService, $this->logger, $this->paginationService, self::$db);
+        $controller = new ProductController(self::$db, $this->cacheableProductService, $this->logger, $this->paginationService);
         $request = $this->createRequest('GET', "/products/$id");
         $response = $this->createResponse();
 
@@ -73,7 +73,7 @@ class ProductControllerTest extends DatabaseTestCase
 
     public function testGetProductByIdNotFound()
     {
-        $controller = new ProductController($this->cacheableProductService, $this->logger, $this->paginationService, self::$db);
+        $controller = new ProductController(self::$db, $this->cacheableProductService, $this->logger, $this->paginationService);
         $request = $this->createRequest('GET', '/products/999');
         $response = $this->createResponse();
 
@@ -89,7 +89,7 @@ class ProductControllerTest extends DatabaseTestCase
 
     public function testCreateProduct()
     {
-        $controller = new ProductController($this->cacheableProductService, $this->logger, $this->paginationService, self::$db);
+        $controller = new ProductController(self::$db, $this->cacheableProductService, $this->logger, $this->paginationService);
         $request = $this->createRequestWithBody('POST', '/products', [
             'name' => 'New Product',
             'cost' => 15.99,
@@ -116,7 +116,7 @@ class ProductControllerTest extends DatabaseTestCase
         self::$db->exec("INSERT INTO products (name, cost) VALUES ('Product 1', 10.99)");
         $id = (int)self::$db->lastInsertId();
 
-        $controller = new ProductController($this->cacheableProductService, $this->logger, $this->paginationService, self::$db);
+        $controller = new ProductController(self::$db, $this->cacheableProductService, $this->logger, $this->paginationService);
         $request = $this->createRequestWithBody('PUT', "/products/$id", [
             'name' => 'Updated Product',
             'cost' => 25.99,
@@ -141,7 +141,7 @@ class ProductControllerTest extends DatabaseTestCase
         self::$db->exec("INSERT INTO products (name, cost) VALUES ('Product 1', 10.99)");
         $id = (int)self::$db->lastInsertId();
 
-        $controller = new ProductController($this->cacheableProductService, $this->logger, $this->paginationService, self::$db);
+        $controller = new ProductController(self::$db, $this->cacheableProductService, $this->logger, $this->paginationService);
         $request = $this->createRequest('DELETE', "/products/$id");
         $response = $this->createResponse();
 

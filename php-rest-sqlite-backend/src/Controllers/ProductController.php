@@ -69,12 +69,12 @@ class ProductController extends ApiController
     private Logger $logger;
     private PaginationService $paginationService;
 
-    public function __construct(CacheableProductService $cacheableProductService, Logger $logger, PaginationService $paginationService, PDO $db)
+    public function __construct(PDO $db, CacheableProductService $cacheableProductService, Logger $logger, PaginationService $paginationService)
     {
+        $this->db = $db;
         $this->cacheableProductService = $cacheableProductService;
         $this->logger = $logger;
         $this->paginationService = $paginationService;
-        $this->db = $db;
     }
 
     /**
