@@ -6,6 +6,7 @@ use App\Exceptions\ValidationException;
 use App\Services\Database;
 use App\Services\EmailService;
 use App\Services\PaginationService;
+use App\Services\Logger;
 use App\Services\Validator;
 use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -21,6 +22,7 @@ class OrderController extends ApiController
 
     public function __construct(?PDO $db = null, ?PaginationService $paginationService = null, ?EmailService $emailService = null)
     {
+        $config = null;
         if ($db) {
             $this->db = $db;
         } else {
@@ -30,7 +32,8 @@ class OrderController extends ApiController
         }
         $this->validator = new Validator();
         $this->paginationService = $paginationService ?? new PaginationService();
-        $this->emailService = $emailService ?? new EmailService($this->db);
+        $config = $config ?? require __DIR__ . '/../../protected/config/config.php';
+        $this->emailService = $emailService ?? new EmailService($this->db, new Logger(), $config);
     }
 
     public function getAll(Request $request, Response $response): Response
@@ -142,7 +145,7 @@ SQL;
         $sql = 'SELECT * FROM income WHERE order_id = :order_id ORDER BY payment_date DESC';
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':order_id' => $orderId]);
-        return $stmt->fetchAll(PDO::FETCH_CLASS, 'App\Models\Income');
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
     public function create(Request $request, Response $response): Response
@@ -474,7 +477,9 @@ SQL;
 
             return $this->getById($request, $response->withStatus(201), ['id' => $orderId]);
         } catch (\Exception $e) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             return $this->error($response, $e->getMessage(), 400);
         }
     }
@@ -621,7 +626,9 @@ SQL;
             $this->db->commit();
             return $this->getById($request, $response, ['id' => $id]);
         } catch (\PDOException $e) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
         }
     }
@@ -677,7 +684,9 @@ SQL;
                 'income_id' => (int) $this->db->lastInsertId(),
             ]);
         } catch (\Exception $e) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             return $this->error($response, 'Error recording payment: ' . $e->getMessage(), 500);
         }
     }
@@ -723,7 +732,9 @@ SQL;
             $this->db->commit();
             return $this->getById($request, $response, ['id' => $id]);
         } catch (\Exception $e) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             return $this->error($response, 'Error cancelling order: ' . $e->getMessage(), 500);
         }
     }
@@ -765,7 +776,9 @@ SQL;
             $this->db->commit();
             return $response->withStatus(204);
         } catch (\Exception $e) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             return $this->error($response, 'Error deleting order: ' . $e->getMessage(), 500);
         }
     }

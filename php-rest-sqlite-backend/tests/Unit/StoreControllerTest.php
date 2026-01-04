@@ -14,6 +14,9 @@ class StoreControllerTest extends DatabaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        try {
+            self::$db->exec("ALTER TABLE stores ADD COLUMN currency_symbol TEXT DEFAULT '$'");
+        } catch (\Exception $e) {}
     }
 
     public function testGetAllStores()

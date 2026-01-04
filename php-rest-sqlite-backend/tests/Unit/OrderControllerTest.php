@@ -17,6 +17,25 @@ class OrderControllerTest extends DatabaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Ensure schema compatibility for OrderController
+        try { self::$db->exec("ALTER TABLE users ADD COLUMN display_name TEXT"); } catch (\Exception $e) {}
+        try { self::$db->exec("ALTER TABLE orders ADD COLUMN customer_email TEXT"); } catch (\Exception $e) {}
+        try { self::$db->exec("ALTER TABLE orders ADD COLUMN customer_name TEXT"); } catch (\Exception $e) {}
+        try { self::$db->exec("ALTER TABLE orders ADD COLUMN shipping_method TEXT"); } catch (\Exception $e) {}
+        try { self::$db->exec("ALTER TABLE orders ADD COLUMN shipping_carrier TEXT"); } catch (\Exception $e) {}
+        try { self::$db->exec("ALTER TABLE orders ADD COLUMN city TEXT"); } catch (\Exception $e) {}
+        try { self::$db->exec("ALTER TABLE orders ADD COLUMN state TEXT"); } catch (\Exception $e) {}
+        try { self::$db->exec("ALTER TABLE orders ADD COLUMN postal_code TEXT"); } catch (\Exception $e) {}
+        try { self::$db->exec("ALTER TABLE orders ADD COLUMN country TEXT"); } catch (\Exception $e) {}
+        try { self::$db->exec("ALTER TABLE orders ADD COLUMN phone_number TEXT"); } catch (\Exception $e) {}
+        try { self::$db->exec("ALTER TABLE orders ADD COLUMN whatsapp_number TEXT"); } catch (\Exception $e) {}
+        try { self::$db->exec("ALTER TABLE orders ADD COLUMN coupon_code TEXT"); } catch (\Exception $e) {}
+        try { self::$db->exec("ALTER TABLE orders ADD COLUMN discount_amount REAL DEFAULT 0"); } catch (\Exception $e) {}
+        try { self::$db->exec("ALTER TABLE orders ADD COLUMN tax_rate REAL DEFAULT 0"); } catch (\Exception $e) {}
+        try { self::$db->exec("ALTER TABLE orders ADD COLUMN tax_amount REAL DEFAULT 0"); } catch (\Exception $e) {}
+        try { self::$db->exec("ALTER TABLE orders ADD COLUMN notes TEXT"); } catch (\Exception $e) {}
+
     // Insert test data
         self::$db->exec("INSERT INTO users (email, password_hash) VALUES ('test@example.com', 'hash')");
         $this->userId = (int)self::$db->lastInsertId();
@@ -25,6 +44,36 @@ class OrderControllerTest extends DatabaseTestCase
         self::$db->exec("INSERT INTO stores (name) VALUES ('Siedlung')");
         $this->storeId = (int)self::$db->lastInsertId();
         self::$db->exec("INSERT INTO inventory (product_id, store_id, quantity) VALUES ({$this->productId}, {$this->storeId}, 100)");
+        
+        // Ensure tax_rates table exists for OrderController
+        self::$db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS tax_rates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                rate REAL NOT NULL,
+                region TEXT,
+                is_default INTEGER DEFAULT 0,
+                is_active INTEGER DEFAULT 1
+            );
+            INSERT INTO tax_rates (name, rate, region, is_default, is_active) VALUES ('Default Tax', 0, 'US', 1, 1);
+SQL
+        );
+
+        // Ensure income table exists for OrderController::getById -> getOrderPayments
+        self::$db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS income (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id INTEGER,
+                amount REAL NOT NULL,
+                payment_method TEXT,
+                payment_date DATETIME,
+                description TEXT,
+                notes TEXT,
+                created_at DATETIME,
+                updated_at DATETIME
+            );
+SQL
+        );
     }
 
     public function testCreateOrder()

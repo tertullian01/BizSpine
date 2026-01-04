@@ -44,11 +44,11 @@ class ReviewControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body, true);
         $this->assertEquals(201, $response->getStatusCode());
-        $this->assertEquals(5, $data['rating']);
-        $this->assertEquals('Great product!', $data['review_text']);
-        $this->assertEquals(1, $data['verified']);
+        $this->assertEquals(5, $data['data']['rating']);
+        $this->assertEquals('Great product!', $data['data']['review_text']);
+        $this->assertEquals(1, $data['data']['verified']);
 // Should be verified since user purchased
-        $this->assertEquals(0, $data['published']);
+        $this->assertEquals(0, $data['data']['published']);
 // Should not be published by default
     }
 
@@ -69,9 +69,9 @@ class ReviewControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body, true);
         $this->assertEquals(201, $response->getStatusCode());
-        $this->assertEquals(0, $data['verified']);
+        $this->assertEquals(0, $data['data']['verified']);
 // Should not be verified
-        $this->assertEquals(0, $data['published']);
+        $this->assertEquals(0, $data['data']['published']);
     }
 
     public function testGetPublishedReviews()
@@ -104,7 +104,7 @@ class ReviewControllerTest extends DatabaseTestCase
         $body = (string) $response->getBody();
         $data = json_decode($body, true);
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals(1, $data['published']);
+        $this->assertEquals(1, $data['data']['published']);
     }
 
     public function testDeleteOwnReview()
