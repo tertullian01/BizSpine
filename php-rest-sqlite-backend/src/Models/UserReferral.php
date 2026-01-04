@@ -2,17 +2,19 @@
 
 namespace App\Models;
 
+#[\AllowDynamicProperties]
 class UserReferral extends BaseModel
 {
     protected static string $tableName = 'user_referrals';
 
     public int $user_id;
     public string $referral_code;
-    public int $times_used;
-    public int $points_balance;
-    public int $points_earned;
-    public int $points_redeemed;
+    public int $times_used = 0;
+    public int $points_balance = 0;
+    public int $points_earned = 0;
+    public int $points_redeemed = 0;
     public ?string $created_at;
+    public ?string $updated_at = null;
     public ?string $discount_type = null;
     public ?float $discount_amount = null;
     public ?string $status = null;
@@ -25,7 +27,7 @@ class UserReferral extends BaseModel
             throw new \Exception('You cannot refer yourself');
         }
 
-        $orderCount = self::$db->prepare('SELECT COUNT(*) FROM orders WHERE user_id = :user_id');
+        $orderCount = self::$db->prepare("SELECT COUNT(*) FROM orders WHERE user_id = :user_id AND fulfillment_status != 'cancelled'");
         $orderCount->execute([':user_id' => $referredUserId]);
         if ((int) $orderCount->fetchColumn() > 0) {
             throw new \Exception('Referral code is only valid for the first order');
@@ -68,6 +70,25 @@ class UserReferral extends BaseModel
 
         $this->points_redeemed += $pointsToRedeem;
         $this->points_balance -= $pointsToRedeem;
+        $this->save();
+    }
+
+    public function recordUsage(int $referredUserId, int $orderId): void
+    {
+        $usage = new ReferralUsage([
+            'referrer_user_id' => $this->user_id,
+            'referred_user_id' => $referredUserId,
+            'referral_code' => $this->referral_code,
+            'order_id' => $orderId,
+            'points_awarded' => 100,
+            'used_at' => date('Y-m-d H:i:s'),
+        ]);
+        $usage->save();
+
+        $this->times_used++;
+        $this->points_earned += 100;
+        $this->points_balance += 100;
+        $this->updated_at = date('Y-m-d H:i:s');
         $this->save();
     }
 }

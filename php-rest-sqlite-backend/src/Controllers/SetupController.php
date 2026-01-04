@@ -178,6 +178,7 @@ class SetupController extends ApiController
                 shipping_cost REAL DEFAULT 0,
                 total REAL NOT NULL DEFAULT 0,
                 tracking_number TEXT,
+                tracking_url TEXT,
                 shipping_method TEXT,
                 shipping_carrier TEXT,
                 notes TEXT,
@@ -246,7 +247,7 @@ class SetupController extends ApiController
             CREATE TABLE IF NOT EXISTS coupon_usage (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 coupon_id INTEGER NOT NULL,
-                user_id INTEGER NOT NULL,
+                user_id INTEGER,
                 order_id INTEGER DEFAULT 0,
                 discount_amount REAL NOT NULL,
                 used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -936,6 +937,11 @@ class SetupController extends ApiController
                 $migrations[] = "Added 'shipping_carrier' column to orders table";
             }
 
+            if (!in_array('tracking_url', $columnNames)) {
+                $db->exec("ALTER TABLE orders ADD COLUMN tracking_url TEXT;");
+                $migrations[] = "Added 'tracking_url' column to orders table";
+            }
+
             if (!in_array('customer_email', $columnNames)) {
                 $db->exec("ALTER TABLE orders ADD COLUMN customer_email TEXT;");
                 $migrations[] = "Added 'customer_email' column to orders table";
@@ -995,6 +1001,37 @@ class SetupController extends ApiController
             }
 
             $db->exec('CREATE INDEX IF NOT EXISTS idx_testimonials_created ON testimonials(created_at);');
+
+            // Fix coupon_usage table - allow NULL user_id for guest checkouts
+            $stmt = $db->query("PRAGMA table_info(coupon_usage)");
+            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $userIdColumn = null;
+            foreach ($columns as $col) {
+                if ($col['name'] === 'user_id') {
+                    $userIdColumn = $col;
+                    break;
+                }
+            }
+
+            if ($userIdColumn && $userIdColumn['notnull'] == 1) {
+                $db->exec("CREATE TABLE coupon_usage_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    coupon_id INTEGER NOT NULL,
+                    user_id INTEGER,
+                    order_id INTEGER DEFAULT 0,
+                    discount_amount REAL NOT NULL,
+                    used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(coupon_id) REFERENCES coupons(id) ON DELETE CASCADE,
+                    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+                )");
+                $db->exec("INSERT INTO coupon_usage_new SELECT * FROM coupon_usage");
+                $db->exec("DROP TABLE coupon_usage");
+                $db->exec("ALTER TABLE coupon_usage_new RENAME TO coupon_usage");
+                $db->exec("CREATE INDEX IF NOT EXISTS idx_coupon_usage_coupon ON coupon_usage(coupon_id)");
+                $db->exec("CREATE INDEX IF NOT EXISTS idx_coupon_usage_user ON coupon_usage(user_id)");
+                $db->exec("CREATE INDEX IF NOT EXISTS idx_coupon_usage_order ON coupon_usage(order_id)");
+                $migrations[] = "Updated coupon_usage table to allow NULL user_id";
+            }
 
             if (empty($migrations)) {
                 return $this->success($response, [

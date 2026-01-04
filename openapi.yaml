@@ -21,6 +21,7 @@ components:
         id: { type: integer }
         email: { type: string, format: email }
         display_name: { type: string }
+        role: { type: string }
         is_email_verified: { type: integer }
     Product:
       type: object
@@ -33,15 +34,21 @@ components:
         all_ingredients: { type: string }
         size: { type: string }
         cost: { type: number, format: float }
+        image_url: { type: string }
+        state: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
     Store:
       type: object
       properties:
         id: { type: integer }
-        name: { type: string, enum: [Siedlung, USA] }
+        name: { type: string }
         description: { type: string }
+        location: { type: string }
         address: { type: string }
         phone: { type: string }
         email: { type: string }
+        currency_symbol: { type: string }
     Inventory:
       type: object
       properties:
@@ -56,10 +63,30 @@ components:
       type: object
       properties:
         id: { type: integer }
+        user_id: { type: integer }
+        store_id: { type: integer }
         order_number: { type: string }
+        customer_email: { type: string, format: email }
+        customer_name: { type: string }
+        order_date: { type: string, format: date-time }
         fulfillment_status: { type: string, enum: [pending, processing, shipped, delivered, cancelled] }
+        shipping_date: { type: string, format: date-time }
         shipping_address: { type: string }
+        phone_number: { type: string }
+        whatsapp_number: { type: string }
+        subtotal: { type: number, format: float }
+        discount_amount: { type: number, format: float }
+        coupon_code: { type: string }
+        referral_code: { type: string, description: "Write-only field for creating orders with referral" }
+        shipping_cost: { type: number, format: float }
         total: { type: number, format: float }
+        tax_rate: { type: number, format: float }
+        tax_amount: { type: number, format: float }
+        tracking_number: { type: string }
+        tracking_url: { type: string }
+        shipping_method: { type: string }
+        shipping_carrier: { type: string }
+        notes: { type: string }
         items:
           type: array
           items:
@@ -67,41 +94,74 @@ components:
     OrderItem:
       type: object
       properties:
+        id: { type: integer }
         product_id: { type: integer }
         store_id: { type: integer }
         quantity: { type: integer }
         unit_price: { type: number, format: float }
+        subtotal: { type: number, format: float }
     Review:
       type: object
       properties:
         id: { type: integer }
+        user_id: { type: integer }
         product_id: { type: integer }
+        order_id: { type: integer }
         rating: { type: integer, minimum: 1, maximum: 5 }
         review_text: { type: string }
         verified: { type: boolean }
         published: { type: boolean }
+        created_at: { type: string, format: date-time }
     Testimonial:
       type: object
       properties:
         id: { type: integer }
         customer_name: { type: string }
         customer_email: { type: string }
+        age_range: { type: string }
         testimonial_text: { type: string }
+        rating: { type: integer }
+        image_url: { type: string }
         published: { type: boolean }
+        is_featured: { type: boolean }
+        created_at: { type: string, format: date-time }
     Income:
       type: object
       properties:
         id: { type: integer }
+        order_id: { type: integer }
         amount: { type: number }
+        category: { type: string }
+        payment_method: { type: string }
         description: { type: string }
+        notes: { type: string }
         payment_date: { type: string, format: date-time }
     Expense:
       type: object
       properties:
         id: { type: integer }
+        order_id: { type: integer }
         category: { type: string }
         amount: { type: number }
         vendor: { type: string }
+        expense_date: { type: string, format: date-time }
+        description: { type: string }
+        receipt_image_url: { type: string }
+        notes: { type: string }
+    Coupon:
+      type: object
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        discount_type: { type: string, enum: [percentage, fixed] }
+        discount_value: { type: number, format: float }
+        min_purchase_amount: { type: number, format: float }
+        max_uses: { type: integer }
+        times_used: { type: integer }
+        valid_from: { type: string, format: date-time }
+        valid_until: { type: string, format: date-time }
+        is_active: { type: boolean }
+        description: { type: string }
 
 paths:
   /health:
@@ -241,6 +301,11 @@ paths:
           name: id
           required: true
           schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Order'
       responses:
         '200':
           description: Product updated

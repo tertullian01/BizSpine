@@ -125,6 +125,7 @@ orders
 ├── shipping_cost (REAL)
 ├── total (REAL)
 ├── tracking_number (TEXT)
+├── tracking_url (TEXT)
 ├── notes (TEXT)
 ├── created_at (DATETIME)
 └── updated_at (DATETIME)
@@ -412,6 +413,7 @@ return_items
 - `discount_amount`: Discount value
 - `shipping_cost`: Shipping fee
 - `tracking_number`: Shipment tracking number
+- `tracking_url`: URL to track the shipment
 - `notes`: Order notes
 
 **Order Status Values:**

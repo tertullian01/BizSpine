@@ -22,6 +22,8 @@ class OrderRoutes
             $group->get('/my', [OrderController::class, 'getMyOrders']);
             $group->get('/{id}', [OrderController::class, 'getById']);
             $group->put('/{id}', [OrderController::class, 'update']);
+            $group->put('/{id}/fulfillment', [OrderController::class, 'updateFulfillment']);
+            $group->post('/{id}/fulfillment', [OrderController::class, 'updateFulfillment']);
             $group->delete('/{id}', [OrderController::class, 'delete']);
             $group->post('/{id}/cancel', [OrderController::class, 'cancel']);
             $group->post('/{id}/payment', [OrderController::class, 'addPayment']);

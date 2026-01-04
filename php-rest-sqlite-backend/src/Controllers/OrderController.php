@@ -3,6 +3,8 @@
 namespace App\Controllers;
 
 use App\Exceptions\ValidationException;
+use App\Models\Coupon;
+use App\Models\UserReferral;
 use App\Services\Database;
 use App\Services\EmailService;
 use App\Services\PaginationService;
@@ -270,16 +272,40 @@ SQL;
 
             $discountAmount = 0;
             $couponCode = null;
+            $referralModel = null;
+            $couponModel = null;
+
             if ($hasCoupon) {
-                require_once __DIR__ . '/CouponController.php';
-                $couponController = new CouponController($this->db);
-                $couponResult = $couponController->validateCoupon($body['coupon_code'], $subtotal, $userId, 0);
+                $couponModel = Coupon::fetchOne('SELECT * FROM coupons WHERE UPPER(code) = :code', [':code' => strtoupper($body['coupon_code'])]);
+                if (!$couponModel) {
+                    throw new \Exception('Invalid coupon code');
+                }
+                $couponResult = $couponModel->validate($subtotal, $userId);
                 if (!$couponResult['valid']) {
                     throw new \Exception($couponResult['error']);
                 }
 
                 $discountAmount = $couponResult['discount_amount'];
                 $couponCode = $body['coupon_code'];
+            } elseif ($hasReferral) {
+                if (!$userId) {
+                    throw new \Exception('You must be logged in to use a referral code');
+                }
+
+                $referralModel = UserReferral::fetchOne('SELECT * FROM user_referrals WHERE referral_code = :code AND status = "active"', [':code' => $body['referral_code']]);
+
+                if (!$referralModel) {
+                    throw new \Exception('Invalid or inactive referral code');
+                }
+
+                $referralModel->validate($userId);
+
+                // Calculate discount
+                if (($referralModel->discount_type ?? 'percentage') === 'percentage') {
+                    $discountAmount = $subtotal * (($referralModel->discount_amount ?? 10) / 100);
+                } else {
+                    $discountAmount = (float) ($referralModel->discount_amount ?? 10);
+                }
             } elseif (isset($body['discount_amount'])) {
                 $discountAmount = (float) $body['discount_amount'];
             }
@@ -358,25 +384,12 @@ SQL;
                 ]);
             }
 
-            if ($hasCoupon && isset($couponResult) && $couponResult['valid'] && $userId) {
-                $updateUsageSql = 'UPDATE coupon_usage SET order_id = :order_id WHERE coupon_id = :coupon_id AND user_id = :user_id AND order_id = 0';
-                $updateUsageStmt = $this->db->prepare($updateUsageSql);
-                $updateUsageStmt->execute([
-                    ':order_id' => $orderId,
-                    ':coupon_id' => $couponResult['coupon_id'],
-                    ':user_id' => $userId,
-                ]);
+            if ($hasCoupon && $couponModel) {
+                $couponModel->recordUsage($userId, $orderId, $discountAmount);
             }
 
-            if ($hasReferral && $userId) {
-                $orderCountStmt = $this->db->prepare('SELECT COUNT(*) FROM orders WHERE user_id = :user_id');
-                $orderCountStmt->execute([':user_id' => $userId]);
-                $orderCount = (int) $orderCountStmt->fetchColumn();
-                if ($orderCount === 1) {
-                    require_once __DIR__ . '/ReferralController.php';
-                    $referralController = new ReferralController();
-                    $referralController->validateReferralCode($body['referral_code'], (int) $userId);
-                }
+            if ($hasReferral && $userId && $referralModel) {
+                $referralModel->recordUsage($userId, $orderId);
             }
 
             $this->db->commit();
@@ -519,6 +532,11 @@ SQL;
                 }
             }
 
+            if (isset($body['tracking_url'])) {
+                $updates[] = 'tracking_url = :tracking_url';
+                $params[':tracking_url'] = $body['tracking_url'];
+            }
+
             if (isset($body['shipping_carrier'])) {
                 $updates[] = 'shipping_carrier = :shipping_carrier';
                 $params[':shipping_carrier'] = $body['shipping_carrier'];
@@ -624,12 +642,97 @@ SQL;
             }
 
             $this->db->commit();
+
+            if (isset($body['notify_customer']) && $body['notify_customer'] === true) {
+                $this->sendOrderUpdateEmail($id);
+            }
+
             return $this->getById($request, $response, ['id' => $id]);
         } catch (\PDOException $e) {
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
             return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function updateFulfillment(Request $request, Response $response, array $args): Response
+    {
+        $body = $request->getParsedBody();
+        $allowed = [
+            'fulfillment_status',
+            'tracking_number',
+            'tracking_url',
+            'shipping_carrier',
+            'shipping_method',
+            'notify_customer'
+        ];
+
+        $filtered = array_intersect_key($body, array_flip($allowed));
+        $newRequest = $request->withParsedBody($filtered);
+
+        return $this->update($newRequest, $response, $args);
+    }
+
+    private function sendOrderUpdateEmail(int $orderId): void
+    {
+        if (!$this->emailService) {
+            return;
+        }
+
+        try {
+            // Fetch full order details
+            $stmt = $this->db->prepare('SELECT * FROM orders WHERE id = :id');
+            $stmt->execute([':id' => $orderId]);
+            $order = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$order) return;
+
+            $customerEmail = $order['customer_email'];
+            if (!$customerEmail) {
+                // Try to get from user_id
+                if ($order['user_id']) {
+                    $uStmt = $this->db->prepare('SELECT email FROM users WHERE id = :id');
+                    $uStmt->execute([':id' => $order['user_id']]);
+                    $customerEmail = $uStmt->fetchColumn();
+                }
+            }
+
+            if (!$customerEmail) return;
+
+            $placeholders = [
+                'customer_name' => $order['customer_name'] ?? 'Customer',
+                'order_number' => $order['order_number'],
+                'order_date' => $order['order_date'],
+                'fulfillment_status' => ucfirst($order['fulfillment_status']),
+                'tracking_number' => $order['tracking_number'] ?? 'N/A',
+                'tracking_url' => $order['tracking_url'] ?? '#',
+                'shipping_carrier' => $order['shipping_carrier'] ?? 'N/A',
+                'shipping_method' => $order['shipping_method'] ?? 'Standard',
+                'notes' => $order['notes'] ?? ''
+            ];
+
+            // Determine template based on status
+            $template = 'order_update';
+            if ($order['fulfillment_status'] === 'shipped') {
+                $template = 'order_shipped';
+            } elseif ($order['fulfillment_status'] === 'delivered') {
+                $template = 'order_delivered';
+            } elseif ($order['fulfillment_status'] === 'cancelled') {
+                $template = 'order_cancelled';
+            }
+
+            // If tracking URL is present but no specific template logic for it, ensure it's passed
+            if (!empty($order['tracking_url'])) {
+                $placeholders['tracking_link'] = '<a href="' . $order['tracking_url'] . '">Track Shipment</a>';
+            } else {
+                $placeholders['tracking_link'] = '';
+            }
+
+            $this->emailService->sendTemplate($customerEmail, $template, $placeholders, (int)$order['store_id']);
+
+        } catch (\Exception $e) {
+            error_log('Failed to send order update email: ' . $e->getMessage());
         }
     }
 
