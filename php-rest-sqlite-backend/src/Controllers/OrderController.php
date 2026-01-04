@@ -567,6 +567,11 @@ SQL;
                 $params[':notes'] = $body['notes'];
             }
 
+            if (isset($body['order_date'])) {
+                $updates[] = 'order_date = :order_date';
+                $params[':order_date'] = $body['order_date'];
+            }
+
             if (isset($body['customer_email'])) {
                 $updates[] = 'customer_email = :customer_email';
                 $params[':customer_email'] = $body['customer_email'];
