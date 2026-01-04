@@ -40,11 +40,46 @@ class InventoryController extends ApiController
         $limit = $pagination['limit'];
         $offset = $pagination['offset'];
 
+        $queryParams = $request->getQueryParams();
+        $search = isset($queryParams['search']) ? trim($queryParams['search']) : null;
+        $sort = $queryParams['sort'] ?? null;
+        $order = strtoupper($queryParams['order'] ?? 'ASC');
+
+        $whereClause = "";
+        $params = [];
+
+        if ($search) {
+            $whereClause = "WHERE p.name LIKE :search OR s.name LIKE :search";
+            $params[':search'] = '%' . $search . '%';
+        }
+
+        // Determine sort order
+        $allowedSorts = [
+            'product_name' => 'p.name',
+            'store_name' => 's.name',
+            'quantity' => 'i.quantity',
+            'last_restocked' => 'i.last_restocked',
+            'min_quantity' => 'i.min_quantity',
+            'max_quantity' => 'i.max_quantity'
+        ];
+
+        if ($sort && isset($allowedSorts[$sort])) {
+            $sortColumn = $allowedSorts[$sort];
+            if (!in_array($order, ['ASC', 'DESC'])) {
+                $order = 'ASC';
+            }
+            $orderByClause = "ORDER BY $sortColumn $order";
+        } else {
+            $orderByClause = "ORDER BY s.name, p.name";
+        }
+
         // Get total count
-        $countStmt = $this->db->query('SELECT COUNT(*) as total FROM inventory');
+        $countSql = "SELECT COUNT(*) as total FROM inventory i LEFT JOIN products p ON i.product_id = p.id LEFT JOIN stores s ON i.store_id = s.id $whereClause";
+        $countStmt = $this->db->prepare($countSql);
+        $countStmt->execute($params);
         $total = (int)$countStmt->fetch(PDO::FETCH_ASSOC)['total'];
 
-        $sql = <<<'SQL'
+        $sql = <<<SQL
 SELECT
     i.*,
     p.name as product_name,
@@ -52,10 +87,14 @@ SELECT
 FROM inventory i
 LEFT JOIN products p ON i.product_id = p.id
 LEFT JOIN stores s ON i.store_id = s.id
-ORDER BY s.name, p.name
+$whereClause
+$orderByClause
 LIMIT :limit OFFSET :offset
 SQL;
         $stmt = $this->db->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
