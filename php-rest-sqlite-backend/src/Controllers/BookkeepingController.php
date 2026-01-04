@@ -262,8 +262,7 @@ SQL;
         $checkStmt = $this->db->prepare('SELECT id FROM expenses WHERE id = :id');
         $checkStmt->execute([':id' => $id]);
         if (!$checkStmt->fetch()) {
-            $response->getBody()->write(json_encode(['error' => 'Expense record not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Expense record not found', 404);
         }
 
         $this->validator->validate($body, [

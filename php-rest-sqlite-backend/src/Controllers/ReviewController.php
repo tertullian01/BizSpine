@@ -81,16 +81,14 @@ SQL;
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':product_id' => $productId]);
         $reviews = $stmt->fetchAll(PDO::FETCH_CLASS, 'App\Models\ProductReview');
-        $response->getBody()->write(json_encode($reviews));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $reviews);
     }
 
     public function getMyReviews(Request $request, Response $response): Response
     {
         $userId = $request->getAttribute('user_id');
         if (!$userId) {
-            $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+            return $this->error($response, 'Unauthorized', 401);
         }
 
         $sql = <<<'SQL'
@@ -107,8 +105,7 @@ SQL;
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':user_id' => $userId]);
         $reviews = $stmt->fetchAll(PDO::FETCH_CLASS, 'App\Models\ProductReview');
-        $response->getBody()->write(json_encode($reviews));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $reviews);
     }
 
     public function getById(Request $request, Response $response, array $args): Response
@@ -128,12 +125,10 @@ SQL;
         $stmt->execute([':id' => $id]);
         $review = $stmt->fetchObject('App\Models\ProductReview');
         if (!$review) {
-            $response->getBody()->write(json_encode(['error' => 'Review not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Review not found', 404);
         }
 
-        $response->getBody()->write(json_encode($review));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->success($response, $review);
     }
 
     public function create(Request $request, Response $response): Response
@@ -141,8 +136,7 @@ SQL;
         $body = $request->getParsedBody();
         $userId = $request->getAttribute('user_id');
         if (!$userId) {
-            $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+            return $this->error($response, 'Unauthorized', 401);
         }
 
         try {
@@ -151,8 +145,7 @@ SQL;
                 'rating' => v::notEmpty()->intVal()->between(1, 5)->setName('Rating'),
             ]);
         } catch (ValidationException $e) {
-            $response->getBody()->write(json_encode(['error' => $e->getFirstError()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, $e->getFirstError(), 400);
         }
 
         $productId = (int)$body['product_id'];
@@ -196,8 +189,7 @@ SQL;
             $id = (int)$this->db->lastInsertId();
             return $this->getById($request, $response->withStatus(201), ['id' => $id]);
         } catch (\PDOException $e) {
-            $response->getBody()->write(json_encode(['error' => 'Database error: ' . $e->getMessage()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
         }
     }
 
@@ -207,26 +199,22 @@ SQL;
         $body = $request->getParsedBody();
         $userId = $request->getAttribute('user_id');
         if (!$userId) {
-            $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+            return $this->error($response, 'Unauthorized', 401);
         }
 
         $checkStmt = $this->db->prepare('SELECT user_id, published FROM product_reviews WHERE id = :id');
         $checkStmt->execute([':id' => $id]);
         $review = $checkStmt->fetch(PDO::FETCH_ASSOC);
         if (!$review) {
-            $response->getBody()->write(json_encode(['error' => 'Review not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Review not found', 404);
         }
 
         if ($review['user_id'] != $userId) {
-            $response->getBody()->write(json_encode(['error' => 'You can only update your own reviews']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(403);
+            return $this->error($response, 'You can only update your own reviews', 403);
         }
 
         if ($review['published'] == 1) {
-            $response->getBody()->write(json_encode(['error' => 'Cannot update published reviews']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, 'Cannot update published reviews', 400);
         }
 
         try {
@@ -234,8 +222,7 @@ SQL;
                 'rating' => v::optional(v::intVal()->between(1, 5)->setName('Rating')),
             ]);
         } catch (ValidationException $e) {
-            $response->getBody()->write(json_encode(['error' => $e->getFirstError()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $this->error($response, $e->getFirstError(), 400);
         }
 
         $updates = [];
@@ -261,8 +248,7 @@ SQL;
             $stmt->execute($params);
             return $this->getById($request, $response, ['id' => $id]);
         } catch (\PDOException $e) {
-            $response->getBody()->write(json_encode(['error' => 'Database error: ' . $e->getMessage()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
         }
     }
 
@@ -272,8 +258,7 @@ SQL;
         $checkStmt = $this->db->prepare('SELECT id FROM product_reviews WHERE id = :id');
         $checkStmt->execute([':id' => $id]);
         if (!$checkStmt->fetch()) {
-            $response->getBody()->write(json_encode(['error' => 'Review not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Review not found', 404);
         }
 
         $stmt = $this->db->prepare('UPDATE product_reviews SET published = 1, updated_at = datetime("now") WHERE id = :id');
@@ -287,8 +272,7 @@ SQL;
         $checkStmt = $this->db->prepare('SELECT id FROM product_reviews WHERE id = :id');
         $checkStmt->execute([':id' => $id]);
         if (!$checkStmt->fetch()) {
-            $response->getBody()->write(json_encode(['error' => 'Review not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Review not found', 404);
         }
 
         $stmt = $this->db->prepare('UPDATE product_reviews SET published = 0, updated_at = datetime("now") WHERE id = :id');
@@ -301,21 +285,18 @@ SQL;
         $id = (int)$args['id'];
         $userId = $request->getAttribute('user_id');
         if (!$userId) {
-            $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+            return $this->error($response, 'Unauthorized', 401);
         }
 
         $checkStmt = $this->db->prepare('SELECT user_id FROM product_reviews WHERE id = :id');
         $checkStmt->execute([':id' => $id]);
         $review = $checkStmt->fetch(PDO::FETCH_ASSOC);
         if (!$review) {
-            $response->getBody()->write(json_encode(['error' => 'Review not found']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            return $this->error($response, 'Review not found', 404);
         }
 
         if ($review['user_id'] != $userId) {
-            $response->getBody()->write(json_encode(['error' => 'You can only delete your own reviews']));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(403);
+            return $this->error($response, 'You can only delete your own reviews', 403);
         }
 
         $stmt = $this->db->prepare('DELETE FROM product_reviews WHERE id = :id');
