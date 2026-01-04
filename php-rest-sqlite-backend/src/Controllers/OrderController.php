@@ -67,6 +67,9 @@ SQL;
         foreach ($orders as $order) {
             $order->items = $this->getOrderItems($order->id);
             $order->payments = $this->getOrderPayments($order->id);
+            $order->shipping_carrier = $order->shipping_carrier ?? null;
+            $order->tracking_number = $order->tracking_number ?? null;
+            $order->tracking_url = $order->tracking_url ?? null;
         }
 
         $result = $this->paginationService->formatPaginatedResponse($orders, $total, $page, $limit);
@@ -96,6 +99,9 @@ SQL;
         foreach ($orders as $order) {
             $order->items = $this->getOrderItems($order->id);
             $order->payments = $this->getOrderPayments($order->id);
+            $order->shipping_carrier = $order->shipping_carrier ?? null;
+            $order->tracking_number = $order->tracking_number ?? null;
+            $order->tracking_url = $order->tracking_url ?? null;
         }
 
         return $this->success($response, $orders);
@@ -122,6 +128,9 @@ SQL;
 
         $order->items = $this->getOrderItems($order->id);
         $order->payments = $this->getOrderPayments($order->id);
+        $order->shipping_carrier = $order->shipping_carrier ?? null;
+        $order->tracking_number = $order->tracking_number ?? null;
+        $order->tracking_url = $order->tracking_url ?? null;
         return $this->success($response, $order);
     }
 
@@ -664,6 +673,10 @@ SQL;
     public function updateFulfillment(Request $request, Response $response, array $args): Response
     {
         $body = $request->getParsedBody();
+        if (isset($body['carrier']) && !isset($body['shipping_carrier'])) {
+            $body['shipping_carrier'] = $body['carrier'];
+        }
+
         $allowed = [
             'fulfillment_status',
             'tracking_number',
@@ -713,8 +726,10 @@ SQL;
                 'tracking_number' => $order['tracking_number'] ?? 'N/A',
                 'tracking_url' => $order['tracking_url'] ?? '#',
                 'shipping_carrier' => $order['shipping_carrier'] ?? 'N/A',
+                'carrier' => $order['shipping_carrier'] ?? 'N/A',
                 'shipping_method' => $order['shipping_method'] ?? 'Standard',
-                'notes' => $order['notes'] ?? ''
+                'notes' => $order['notes'] ?? '',
+                'shipping_address' => $order['shipping_address'] ?? ''
             ];
 
             // Determine template based on status
@@ -729,9 +744,9 @@ SQL;
 
             // If tracking URL is present but no specific template logic for it, ensure it's passed
             if (!empty($order['tracking_url'])) {
-                $placeholders['tracking_link'] = '<a href="' . $order['tracking_url'] . '">Track Shipment</a>';
+                $placeholders['tracking_link'] = $order['tracking_url'];
             } else {
-                $placeholders['tracking_link'] = '';
+                $placeholders['tracking_link'] = '#';
             }
 
             $this->emailService->sendTemplate($customerEmail, $template, $placeholders, (int)$order['store_id']);
