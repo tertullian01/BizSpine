@@ -223,6 +223,9 @@ class SettingsController extends ApiController
             }
 
             if ($filename && is_string($filename)) {
+                // Sanitize filename to prevent directory traversal
+                $filename = basename($filename);
+
                 $config = require __DIR__ . '/../../protected/config/config.php';
                 $uploadPath = $config['file_upload']['upload_path'];
                 $filePath = $uploadPath . $filename;

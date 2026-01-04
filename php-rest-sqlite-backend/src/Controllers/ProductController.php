@@ -193,12 +193,11 @@ ORDER BY p.name
 LIMIT :limit OFFSET :offset
 SQL;
             $stmt = $this->db->prepare($sql);
-            $stmt->execute([
-                ':store_id' => $storeId,
-                ':type' => $type,
-                ':limit' => $limit,
-                ':offset' => $offset
-            ]);
+            $stmt->bindValue(':store_id', $storeId, PDO::PARAM_INT);
+            $stmt->bindValue(':type', $type, PDO::PARAM_STR);
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+            $stmt->execute();
             $products = $stmt->fetchAll(PDO::FETCH_OBJ);
         } else {
             // Use optimized query with specific columns
