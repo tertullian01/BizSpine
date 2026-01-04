@@ -159,6 +159,7 @@ SQL;
         }
 
         $data = $request->getParsedBody();
+        unset($data['id']);
         foreach ($data as $key => $value) {
             if (property_exists($user, $key)) {
                 $user->$key = $value;
@@ -205,6 +206,7 @@ SQL;
         // Handle password separately
         $password = $data['password'] ?? null;
         unset($data['password']);
+        unset($data['id']);
 
         $user = new User($data);
 
@@ -227,6 +229,7 @@ SQL;
         }
 
         $data = $request->getParsedBody();
+        unset($data['id']);
         foreach ($data as $key => $value) {
             if (property_exists($user, $key)) {
                 $user->$key = $value;
