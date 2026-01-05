@@ -319,6 +319,35 @@ SQL;
                 $discountAmount = (float) $body['discount_amount'];
             }
 
+            // Handle points redemption
+            $pointsToRedeem = 0;
+            $pointsDiscount = 0.0;
+            $userReferralAccount = null;
+
+            if (isset($body['points_to_redeem']) && (int)$body['points_to_redeem'] > 0) {
+                if (!$userId) {
+                    throw new \Exception('You must be logged in to redeem points');
+                }
+                $pointsToRedeem = (int)$body['points_to_redeem'];
+                
+                $userReferralAccount = UserReferral::fetchOne('SELECT * FROM user_referrals WHERE user_id = :user_id', [':user_id' => $userId]);
+                
+                if (!$userReferralAccount) {
+                    throw new \Exception('Referral account not found');
+                }
+                if ($userReferralAccount->points_balance < $pointsToRedeem) {
+                    throw new \Exception('Insufficient points balance');
+                }
+
+                // Conversion rate: 1 point = $0.05 (100 points = $5)
+                $pointsDiscount = $pointsToRedeem * 0.05;
+                $discountAmount += $pointsDiscount;
+            }
+
+            if ($discountAmount > $subtotal) {
+                throw new \Exception('Total discount cannot exceed order subtotal');
+            }
+
             $shippingCost = isset($body['shipping_cost']) ? (float) $body['shipping_cost'] : (isset($body['shipping']) ? (float) $body['shipping'] : 0);
             require_once __DIR__ . '/TaxController.php';
             $taxController = new TaxController();
@@ -399,6 +428,10 @@ SQL;
 
             if ($hasReferral && $userId && $referralModel) {
                 $referralModel->recordUsage($userId, $orderId);
+            }
+
+            if ($userReferralAccount && $pointsToRedeem > 0) {
+                $userReferralAccount->redeemPoints($pointsToRedeem);
             }
 
             $this->db->commit();

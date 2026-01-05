@@ -62,7 +62,7 @@ class UserReferral extends BaseModel
         return $code;
     }
 
-    public function redeemPoints(int $pointsToRedeem): void
+    public function redeemPoints(int $pointsToRedeem, ?string $notes = null): void
     {
         if ($this->points_balance < $pointsToRedeem) {
             throw new \Exception('Insufficient points balance');
@@ -70,10 +70,20 @@ class UserReferral extends BaseModel
 
         $this->points_redeemed += $pointsToRedeem;
         $this->points_balance -= $pointsToRedeem;
+        $this->updated_at = date('Y-m-d H:i:s');
         $this->save();
+
+        // Log redemption
+        $redemption = new ReferralRedemption([
+            'user_referral_id' => $this->id,
+            'points_redeemed' => $pointsToRedeem,
+            'notes' => $notes,
+            'redeemed_at' => date('Y-m-d H:i:s'),
+        ]);
+        $redemption->save();
     }
 
-    public function recordUsage(int $referredUserId, int $orderId): void
+    public function recordUsage(int $referredUserId, ?int $orderId = null): void
     {
         $usage = new ReferralUsage([
             'referrer_user_id' => $this->user_id,

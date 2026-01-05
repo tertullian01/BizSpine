@@ -286,6 +286,64 @@ SQL;
         return $this->success($response, $usage);
     }
 
+    public function getUsageById(Request $request, Response $response, array $args): Response
+    {
+        $id = (int)$args['id'];
+
+        $stmt = $this->db->prepare('SELECT referral_code FROM user_referrals WHERE id = :id');
+        $stmt->execute([':id' => $id]);
+        $referralCode = $stmt->fetchColumn();
+
+        if (!$referralCode) {
+            return $this->error($response, 'Referral code not found', 404);
+        }
+
+        $sql = <<<'SQL'
+SELECT 
+    ru.*,
+    u1.email as referrer_email,
+    u2.email as referred_email,
+    o.order_number
+FROM referral_usage ru
+LEFT JOIN users u1 ON ru.referrer_user_id = u1.id
+LEFT JOIN users u2 ON ru.referred_user_id = u2.id
+LEFT JOIN orders o ON ru.order_id = o.id
+WHERE ru.referral_code = :code
+ORDER BY ru.used_at DESC
+SQL;
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':code' => $referralCode]);
+        $usage = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return $this->success($response, $usage);
+    }
+
+    public function addUsage(Request $request, Response $response): Response
+    {
+        $body = $request->getParsedBody();
+
+        if (empty($body['referral_id'])) {
+            return $this->error($response, 'referral_id is required', 400);
+        }
+
+        // Allow user_id as alias for referred_user_id
+        $referredUserId = $body['referred_user_id'] ?? $body['user_id'] ?? null;
+
+        if (empty($referredUserId)) {
+            return $this->error($response, 'referred_user_id is required', 400);
+        }
+
+        $referral = UserReferral::find((int)$body['referral_id']);
+        if (!$referral) {
+            return $this->error($response, 'Referral not found', 404);
+        }
+
+        $orderId = isset($body['order_id']) && is_numeric($body['order_id']) ? (int)$body['order_id'] : null;
+        $referral->recordUsage((int)$referredUserId, $orderId);
+
+        return $this->success($response, ['message' => 'Referral usage recorded successfully']);
+    }
+
     public function redeemPoints(Request $request, Response $response): Response
     {
         $userId = $request->getAttribute('user_id');
@@ -314,6 +372,80 @@ SQL;
         } catch (\Exception $e) {
             return $this->error($response, $e->getMessage(), 400);
         }
+    }
+
+    public function manualRedemption(Request $request, Response $response): Response
+    {
+        $body = $request->getParsedBody();
+
+        if (empty($body['referral_id'])) {
+            return $this->error($response, 'referral_id is required', 400);
+        }
+
+        if (empty($body['amount'])) {
+            return $this->error($response, 'Amount is required', 400);
+        }
+
+        $referral = UserReferral::find((int)$body['referral_id']);
+        if (!$referral) {
+            return $this->error($response, 'Referral not found', 404);
+        }
+
+        try {
+            $referral->redeemPoints((int)$body['amount']);
+            return $this->success($response, [
+                'message' => 'Points redeemed successfully',
+                'points_redeemed' => (int)$body['amount'],
+                'new_balance' => $referral->points_balance,
+            ]);
+        } catch (\Exception $e) {
+            return $this->error($response, $e->getMessage(), 400);
+        }
+    }
+
+    public function getReferralLog(Request $request, Response $response, array $args): Response
+    {
+        $id = (int)$args['id'];
+
+        $stmt = $this->db->prepare('SELECT user_id FROM user_referrals WHERE id = :id');
+        $stmt->execute([':id' => $id]);
+        $userId = $stmt->fetchColumn();
+
+        if (!$userId) {
+            return $this->error($response, 'Referral not found', 404);
+        }
+
+        $sql = <<<'SQL'
+SELECT * FROM (
+    SELECT 
+        'earned' as type,
+        points_awarded as points,
+        used_at as date,
+        'Referral used by ' || COALESCE(u.email, 'Unknown') as description,
+        o.order_number as reference
+    FROM referral_usage ru
+    LEFT JOIN users u ON ru.referred_user_id = u.id
+    LEFT JOIN orders o ON ru.order_id = o.id
+    WHERE ru.referrer_user_id = :user_id
+
+    UNION ALL
+
+    SELECT 
+        'redeemed' as type,
+        -points_redeemed as points,
+        redeemed_at as date,
+        COALESCE(notes, 'Points redemption') as description,
+        NULL as reference
+    FROM referral_redemptions
+    WHERE user_referral_id = :referral_id
+) ORDER BY date DESC
+SQL;
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':user_id' => $userId, ':referral_id' => $id]);
+        $log = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return $this->success($response, $log);
     }
 
     public function validateReferralCode(string $code, int $referredUserId): bool
@@ -380,6 +512,31 @@ SQL;
         }
         if (!in_array('status', $columnNames)) {
             $this->db->exec("ALTER TABLE user_referrals ADD COLUMN status TEXT DEFAULT 'active'");
+        }
+
+        // Ensure referral_redemptions table exists
+        $stmt = $this->db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='referral_redemptions'");
+        if (!$stmt->fetch()) {
+            $sql = <<<'SQL'
+CREATE TABLE referral_redemptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_referral_id INTEGER NOT NULL,
+    points_redeemed INTEGER NOT NULL,
+    notes TEXT,
+    redeemed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_referral_id) REFERENCES user_referrals(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_referral_redemptions_referral ON referral_redemptions(user_referral_id);
+SQL;
+            $this->db->exec($sql);
+        }
+
+        // Ensure columns exist in referral_redemptions
+        $stmt = $this->db->query("PRAGMA table_info(referral_redemptions)");
+        $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $columnNames = array_column($columns, 'name');
+        if (!in_array('notes', $columnNames)) {
+            $this->db->exec("ALTER TABLE referral_redemptions ADD COLUMN notes TEXT");
         }
     }
 }

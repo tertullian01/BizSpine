@@ -20,6 +20,10 @@ class ReferralRoutes
             $group->post('', [ReferralController::class, 'create']);
             $group->get('/my', [ReferralController::class, 'getMyReferral']);
             $group->get('/my/usage', [ReferralController::class, 'getMyReferralUsage']);
+            $group->get('/{id}/usage', [ReferralController::class, 'getUsageById']);
+            $group->get('/{id}/log', [ReferralController::class, 'getReferralLog']);
+            $group->post('/usage', [ReferralController::class, 'addUsage']);
+            $group->post('/redemption', [ReferralController::class, 'manualRedemption']);
             $group->post('/redeem', [ReferralController::class, 'redeemPoints']);
             $group->get('/{id}', [ReferralController::class, 'getById']);
             $group->put('/{id}', [ReferralController::class, 'update']);

@@ -78,6 +78,7 @@ components:
         discount_amount: { type: number, format: float }
         coupon_code: { type: string }
         referral_code: { type: string, description: "Write-only field for creating orders with referral" }
+        points_to_redeem: { type: integer, description: "Write-only field for redeeming points during order creation" }
         shipping_cost: { type: number, format: float }
         total: { type: number, format: float }
         tax_rate: { type: number, format: float }
@@ -638,6 +639,59 @@ paths:
                 properties:
                   referral_code: { type: string }
                   points_balance: { type: integer }
+  /referrals/my/usage:
+    get:
+      summary: Get user's referral usage history
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Referral usage history
+  /referrals/usage:
+    post:
+      summary: Manually add referral usage (Admin)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [referral_id, referred_user_id]
+              properties:
+                referral_id: { type: integer }
+                referred_user_id: { type: integer }
+                order_id: { type: integer }
+      responses:
+        '200':
+          description: Usage recorded successfully
+  /referrals/{id}/usage:
+    get:
+      summary: Get usage history for a specific referral (Admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Referral usage history
+  /referrals/redemption:
+    post:
+      summary: Manually redeem points for a referral (Admin)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [referral_id, amount]
+              properties:
+                referral_id: { type: integer }
+                amount: { type: integer }
+                notes: { type: string }
+      responses:
+        '200':
+          description: Points redeemed successfully
   /referrals/redeem:
     post:
       summary: Redeem referral points
@@ -645,6 +699,49 @@ paths:
       responses:
         '200':
           description: Points redeemed
+  /referrals/{id}:
+    get:
+      summary: Get referral by ID (Admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Referral details
+    put:
+      summary: Update referral (Admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                referral_code: { type: string }
+                points_balance: { type: integer }
+                status: { type: string }
+      responses:
+        '200':
+          description: Referral updated
+    delete:
+      summary: Delete referral (Admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Referral deleted
 
   # Users & Clients
   /users:

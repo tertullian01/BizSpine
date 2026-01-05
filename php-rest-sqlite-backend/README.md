@@ -286,6 +286,19 @@ Run Phinx migrations to update the database schema:
 - `GET/POST /employees` - Manage employees
 - `PUT/DELETE /employees/{id}` - Update/Delete employees
 
+### Referrals
+- `GET /referrals` - List all referrals (Admin)
+- `POST /referrals` - Create a referral code (Admin)
+- `GET /referrals/code/{code}` - Get referral details by code
+- `GET /referrals/my` - Get user's referral code and stats
+- `GET /referrals/my/usage` - Get user's referral usage history
+- `GET /referrals/{id}/usage` - Get usage history for a specific referral (Admin)
+- `POST /referrals/usage` - Manually add referral usage (Admin)
+- `POST /referrals/redemption` - Manually redeem points (Admin)
+- `POST /referrals/redeem` - Redeem points (User)
+- `GET /referrals/{id}` - Get referral by ID
+- `PUT/DELETE /referrals/{id}` - Update/Delete referral
+
 ### Additional Features
 - **Stores**: Multi-location management
 - **Reviews**: Product reviews and ratings
