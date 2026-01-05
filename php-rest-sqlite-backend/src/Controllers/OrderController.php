@@ -169,7 +169,10 @@ SQL;
             return $this->error($response, 'Customer email and name are required for guest checkout', 400);
         } 
 
-        $sendEmail = isset($body['sendEmail']) && $body['sendEmail'] === true;
+        $sendEmail = true;
+        if (isset($body['sendEmail'])) {
+            $sendEmail = filter_var($body['sendEmail'], FILTER_VALIDATE_BOOLEAN);
+        }
 
         // Custom validation for order creation
         if (!isset($body['shipping_address']) || empty(trim($body['shipping_address']))) {

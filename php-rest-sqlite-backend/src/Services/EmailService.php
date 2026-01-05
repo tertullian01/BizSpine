@@ -4,6 +4,7 @@ namespace App\Services;
 
 use PDO;
 use PHPMailer\PHPMailer\PHPMailer;
+use App\Models\EmailLog;
 
 class EmailService
 {
@@ -47,37 +48,57 @@ class EmailService
             throw new \Exception('PHPMailer library not found');
         }
 
-        $mail = new PHPMailer(true);
-        
-        if ($this->logger && $debug) {
-            $mail->SMTPDebug = 2; // Enable verbose debug output
-            $mail->Debugoutput = function($str, $level) {
-                $this->logger->info("PHPMailer: " . trim($str));
-            };
-        }
+        // Create log entry
+        $emailLog = new EmailLog([
+            'recipient' => $to,
+            'subject' => $subject,
+            'body' => $body,
+            'status' => 'pending',
+            'sent_at' => date('Y-m-d H:i:s')
+        ]);
+        $emailLog->save();
 
-        $mail->isSMTP();
-        $mail->Host       = $settings['smtp_host'] ?? '';
-        $mail->SMTPAuth   = true;
-        $mail->Username   = $settings['smtp_username'] ?? '';
-        $mail->Password   = $password;
-        $mail->SMTPSecure = $settings['smtp_encryption'] ?? 'tls';
-        $mail->Port       = $settings['smtp_port'] ?? 587;
-        
-        $fromEmail = $settings['from_email'] ?? 'noreply@example.com';
-        $fromName = $settings['from_name'] ?? 'Store Admin';
-        
-        $mail->setFrom($fromEmail, $fromName);
-        $mail->addAddress($to);
-        $mail->isHTML($isHtml);
-        $mail->Subject = $subject;
-        $mail->Body    = $body;
-        
-        if ($isHtml) {
-            $mail->AltBody = strip_tags($body);
+        try {
+            $mail = new PHPMailer(true);
+            
+            if ($this->logger && $debug) {
+                $mail->SMTPDebug = 2; // Enable verbose debug output
+                $mail->Debugoutput = function($str, $level) {
+                    $this->logger->info("PHPMailer: " . trim($str));
+                };
+            }
+
+            $mail->isSMTP();
+            $mail->Host       = $settings['smtp_host'] ?? '';
+            $mail->SMTPAuth   = true;
+            $mail->Username   = $settings['smtp_username'] ?? '';
+            $mail->Password   = $password;
+            $mail->SMTPSecure = $settings['smtp_encryption'] ?? 'tls';
+            $mail->Port       = $settings['smtp_port'] ?? 587;
+            
+            $fromEmail = $settings['from_email'] ?? 'noreply@example.com';
+            $fromName = $settings['from_name'] ?? 'Store Admin';
+            
+            $mail->setFrom($fromEmail, $fromName);
+            $mail->addAddress($to);
+            $mail->isHTML($isHtml);
+            $mail->Subject = $subject;
+            $mail->Body    = $body;
+            
+            if ($isHtml) {
+                $mail->AltBody = strip_tags($body);
+            }
+            
+            $mail->send();
+
+            $emailLog->status = 'sent';
+            $emailLog->save();
+        } catch (\Exception $e) {
+            $emailLog->status = 'failed';
+            $emailLog->error_message = $e->getMessage();
+            $emailLog->save();
+            throw $e;
         }
-        
-        $mail->send();
     }
 
     public function sendTemplate(string $to, string $templateName, array $placeholders, ?int $storeId = null): void

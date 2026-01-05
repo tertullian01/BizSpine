@@ -163,6 +163,16 @@ components:
         valid_until: { type: string, format: date-time }
         is_active: { type: boolean }
         description: { type: string }
+    EmailLog:
+      type: object
+      properties:
+        id: { type: integer }
+        recipient: { type: string }
+        subject: { type: string }
+        body: { type: string }
+        status: { type: string, enum: [sent, failed] }
+        error_message: { type: string }
+        sent_at: { type: string, format: date-time }
 
 paths:
   /health:
@@ -890,3 +900,31 @@ paths:
       responses:
         '200':
           description: Employee deleted
+
+  # Email Logs
+  /email-logs:
+    get:
+      summary: Get all email logs (Admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+          description: Items per page
+      responses:
+        '200':
+          description: A paginated list of email logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmailLog'

@@ -416,6 +416,22 @@ class SetupController extends ApiController
             SQL
             );
 
+            // Create email_logs table
+            $db->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS email_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                recipient TEXT NOT NULL,
+                subject TEXT NOT NULL,
+                body TEXT,
+                status TEXT NOT NULL,
+                error_message TEXT,
+                sent_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            SQL
+            );
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_email_logs_status ON email_logs(status);');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_email_logs_recipient ON email_logs(recipient);');
+
             // Create settings table
             $db->exec(<<<'SQL'
             CREATE TABLE IF NOT EXISTS settings (
@@ -1052,6 +1068,25 @@ class SetupController extends ApiController
                 $db->exec("CREATE INDEX IF NOT EXISTS idx_coupon_usage_user ON coupon_usage(user_id)");
                 $db->exec("CREATE INDEX IF NOT EXISTS idx_coupon_usage_order ON coupon_usage(order_id)");
                 $migrations[] = "Updated coupon_usage table to allow NULL user_id";
+            }
+
+            // Add email_logs table
+            $stmt = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='email_logs'");
+            if (!$stmt->fetch()) {
+                $db->exec(<<<'SQL'
+                CREATE TABLE email_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    recipient TEXT NOT NULL,
+                    subject TEXT NOT NULL,
+                    body TEXT,
+                    status TEXT NOT NULL,
+                    error_message TEXT,
+                    sent_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                SQL);
+                $db->exec('CREATE INDEX IF NOT EXISTS idx_email_logs_status ON email_logs(status);');
+                $db->exec('CREATE INDEX IF NOT EXISTS idx_email_logs_recipient ON email_logs(recipient);');
+                $migrations[] = "Added 'email_logs' table";
             }
 
             if (empty($migrations)) {

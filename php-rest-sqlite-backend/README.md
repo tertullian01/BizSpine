@@ -299,6 +299,9 @@ Run Phinx migrations to update the database schema:
 - `GET /referrals/{id}` - Get referral by ID
 - `PUT/DELETE /referrals/{id}` - Update/Delete referral
 
+### Email Logs
+- `GET /email-logs` - Get all email logs (Admin)
+
 ### Additional Features
 - **Stores**: Multi-location management
 - **Reviews**: Product reviews and ratings

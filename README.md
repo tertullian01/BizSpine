@@ -224,6 +224,23 @@ referral_usage
 ├── points_awarded (INTEGER)
 └── used_at (DATETIME)
 
+referral_redemptions
+├── id (INTEGER PRIMARY KEY)
+├── user_referral_id (INTEGER FK → user_referrals.id)
+├── points_redeemed (INTEGER NOT NULL)
+├── order_id (INTEGER)
+├── notes (TEXT)
+└── redeemed_at (DATETIME)
+
+email_logs
+├── id (INTEGER PRIMARY KEY)
+├── recipient (TEXT)
+├── subject (TEXT)
+├── body (TEXT)
+├── status (TEXT)
+├── error_message (TEXT)
+└── sent_at (DATETIME)
+
 coupons
 ├── id (INTEGER PRIMARY KEY)
 ├── code (TEXT UNIQUE)
