@@ -392,7 +392,7 @@ SQL;
         }
 
         try {
-            $referral->redeemPoints((int)$body['amount']);
+            $referral->redeemPoints((int)$body['amount'], $body['notes'] ?? null, isset($body['order_id']) ? (int)$body['order_id'] : null);
             return $this->success($response, [
                 'message' => 'Points redeemed successfully',
                 'points_redeemed' => (int)$body['amount'],
@@ -433,11 +433,12 @@ SELECT * FROM (
     SELECT 
         'redeemed' as type,
         (0 - points_redeemed) as points,
-        redeemed_at as date,
-        COALESCE(notes, 'Points redemption') as description,
-        NULL as reference
-    FROM referral_redemptions
-    WHERE user_referral_id = :referral_id
+        rr.redeemed_at as date,
+        COALESCE(rr.notes, 'Points redemption') as description,
+        o.order_number as reference
+    FROM referral_redemptions rr
+    LEFT JOIN orders o ON rr.order_id = o.id
+    WHERE rr.user_referral_id = :referral_id
 ) ORDER BY date DESC
 SQL;
 
@@ -522,6 +523,7 @@ CREATE TABLE referral_redemptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_referral_id INTEGER NOT NULL,
     points_redeemed INTEGER NOT NULL,
+    order_id INTEGER,
     notes TEXT,
     redeemed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(user_referral_id) REFERENCES user_referrals(id) ON DELETE CASCADE
@@ -537,6 +539,9 @@ SQL;
         $columnNames = array_column($columns, 'name');
         if (!in_array('notes', $columnNames)) {
             $this->db->exec("ALTER TABLE referral_redemptions ADD COLUMN notes TEXT");
+        }
+        if (!in_array('order_id', $columnNames)) {
+            $this->db->exec("ALTER TABLE referral_redemptions ADD COLUMN order_id INTEGER DEFAULT NULL");
         }
     }
 }

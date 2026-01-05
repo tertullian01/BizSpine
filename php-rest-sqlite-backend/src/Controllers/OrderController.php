@@ -431,7 +431,7 @@ SQL;
             }
 
             if ($userReferralAccount && $pointsToRedeem > 0) {
-                $userReferralAccount->redeemPoints($pointsToRedeem, "Redeemed on Order #{$orderNumber}");
+                $userReferralAccount->redeemPoints($pointsToRedeem, "Redeemed on Order #{$orderNumber}", $orderId);
             }
 
             $this->db->commit();
