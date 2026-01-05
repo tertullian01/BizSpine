@@ -101,6 +101,17 @@ SQL;
             $lastOrder = $stmt->fetch(\PDO::FETCH_ASSOC);
             $clientData['last_order_date'] = $lastOrder ? $lastOrder['order_date'] : null;
 
+            // Get referral info
+            $stmt = $db->prepare('
+                SELECT referral_code, points_balance 
+                FROM user_referrals 
+                WHERE user_id = :user_id
+            ');
+            $stmt->execute([':user_id' => $clientData['id']]);
+            $referralInfo = $stmt->fetch(\PDO::FETCH_ASSOC);
+            $clientData['referral_code'] = $referralInfo ? $referralInfo['referral_code'] : null;
+            $clientData['points_balance'] = $referralInfo ? (int) $referralInfo['points_balance'] : 0;
+
             $clientsArray[] = $clientData;
         }
         $clients = $clientsArray;
@@ -145,6 +156,17 @@ SQL;
         $stmt->execute([':user_id' => $id]);
         $lastOrder = $stmt->fetch(\PDO::FETCH_ASSOC);
         $clientData['last_order_date'] = $lastOrder ? $lastOrder['order_date'] : null;
+
+        // Get referral info
+        $stmt = $db->prepare('
+            SELECT referral_code, points_balance 
+            FROM user_referrals 
+            WHERE user_id = :user_id
+        ');
+        $stmt->execute([':user_id' => $id]);
+        $referralInfo = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $clientData['referral_code'] = $referralInfo ? $referralInfo['referral_code'] : null;
+        $clientData['points_balance'] = $referralInfo ? (int) $referralInfo['points_balance'] : 0;
 
         return $this->success($response, $clientData);
     }
@@ -195,6 +217,17 @@ SQL;
         $stmt->execute([':user_id' => $id]);
         $lastOrder = $stmt->fetch(\PDO::FETCH_ASSOC);
         $clientData['last_order_date'] = $lastOrder ? $lastOrder['order_date'] : null;
+
+        // Get referral info
+        $stmt = $db->prepare('
+            SELECT referral_code, points_balance 
+            FROM user_referrals 
+            WHERE user_id = :user_id
+        ');
+        $stmt->execute([':user_id' => $id]);
+        $referralInfo = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $clientData['referral_code'] = $referralInfo ? $referralInfo['referral_code'] : null;
+        $clientData['points_balance'] = $referralInfo ? (int) $referralInfo['points_balance'] : 0;
 
         return $this->success($response, $clientData);
     }

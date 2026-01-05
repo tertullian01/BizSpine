@@ -29,9 +29,12 @@ SELECT
     u.*,
     COUNT(o.id) as order_count,
     COALESCE(SUM(o.total), 0) as total_spent,
-    MAX(o.order_date) as last_order_date
+    MAX(o.order_date) as last_order_date,
+    ur.referral_code,
+    COALESCE(ur.points_balance, 0) as points_balance
 FROM users u
 LEFT JOIN orders o ON u.id = o.user_id
+LEFT JOIN user_referrals ur ON u.id = ur.user_id
 WHERE u.role = 'customer'
 GROUP BY u.id
 ORDER BY last_order_date DESC
@@ -46,6 +49,7 @@ SQL;
             $client['order_count'] = (int)$client['order_count'];
             $client['total_spent'] = (float)$client['total_spent'];
             $client['is_email_verified'] = isset($client['is_email_verified']) ? (int)$client['is_email_verified'] : 0;
+            $client['points_balance'] = (int)$client['points_balance'];
             unset($client['password_hash']);
             unset($client['reset_token']);
             unset($client['reset_expires_at']);
@@ -62,9 +66,12 @@ SELECT
     u.*,
     COUNT(o.id) as order_count,
     COALESCE(SUM(o.total), 0) as total_spent,
-    MAX(o.order_date) as last_order_date
+    MAX(o.order_date) as last_order_date,
+    ur.referral_code,
+    COALESCE(ur.points_balance, 0) as points_balance
 FROM users u
 LEFT JOIN orders o ON u.id = o.user_id
+LEFT JOIN user_referrals ur ON u.id = ur.user_id
 WHERE u.id = :id AND u.role = 'customer'
 GROUP BY u.id
 SQL;
@@ -82,6 +89,7 @@ SQL;
         $client['order_count'] = (int)$client['order_count'];
         $client['total_spent'] = (float)$client['total_spent'];
         $client['is_email_verified'] = isset($client['is_email_verified']) ? (int)$client['is_email_verified'] : 0;
+        $client['points_balance'] = (int)$client['points_balance'];
         unset($client['password_hash']);
         unset($client['reset_token']);
         unset($client['reset_expires_at']);
