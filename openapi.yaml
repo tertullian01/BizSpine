@@ -225,6 +225,37 @@ paths:
       responses:
         '200':
           description: Token refreshed
+  /auth/forgot-password:
+    post:
+      summary: Request password reset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200':
+          description: Password reset email sent
+  /auth/reset-password:
+    post:
+      summary: Reset password with token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token: { type: string }
+                password: { type: string, minLength: 8 }
+      responses:
+        '200':
+          description: Password reset successfully
 
   # Products
   /products:
@@ -614,3 +645,82 @@ paths:
       responses:
         '200':
           description: Points redeemed
+
+  # Users & Clients
+  /users:
+    get:
+      summary: Get all users (Admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+  /users/customers:
+    get:
+      summary: Get all customers
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: List of customers
+  /users/{id}:
+    get:
+      summary: Get user by ID
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: User details
+  /clients:
+    get:
+      summary: Get all clients with full profile data
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: List of clients
+
+  # Employee Management
+  /employees:
+    get:
+      summary: Manage employees
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: List of employees
+    post:
+      summary: Create employee
+      security: [{ bearerAuth: [] }]
+      responses:
+        '201':
+          description: Employee created
+  /employees/{id}:
+    put:
+      summary: Update employee
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Employee updated
+    delete:
+      summary: Delete employee
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Employee deleted

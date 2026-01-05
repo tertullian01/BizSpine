@@ -273,7 +273,6 @@ Run Phinx migrations to update the database schema:
 ### Orders & Sales
 - `GET/POST /orders` - Order management
 - `GET /orders/my` - User's orders
-- `GET /orders/my` - User's orders
 - `POST /orders/{id}/cancel` - Cancel order
 
 ### Users & Clients
