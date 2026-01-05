@@ -105,10 +105,6 @@ $corsConfig = $config->get('cors', []);
 $allowedOrigins = array_unique(array_merge(
     $corsConfig['allowed_origins'] ?? [],
     [
-        'https://siedlung.nakednettle.com',
-        'https://nakednettle.com',
-        'https://dashboard.nakednettle.com',
-        'http://localhost:8000'
     ]
 ));
 
