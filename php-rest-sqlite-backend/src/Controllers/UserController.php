@@ -259,4 +259,25 @@ SQL;
             return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
         }
     }
+
+    public function updateUserPassword(Request $request, Response $response, array $args): Response
+    {
+        $id = (int) $args['id'];
+        $data = $request->getParsedBody();
+
+        if (empty($data['password']) || strlen($data['password']) < 8) {
+            return $this->error($response, 'Password must be at least 8 characters long', 400);
+        }
+
+        $user = User::find($id);
+
+        if (!$user) {
+            return $this->error($response, 'User not found', 404);
+        }
+
+        $user->password_hash = password_hash($data['password'], PASSWORD_DEFAULT);
+        $user->save();
+
+        return $this->success($response, ['message' => 'Password updated successfully']);
+    }
 }

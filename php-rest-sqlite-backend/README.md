@@ -279,6 +279,7 @@ Run Phinx migrations to update the database schema:
 - `GET /users` - Get all users (admin)
 - `GET /users/customers` - Get all customers
 - `GET /users/{id}` - Get user by ID
+- `PUT /users/{id}/password` - Update user password (admin)
 - `GET /clients` - Get all clients with full profile data and order statistics
 
 ### Employee Management

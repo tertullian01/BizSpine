@@ -679,6 +679,46 @@ paths:
       responses:
         '200':
           description: User details
+    put:
+      summary: Update user details
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string, format: email }
+                display_name: { type: string }
+                role: { type: string }
+      responses:
+        '200':
+          description: User updated
+  /users/{id}/password:
+    put:
+      summary: Update user password (Admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string, minLength: 8 }
+      responses:
+        '200':
+          description: Password updated successfully
   /clients:
     get:
       summary: Get all clients with full profile data
@@ -710,6 +750,15 @@ paths:
           name: id
           required: true
           schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string, format: email }
+                display_name: { type: string }
+                role: { type: string }
       responses:
         '200':
           description: Employee updated

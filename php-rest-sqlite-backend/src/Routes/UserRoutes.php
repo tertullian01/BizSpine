@@ -19,6 +19,7 @@ class UserRoutes
             $group->post('', [UserController::class, 'createUser']);
             $group->put('/{id}', [UserController::class, 'updateUser']);
             $group->delete('/{id}', [UserController::class, 'deleteUser']);
+            $group->put('/{id}/password', [UserController::class, 'updateUserPassword']);
         })->add(AuthMiddleware::class);
 
         // Clients routes - customer data management
