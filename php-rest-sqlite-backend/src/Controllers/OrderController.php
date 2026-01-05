@@ -315,7 +315,7 @@ SQL;
                 } else {
                     $discountAmount = (float) ($referralModel->discount_amount ?? 10);
                 }
-            } elseif (isset($body['discount_amount'])) {
+            } elseif (isset($body['discount_amount']) && empty($body['points_to_redeem'])) {
                 $discountAmount = (float) $body['discount_amount'];
             }
 
@@ -345,7 +345,7 @@ SQL;
             }
 
             if ($discountAmount > $subtotal) {
-                throw new \Exception('Total discount cannot exceed order subtotal');
+                $discountAmount = $subtotal;
             }
 
             $shippingCost = isset($body['shipping_cost']) ? (float) $body['shipping_cost'] : (isset($body['shipping']) ? (float) $body['shipping'] : 0);
@@ -431,7 +431,7 @@ SQL;
             }
 
             if ($userReferralAccount && $pointsToRedeem > 0) {
-                $userReferralAccount->redeemPoints($pointsToRedeem);
+                $userReferralAccount->redeemPoints($pointsToRedeem, "Redeemed on Order #{$orderNumber}");
             }
 
             $this->db->commit();

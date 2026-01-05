@@ -432,7 +432,7 @@ SELECT * FROM (
 
     SELECT 
         'redeemed' as type,
-        -points_redeemed as points,
+        (0 - points_redeemed) as points,
         redeemed_at as date,
         COALESCE(notes, 'Points redemption') as description,
         NULL as reference
