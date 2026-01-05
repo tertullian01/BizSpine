@@ -102,11 +102,7 @@ $errorMiddleware = $app->addErrorMiddleware(true, true, true);
 
 // Add CORS Middleware
 $corsConfig = $config->get('cors', []);
-$allowedOrigins = array_unique(array_merge(
-    $corsConfig['allowed_origins'] ?? [],
-    [
-    ]
-));
+$allowedOrigins = $corsConfig['allowed_origins'] ?? [];
 
 $app->add(new \App\Middleware\CorsMiddleware(
     allowedOrigins: $allowedOrigins,

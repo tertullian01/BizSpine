@@ -42,7 +42,7 @@ return [
         'allowed_fields' => [], // Empty array means all fields allowed
     ],
     'cors' => [
-        'allowed_origins' => ['https://dashboard.nakednettle.com', 'https://test.nakednettle.com', 'https://nakednettle.com'],
+        'allowed_origins' => [],
         'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
         'allowed_headers' => ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
         'allow_credentials' => true,
