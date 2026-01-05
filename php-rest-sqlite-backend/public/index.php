@@ -134,6 +134,7 @@ $app->addBodyParsingMiddleware();
 require __DIR__ . '/../src/Routes/api.php';
 require __DIR__ . '/../src/Routes/EmailTemplateRoutes.php';
 require __DIR__ . '/../src/Routes/EmailLogRoutes.php';
+\App\Routes\EmailLogRoutes::register($app);
 
 // Endpoint to retrieve database design
 $app->get('/db-design', function ($request, $response) use ($db) {
