@@ -726,6 +726,26 @@ paths:
       responses:
         '200':
           description: List of clients
+  /clients/{id}/password:
+    put:
+      summary: Update client password (Admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string, minLength: 8 }
+      responses:
+        '200':
+          description: Password updated successfully
 
   # Employee Management
   /employees:

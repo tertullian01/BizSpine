@@ -26,5 +26,6 @@ class UserRoutes
         $app->get('/clients', [UserController::class, 'getClients'])->add(AuthMiddleware::class);
         $app->get('/clients/{id}', [UserController::class, 'getClient'])->add(AuthMiddleware::class);
         $app->put('/clients/{id}', [UserController::class, 'updateClient'])->add(AuthMiddleware::class);
+        $app->put('/clients/{id}/password', [UserController::class, 'updateClientPassword'])->add(AuthMiddleware::class);
     }
 }
