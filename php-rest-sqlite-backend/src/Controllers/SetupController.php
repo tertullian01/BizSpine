@@ -534,7 +534,7 @@ class SetupController extends ApiController
                 ");
                 $stmt->execute([
                     ':email' => $user['email'],
-                    ':password_hash' => password_hash($user['password'] ?? 'password123', PASSWORD_DEFAULT),
+                    ':password_hash' => password_hash($user['password'] ?? bin2hex(random_bytes(8)), PASSWORD_DEFAULT),
                     ':display_name' => $user['display_name'] ?? $user['email'],
                     ':role' => $user['role'] ?? 'customer'
                 ]);
@@ -667,7 +667,7 @@ class SetupController extends ApiController
                     ");
                     $stmt->execute([
                         ':email' => $userEmail,
-                        ':password_hash' => password_hash('password123', PASSWORD_DEFAULT)
+                        ':password_hash' => password_hash(bin2hex(random_bytes(8)), PASSWORD_DEFAULT)
                     ]);
                     $userId = $db->lastInsertId();
                 } else {

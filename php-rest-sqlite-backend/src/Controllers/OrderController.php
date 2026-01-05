@@ -7,6 +7,7 @@ use App\Models\Coupon;
 use App\Models\UserReferral;
 use App\Services\Database;
 use App\Services\EmailService;
+use App\Services\Config;
 use App\Services\PaginationService;
 use App\Services\Logger;
 use App\Services\Validator;
@@ -24,17 +25,16 @@ class OrderController extends ApiController
 
     public function __construct(?PDO $db = null, ?PaginationService $paginationService = null, ?EmailService $emailService = null)
     {
-        $config = null;
+        $config = Config::getInstance()->getAll();
+
         if ($db) {
             $this->db = $db;
         } else {
-            $config = require __DIR__ . '/../../protected/config/config.php';
             $dbPath = $config['db_path'] ?? $config['database']['database_path'] ?? null;
             $this->db = Database::get($dbPath);
         }
         $this->validator = new Validator();
         $this->paginationService = $paginationService ?? new PaginationService();
-        $config = $config ?? require __DIR__ . '/../../protected/config/config.php';
         $this->emailService = $emailService ?? new EmailService($this->db, new Logger(), $config);
     }
 

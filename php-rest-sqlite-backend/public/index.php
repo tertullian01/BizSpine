@@ -58,8 +58,8 @@ $container->bind(\App\Services\Metrics::class, fn($c) => new \App\Services\Metri
 $container->bind(\App\Services\EmailService::class, fn($c) => new \App\Services\EmailService($db, $c->get(\App\Services\Logger::class)));
 
 // Bind middleware
-$container->bind(\App\Middleware\AuthMiddleware::class, fn($c) => new \App\Middleware\AuthMiddleware($config->get('jwt.secret')));
-$container->bind(\App\Middleware\OptionalAuthMiddleware::class, fn($c) => new \App\Middleware\OptionalAuthMiddleware($config->get('jwt.secret')));
+$container->bind(\App\Middleware\AuthMiddleware::class, fn($c) => new \App\Middleware\AuthMiddleware((string)($config->get('jwt.secret') ?: 'default_secret')));
+$container->bind(\App\Middleware\OptionalAuthMiddleware::class, fn($c) => new \App\Middleware\OptionalAuthMiddleware((string)($config->get('jwt.secret') ?: 'default_secret')));
 
 // Bind controllers with dependencies
 $container->bind(\App\Controllers\AuthController::class, fn($c) => new \App\Controllers\AuthController($config->getAll(), $c->get(\App\Services\EmailService::class)));

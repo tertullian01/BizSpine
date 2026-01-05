@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Exceptions\ValidationException;
 use App\Services\Database;
 use App\Services\Validator;
+use App\Services\Config;
 use App\Services\EmailService;
 use Firebase\JWT\JWT;
 use PDO;
@@ -89,7 +90,8 @@ class AuthController extends ApiController
             'sub' => (string) $user['id'],
             'role' => $user['role'] ?? 'customer',
         ];
-        $token = JWT::encode($payload, $this->config['jwt']['secret'] ?? 'dev', 'HS256');
+        $secret = (string)(Config::getInstance()->get('jwt.secret') ?: 'default_secret');
+        $token = JWT::encode($payload, $secret, 'HS256');
 
         return $this->success($response, ['access_token' => $token, 'role' => $user['role'] ?? 'customer']);
     }
@@ -120,7 +122,8 @@ class AuthController extends ApiController
             'exp' => $now + ($this->config['jwt']['access_exp'] ?? 900),
             'sub' => (string) $userId,
         ];
-        $token = JWT::encode($payload, $this->config['jwt']['secret'] ?? 'dev', 'HS256');
+        $secret = (string)(Config::getInstance()->get('jwt.secret') ?: 'default_secret');
+        $token = JWT::encode($payload, $secret, 'HS256');
         return $this->success($response, ['access_token' => $token]);
     }
 

@@ -47,17 +47,4 @@ return [
         'allowed_headers' => ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
         'allow_credentials' => true,
     ],
-    'email' => [
-        'smtp' => [
-            'host' => getenv('SMTP_HOST') ?: 'smtp.example.com',
-            'port' => getenv('SMTP_PORT') ?: 587,
-            'username' => getenv('SMTP_USERNAME') ?: '',
-            'password' => getenv('SMTP_PASSWORD') ?: '',
-            'encryption' => getenv('SMTP_ENCRYPTION') ?: 'tls',
-        ],
-        'from' => [
-            'email' => getenv('FROM_EMAIL') ?: 'noreply@example.com',
-            'name' => getenv('FROM_NAME') ?: 'Small Business App',
-        ],
-    ],
 ];
