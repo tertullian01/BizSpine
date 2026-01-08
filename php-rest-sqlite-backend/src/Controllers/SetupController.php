@@ -279,6 +279,7 @@ class SetupController extends ApiController
                 amount REAL NOT NULL,
                 category TEXT,
                 payment_method TEXT,
+                transaction_id TEXT,
                 payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
                 description TEXT,
                 notes TEXT,
@@ -1087,6 +1088,16 @@ class SetupController extends ApiController
                 $db->exec('CREATE INDEX IF NOT EXISTS idx_email_logs_status ON email_logs(status);');
                 $db->exec('CREATE INDEX IF NOT EXISTS idx_email_logs_recipient ON email_logs(recipient);');
                 $migrations[] = "Added 'email_logs' table";
+            }
+
+            // Fix income table - add transaction_id
+            $stmt = $db->query("PRAGMA table_info(income);");
+            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $columnNames = array_column($columns, 'name');
+
+            if (!in_array('transaction_id', $columnNames)) {
+                $db->exec("ALTER TABLE income ADD COLUMN transaction_id TEXT;");
+                $migrations[] = "Added 'transaction_id' column to income table";
             }
 
             if (empty($migrations)) {

@@ -75,15 +75,16 @@ SQL;
         ]);
         $sql = <<<'SQL'
 INSERT INTO income 
-    (order_id, amount, payment_method, category, payment_date, description, notes, created_at, updated_at) 
+    (order_id, amount, payment_method, transaction_id, category, payment_date, description, notes, created_at, updated_at) 
 VALUES 
-    (:order_id, :amount, :payment_method, :category, :payment_date, :description, :notes, datetime("now"), datetime("now"))
+    (:order_id, :amount, :payment_method, :transaction_id, :category, :payment_date, :description, :notes, datetime("now"), datetime("now"))
 SQL;
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             ':order_id' => $body['order_id'] ?? null,
             ':amount' => (float) $body['amount'],
             ':payment_method' => $body['payment_method'] ?? null,
+            ':transaction_id' => $body['transaction_id'] ?? null,
             ':category' => $body['category'] ?? 'Sales',
             ':payment_date' => $body['payment_date'] ?? $body['date'] ?? date('Y-m-d H:i:s'),
             ':description' => $body['description'] ?? null,
@@ -118,6 +119,10 @@ SQL;
         if (isset($body['payment_method'])) {
             $updates[] = 'payment_method = :payment_method';
             $params[':payment_method'] = $body['payment_method'];
+        }
+        if (isset($body['transaction_id'])) {
+            $updates[] = 'transaction_id = :transaction_id';
+            $params[':transaction_id'] = $body['transaction_id'];
         }
         if (isset($body['category'])) {
             $updates[] = 'category = :category';

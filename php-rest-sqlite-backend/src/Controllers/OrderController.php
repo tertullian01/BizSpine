@@ -445,19 +445,21 @@ SQL;
 
             if (!empty($body['payment_method'])) {
                 $paymentAmount = isset($body['payment_amount']) ? (float)$body['payment_amount'] : $total;
-                $paymentNotes = isset($body['transaction_id']) ? "Transaction ID: " . $body['transaction_id'] : null;
+                $paymentNotes = $body['payment_notes'] ?? null;
+                $transactionId = $body['transaction_id'] ?? null;
 
                 $incomeSql = <<<'SQL'
 INSERT INTO income
-    (order_id, amount, payment_method, payment_date, description, notes, created_at, updated_at)
+    (order_id, amount, payment_method, transaction_id, category, payment_date, description, notes, created_at, updated_at)
 VALUES
-    (:order_id, :amount, :payment_method, datetime("now"), :description, :notes, datetime("now"), datetime("now"))
+    (:order_id, :amount, :payment_method, :transaction_id, 'Payment', datetime("now"), :description, :notes, datetime("now"), datetime("now"))
 SQL;
                 $incomeStmt = $this->db->prepare($incomeSql);
                 $incomeStmt->execute([
                     ':order_id' => $orderId,
                     ':amount' => $paymentAmount,
                     ':payment_method' => $body['payment_method'],
+                    ':transaction_id' => $transactionId,
                     ':description' => "Payment for order {$orderNumber}",
                     ':notes' => $paymentNotes,
                 ]);
@@ -842,21 +844,20 @@ SQL;
 
             $paymentDate = $body['payment_date'] ?? date('Y-m-d H:i:s');
             $notes = $body['notes'] ?? null;
-            if (!empty($body['transaction_id'])) {
-                $notes = ($notes ? $notes . "\n" : "") . "Transaction ID: " . $body['transaction_id'];
-            }
+            $transactionId = $body['transaction_id'] ?? null;
 
             $incomeSql = <<<'SQL'
 INSERT INTO income
-    (order_id, amount, payment_method, payment_date, description, notes, created_at, updated_at)
+    (order_id, amount, payment_method, transaction_id, category, payment_date, description, notes, created_at, updated_at)
 VALUES
-    (:order_id, :amount, :payment_method, :payment_date, :description, :notes, datetime("now"), datetime("now"))
+    (:order_id, :amount, :payment_method, :transaction_id, 'Payment', :payment_date, :description, :notes, datetime("now"), datetime("now"))
 SQL;
             $incomeStmt = $this->db->prepare($incomeSql);
             $incomeStmt->execute([
                 ':order_id' => $id,
                 ':amount' => (float) $body['amount'],
                 ':payment_method' => $body['payment_method'] ?? 'Unknown',
+                ':transaction_id' => $transactionId,
                 ':payment_date' => $paymentDate,
                 ':description' => "Payment for order {$order['order_number']}",
                 ':notes' => $notes,

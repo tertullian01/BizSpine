@@ -9,6 +9,7 @@ class Income extends BaseModel
     public ?int $order_id = null;
     public ?float $amount = null;
     public ?string $payment_method = null;
+    public ?string $transaction_id = null;
     public ?string $category = null;
     public ?string $payment_date = null;
     public ?string $description = null;
