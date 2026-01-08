@@ -362,16 +362,21 @@ SQL;
 
             $orderStoreId = isset($body['store_id']) ? (int)$body['store_id'] : ($validatedItems[0]['store_id'] ?? null);
 
+            $fulfillmentStatus = 'pending';
+            if (!empty($body['payment_method'])) {
+                $fulfillmentStatus = 'processing';
+            }
+
             $sql = <<<'SQL'
 INSERT INTO orders
     (user_id, customer_email, customer_name, store_id, order_number, shipping_address, city, state, postal_code, country, phone_number, whatsapp_number,
      subtotal, discount_amount, coupon_code, shipping_cost, tax_rate, tax_amount, total, notes,
-     shipping_method, shipping_carrier,
+     shipping_method, shipping_carrier, fulfillment_status,
      order_date, created_at, updated_at)
 VALUES
     (:user_id, :customer_email, :customer_name, :store_id, :order_number, :shipping_address, :city, :state, :postal_code, :country, :phone_number, :whatsapp_number,
      :subtotal, :discount_amount, :coupon_code, :shipping_cost, :tax_rate, :tax_amount, :total, :notes,
-     :shipping_method, :shipping_carrier,
+     :shipping_method, :shipping_carrier, :fulfillment_status,
      datetime("now"), datetime("now"), datetime("now"))
 SQL;
             $stmt = $this->db->prepare($sql);
@@ -398,6 +403,7 @@ SQL;
                 ':notes' => $body['notes'] ?? null,
                 ':shipping_method' => $body['shipping_method'] ?? null,
                 ':shipping_carrier' => $body['shipping_carrier'] ?? null,
+                ':fulfillment_status' => $fulfillmentStatus,
             ]);
             $orderId = (int) $this->db->lastInsertId();
             $itemSql = <<<'SQL'
@@ -435,6 +441,26 @@ SQL;
 
             if ($userReferralAccount && $pointsToRedeem > 0) {
                 $userReferralAccount->redeemPoints($pointsToRedeem, "Redeemed on Order #{$orderNumber}", $orderId);
+            }
+
+            if (!empty($body['payment_method'])) {
+                $paymentAmount = isset($body['payment_amount']) ? (float)$body['payment_amount'] : $total;
+                $paymentNotes = isset($body['transaction_id']) ? "Transaction ID: " . $body['transaction_id'] : null;
+
+                $incomeSql = <<<'SQL'
+INSERT INTO income
+    (order_id, amount, payment_method, payment_date, description, notes, created_at, updated_at)
+VALUES
+    (:order_id, :amount, :payment_method, datetime("now"), :description, :notes, datetime("now"), datetime("now"))
+SQL;
+                $incomeStmt = $this->db->prepare($incomeSql);
+                $incomeStmt->execute([
+                    ':order_id' => $orderId,
+                    ':amount' => $paymentAmount,
+                    ':payment_method' => $body['payment_method'],
+                    ':description' => "Payment for order {$orderNumber}",
+                    ':notes' => $paymentNotes,
+                ]);
             }
 
             $this->db->commit();
