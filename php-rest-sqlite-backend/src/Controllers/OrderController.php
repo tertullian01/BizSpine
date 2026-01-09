@@ -498,6 +498,18 @@ SQL;
                     $itemsList .= "</ul>";
                     $itemsTable .= '</tbody></table>';
 
+                    $paymentsTable = '';
+                    if (!empty($body['payment_method'])) {
+                        $pAmount = isset($body['payment_amount']) ? (float)$body['payment_amount'] : $total;
+                        $pMethod = $body['payment_method'];
+                        $pTransId = $body['transaction_id'] ?? 'N/A';
+                        $pDate = date('Y-m-d H:i:s');
+
+                        $paymentsTable = '<table width="100%" cellpadding="5" cellspacing="0" style="border-collapse: collapse; margin-top: 10px;"><thead><tr><th align="left" style="border-bottom: 1px solid #eee;">Date</th><th align="left" style="border-bottom: 1px solid #eee;">Method</th><th align="left" style="border-bottom: 1px solid #eee;">Transaction ID</th><th align="right" style="border-bottom: 1px solid #eee;">Amount</th></tr></thead><tbody>';
+                        $paymentsTable .= '<tr><td style="border-bottom: 1px solid #eee;">' . $pDate . '</td><td style="border-bottom: 1px solid #eee;">' . htmlspecialchars($pMethod) . '</td><td style="border-bottom: 1px solid #eee;">' . htmlspecialchars($pTransId) . '</td><td align="right" style="border-bottom: 1px solid #eee;">' . number_format($pAmount, 2) . '</td></tr>';
+                        $paymentsTable .= '</tbody></table>';
+                    }
+
                     $placeholders = [
                         'customer_name' => $customerName,
                         'order_id' => $orderNumber,
@@ -508,6 +520,7 @@ SQL;
                         'whatsapp_number' => $body['whatsapp_number'] ?? 'N/A',
                         'items_table' => $itemsTable,
                         'items_list' => $itemsList,
+                        'payments_table' => $paymentsTable,
                         'subtotal' => number_format($subtotal, 2),
                         'discount_amount' => number_format($discountAmount, 2),
                         'coupon_code' => $couponCode ?? '',
@@ -782,6 +795,18 @@ SQL;
 
             if (!$customerEmail) return;
 
+            // Fetch payments
+            $payments = $this->getOrderPayments($orderId);
+            $paymentsTable = '';
+            if (!empty($payments)) {
+                $paymentsTable = '<table width="100%" cellpadding="5" cellspacing="0" style="border-collapse: collapse; margin-top: 10px;"><thead><tr><th align="left" style="border-bottom: 1px solid #eee;">Date</th><th align="left" style="border-bottom: 1px solid #eee;">Method</th><th align="left" style="border-bottom: 1px solid #eee;">Transaction ID</th><th align="right" style="border-bottom: 1px solid #eee;">Amount</th></tr></thead><tbody>';
+                foreach ($payments as $payment) {
+                    $pTransId = $payment->transaction_id ?? 'N/A';
+                    $paymentsTable .= '<tr><td style="border-bottom: 1px solid #eee;">' . $payment->payment_date . '</td><td style="border-bottom: 1px solid #eee;">' . htmlspecialchars($payment->payment_method) . '</td><td style="border-bottom: 1px solid #eee;">' . htmlspecialchars($pTransId) . '</td><td align="right" style="border-bottom: 1px solid #eee;">' . number_format($payment->amount, 2) . '</td></tr>';
+                }
+                $paymentsTable .= '</tbody></table>';
+            }
+
             $placeholders = [
                 'customer_name' => $order['customer_name'] ?? 'Customer',
                 'order_number' => $order['order_number'],
@@ -792,6 +817,7 @@ SQL;
                 'shipping_carrier' => $order['shipping_carrier'] ?? 'N/A',
                 'carrier' => $order['shipping_carrier'] ?? 'N/A',
                 'shipping_method' => $order['shipping_method'] ?? 'Standard',
+                'payments_table' => $paymentsTable,
                 'notes' => $order['notes'] ?? '',
                 'shipping_address' => $order['shipping_address'] ?? ''
             ];
