@@ -182,6 +182,39 @@ paths:
         '200':
           description: API is healthy
 
+  /contact:
+    post:
+      summary: Send a contact message
+      tags:
+        - Contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, subject, message]
+              properties:
+                name: { type: string, example: "John Doe" }
+                email: { type: string, format: email, example: "john@example.com" }
+                subject: { type: string, example: "Inquiry" }
+                message: { type: string, example: "Hello..." }
+      responses:
+        '200':
+          description: Message sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      message: { type: string, example: "Message sent successfully" }
+        '400':
+          description: Validation error
+
   # Authentication
   /auth/register:
     post:
