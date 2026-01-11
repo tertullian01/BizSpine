@@ -215,6 +215,38 @@ paths:
         '400':
           description: Validation error
 
+  /contact/bulk:
+    post:
+      summary: Send a bulk order inquiry
+      tags:
+        - Contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email
+                name: { type: string, example: "Jane Doe" }
+                email: { type: string, format: email, example: "jane@company.com" }
+                phone: { type: string, example: "+1234567890" }
+                company: { type: string, example: "Big Corp" }
+                shipping_address: { type: string, example: "
+        '200':
+          description: Inquiry sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      message: { type: string, example: "Inquiry sent successfully" }
+        '400':
+          description: Validation error
+
   # Authentication
   /auth/register:
     post:

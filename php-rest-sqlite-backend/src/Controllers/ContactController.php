@@ -113,4 +113,86 @@ class ContactController extends ApiController
             return $this->error($response, 'Failed to send message: ' . $e->getMessage(), 500);
         }
     }
+
+    /**
+     * @OA\Post(
+     *     path="/contact/bulk",
+     *     summary="Send a bulk order inquiry",
+     *     tags={"Contact"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"name", "email"},
+     *             @OA\Property(property="name", type="string", example="Jane Doe"),
+     *             @OA\Property(property="email", type="string", format="email", example="jane@company.com"),
+     *             @OA\Property(property="phone", type="string", example="+1234567890"),
+     *             @OA\Property(property="company", type="string", example="Big Corp"),
+     *             @OA\Property(property="shipping_address", type="string", example="123 Main St, City, Country"),
+     *             @OA\Property(property="message", type="string", example="We need these by next month.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Inquiry sent successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="message", type="string", example="Inquiry sent successfully")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Validation error"
+     *     )
+     * )
+     */
+    public function sendBulkOrder(Request $request, Response $response): Response
+    {
+        $body = $request->getParsedBody();
+
+        try {
+            $this->validator->validate($body, [
+                'name' => v::notEmpty()->stringType()->setName('Name'),
+                'email' => v::notEmpty()->email()->setName('Email'),
+                'phone' => v::optional(v::stringType())->setName('Phone'),
+                'company' => v::optional(v::stringType())->setName('Company'),
+                'shipping_address' => v::optional(v::stringType())->setName('Shipping Address'),
+                'message' => v::optional(v::stringType())->setName('Message'),
+            ]);
+        } catch (ValidationException $e) {
+            return $this->error($response, $e->getFirstError(), 400);
+        }
+
+        try {
+            $stmt = $this->db->query("SELECT value FROM settings WHERE key = 'store_email'");
+            $storeEmail = $stmt->fetchColumn();
+
+            if (!$storeEmail) {
+                // Fallback to site_email
+                $stmt = $this->db->query("SELECT value FROM settings WHERE key = 'site_email'");
+                $storeEmail = $stmt->fetchColumn();
+            }
+
+            if (!$storeEmail) {
+                return $this->error($response, 'Store email not configured', 500);
+            }
+
+            $placeholders = [
+                'name' => $body['name'],
+                'email' => $body['email'],
+                'phone' => $body['phone'] ?? 'N/A',
+                'company' => $body['company'] ?? 'N/A',
+                'shipping_address' => $body['shipping_address'] ?? 'N/A',
+                'message' => isset($body['message']) ? nl2br(htmlspecialchars($body['message'])) : 'N/A',
+                'timestamp' => date('Y-m-d H:i:s'),
+            ];
+
+            $this->emailService->sendTemplate($storeEmail, 'bulk_order_inquiry', $placeholders);
+
+            return $this->success($response, ['message' => 'Inquiry sent successfully']);
+        } catch (\Exception $e) {
+            return $this->error($response, 'Failed to send inquiry: ' . $e->getMessage(), 500);
+        }
+    }
 }

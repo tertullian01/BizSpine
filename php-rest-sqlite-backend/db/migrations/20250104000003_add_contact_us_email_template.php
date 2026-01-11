@@ -13,8 +13,6 @@ final class AddContactUsEmailTemplate extends AbstractMigration
             $this->table('email_templates')->insert([
                 [
                     'name' => 'contact_us',
-                    'store_id' => null,
-                    'template_type' => 'notification',
                     'subject' => 'New Contact Inquiry: {{subject}}',
                     'body' => "<h2>New Contact Message</h2>\n<p><strong>Name:</strong> {{name}}</p>\n<p><strong>Email:</strong> {{email}}</p>\n<p><strong>Date:</strong> {{timestamp}}</p>\n<hr>\n<h3>Message:</h3>\n<p>{{message}}</p>",
                     'placeholders' => json_encode(['name', 'email', 'subject', 'message', 'timestamp']),
