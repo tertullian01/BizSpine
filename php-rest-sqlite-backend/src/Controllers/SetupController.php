@@ -423,6 +423,7 @@ class SetupController extends ApiController
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 recipient TEXT NOT NULL,
                 subject TEXT NOT NULL,
+                reply_to TEXT,
                 body TEXT,
                 status TEXT NOT NULL,
                 error_message TEXT,
@@ -1088,6 +1089,15 @@ class SetupController extends ApiController
                 $db->exec('CREATE INDEX IF NOT EXISTS idx_email_logs_status ON email_logs(status);');
                 $db->exec('CREATE INDEX IF NOT EXISTS idx_email_logs_recipient ON email_logs(recipient);');
                 $migrations[] = "Added 'email_logs' table";
+            }
+
+            // Fix email_logs table - add reply_to
+            $stmt = $db->query("PRAGMA table_info(email_logs);");
+            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $columnNames = array_column($columns, 'name');
+            if (!in_array('reply_to', $columnNames)) {
+                $db->exec("ALTER TABLE email_logs ADD COLUMN reply_to TEXT;");
+                $migrations[] = "Added 'reply_to' column to email_logs table";
             }
 
             // Fix income table - add transaction_id

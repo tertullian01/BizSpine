@@ -27,7 +27,7 @@ class EmailService
         return $this->settings;
     }
 
-    public function send(string $to, string $subject, string $body, bool $isHtml = true, bool $debug = false): void
+    public function send(string $to, string $subject, string $body, bool $isHtml = true, bool $debug = false, ?string $replyTo = null): void
     {
         $settings = $this->getSettings();
         $password = $this->decrypt($settings['smtp_password'] ?? '');
@@ -44,6 +44,11 @@ class EmailService
             $this->logger->info("Attempting to send email", $context);
         }
 
+        // Use default reply-to from settings if not provided
+        if (empty($replyTo) && !empty($settings['reply_to_email'])) {
+            $replyTo = $settings['reply_to_email'];
+        }
+
         if (!class_exists('PHPMailer\PHPMailer\PHPMailer')) {
             throw new \Exception('PHPMailer library not found');
         }
@@ -54,6 +59,7 @@ class EmailService
             'subject' => $subject,
             'body' => $body,
             'status' => 'pending',
+            'reply_to' => $replyTo,
             'sent_at' => date('Y-m-d H:i:s')
         ]);
         $emailLog->save();
@@ -80,6 +86,10 @@ class EmailService
             $fromName = $settings['from_name'] ?? 'Store Admin';
             
             $mail->setFrom($fromEmail, $fromName);
+            if (!empty($replyTo)) {
+                $mail->addReplyTo($replyTo);
+            }
+
             $mail->addAddress($to);
             $mail->isHTML($isHtml);
             $mail->Subject = $subject;
@@ -101,7 +111,7 @@ class EmailService
         }
     }
 
-    public function sendTemplate(string $to, string $templateName, array $placeholders, ?int $storeId = null): void
+    public function sendTemplate(string $to, string $templateName, array $placeholders, ?int $storeId = null, ?string $replyTo = null): void
     {
         // Try to find a store-specific template first, fallback to default (store_id IS NULL)
         // SQLite sorts NULLs first in ASC, so DESC puts specific IDs before NULLs.
@@ -119,7 +129,7 @@ class EmailService
         $subject = $this->replacePlaceholders($template['subject'], $placeholders);
         $body = $this->replacePlaceholders($template['body'], $placeholders);
 
-        $this->send($to, $subject, $body, true);
+        $this->send($to, $subject, $body, true, false, $replyTo);
     }
 
     public function sendPasswordResetEmail(string $to, string $token): bool

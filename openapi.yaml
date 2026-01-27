@@ -169,6 +169,7 @@ components:
         id: { type: integer }
         recipient: { type: string }
         subject: { type: string }
+        reply_to: { type: string }
         body: { type: string }
         status: { type: string, enum: [sent, failed] }
         error_message: { type: string }
