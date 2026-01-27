@@ -224,7 +224,7 @@ SQL;
                     continue;
                 }
 
-                $unitPrice = (float) $product['cost'];
+                $unitPrice = isset($item['unit_price']) ? (float) $item['unit_price'] : (float) $product['cost'];
                 $itemSubtotal = $unitPrice * $quantity;
                 $stmt = $this->db->prepare('SELECT i.quantity, s.name as store_name FROM inventory i JOIN stores s ON i.store_id = s.id WHERE i.product_id = :product_id AND i.store_id = :store_id');
                 $stmt->execute([':product_id' => $productId, ':store_id' => $storeId]);
@@ -365,8 +365,8 @@ SQL;
 
             $orderStoreId = isset($body['store_id']) ? (int)$body['store_id'] : ($validatedItems[0]['store_id'] ?? null);
 
-            $fulfillmentStatus = 'pending';
-            if (!empty($body['payment_method'])) {
+            $fulfillmentStatus = $body['fulfillment_status'] ?? 'pending';
+            if (!isset($body['fulfillment_status']) && (!empty($body['payment_method']) || !empty($body['payments']))) {
                 $fulfillmentStatus = 'processing';
             }
 
@@ -380,7 +380,7 @@ VALUES
     (:user_id, :customer_email, :customer_name, :store_id, :order_number, :shipping_address, :city, :state, :postal_code, :country, :phone_number, :whatsapp_number,
      :subtotal, :discount_amount, :coupon_code, :shipping_cost, :tax_rate, :tax_amount, :total, :notes,
      :shipping_method, :shipping_carrier, :fulfillment_status,
-     datetime("now"), datetime("now"), datetime("now"))
+     :order_date, datetime("now"), datetime("now"))
 SQL;
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
@@ -407,6 +407,7 @@ SQL;
                 ':shipping_method' => $body['shipping_method'] ?? null,
                 ':shipping_carrier' => $body['shipping_carrier'] ?? null,
                 ':fulfillment_status' => $fulfillmentStatus,
+                ':order_date' => $body['order_date'] ?? date('Y-m-d H:i:s'),
             ]);
             $orderId = (int) $this->db->lastInsertId();
             $itemSql = <<<'SQL'
@@ -446,26 +447,37 @@ SQL;
                 $userReferralAccount->redeemPoints($pointsToRedeem, "Redeemed on Order #{$orderNumber}", $orderId);
             }
 
-            if (!empty($body['payment_method'])) {
-                $paymentAmount = isset($body['payment_amount']) ? (float)$body['payment_amount'] : $total;
-                $paymentNotes = $body['payment_notes'] ?? null;
-                $transactionId = $body['transaction_id'] ?? null;
+            // Handle payments (single or multiple)
+            $payments = $body['payments'] ?? [];
+            if (empty($payments) && !empty($body['payment_method'])) {
+                $payments[] = [
+                    'payment_method' => $body['payment_method'],
+                    'amount' => $body['payment_amount'] ?? $total,
+                    'transaction_id' => $body['transaction_id'] ?? null,
+                    'payment_date' => date('Y-m-d H:i:s'),
+                    'notes' => $body['payment_notes'] ?? null
+                ];
+            }
 
-                $incomeSql = <<<'SQL'
+            if (!empty($payments)) {
+                foreach ($payments as $payment) {
+                    $incomeSql = <<<'SQL'
 INSERT INTO income
     (order_id, amount, payment_method, transaction_id, category, payment_date, description, notes, created_at, updated_at)
 VALUES
-    (:order_id, :amount, :payment_method, :transaction_id, 'Payment', datetime("now"), :description, :notes, datetime("now"), datetime("now"))
+    (:order_id, :amount, :payment_method, :transaction_id, 'Payment', :payment_date, :description, :notes, datetime("now"), datetime("now"))
 SQL;
-                $incomeStmt = $this->db->prepare($incomeSql);
-                $incomeStmt->execute([
-                    ':order_id' => $orderId,
-                    ':amount' => $paymentAmount,
-                    ':payment_method' => $body['payment_method'],
-                    ':transaction_id' => $transactionId,
-                    ':description' => "Payment for order {$orderNumber}",
-                    ':notes' => $paymentNotes,
-                ]);
+                    $incomeStmt = $this->db->prepare($incomeSql);
+                    $incomeStmt->execute([
+                        ':order_id' => $orderId,
+                        ':amount' => (float) ($payment['amount'] ?? 0),
+                        ':payment_method' => $payment['payment_method'] ?? 'Unknown',
+                        ':transaction_id' => $payment['transaction_id'] ?? null,
+                        ':payment_date' => $payment['payment_date'] ?? date('Y-m-d H:i:s'),
+                        ':description' => "Payment for order {$orderNumber}",
+                        ':notes' => $payment['notes'] ?? null,
+                    ]);
+                }
             }
 
             $this->db->commit();
@@ -502,14 +514,15 @@ SQL;
                     $itemsTable .= '</tbody></table>';
 
                     $paymentsTable = '';
-                    if (!empty($body['payment_method'])) {
-                        $pAmount = isset($body['payment_amount']) ? (float)$body['payment_amount'] : $total;
-                        $pMethod = $body['payment_method'];
-                        $pTransId = $body['transaction_id'] ?? 'N/A';
-                        $pDate = date('Y-m-d H:i:s');
-
+                    if (!empty($payments)) {
                         $paymentsTable = '<table width="100%" cellpadding="5" cellspacing="0" style="border-collapse: collapse; margin-top: 10px;"><thead><tr><th align="left" style="border-bottom: 1px solid #eee;">Date</th><th align="left" style="border-bottom: 1px solid #eee;">Method</th><th align="left" style="border-bottom: 1px solid #eee;">Transaction ID</th><th align="right" style="border-bottom: 1px solid #eee;">Amount</th></tr></thead><tbody>';
-                        $paymentsTable .= '<tr><td style="border-bottom: 1px solid #eee;">' . $pDate . '</td><td style="border-bottom: 1px solid #eee;">' . htmlspecialchars($pMethod) . '</td><td style="border-bottom: 1px solid #eee;">' . htmlspecialchars($pTransId) . '</td><td align="right" style="border-bottom: 1px solid #eee;">' . number_format($pAmount, 2) . '</td></tr>';
+                        foreach ($payments as $payment) {
+                            $pAmount = (float) ($payment['amount'] ?? 0);
+                            $pMethod = $payment['payment_method'] ?? 'Unknown';
+                            $pTransId = $payment['transaction_id'] ?? 'N/A';
+                            $pDate = $payment['payment_date'] ?? date('Y-m-d H:i:s');
+                            $paymentsTable .= '<tr><td style="border-bottom: 1px solid #eee;">' . $pDate . '</td><td style="border-bottom: 1px solid #eee;">' . htmlspecialchars($pMethod) . '</td><td style="border-bottom: 1px solid #eee;">' . htmlspecialchars($pTransId) . '</td><td align="right" style="border-bottom: 1px solid #eee;">' . number_format($pAmount, 2) . '</td></tr>';
+                        }
                         $paymentsTable .= '</tbody></table>';
                     }
 
@@ -551,22 +564,24 @@ SQL;
                     }
 
                     // Send to Store/Admin
-                    $stmt = $this->db->query("SELECT value FROM settings WHERE key = 'order_confirmation_email'");
-                    $storeEmail = $stmt->fetchColumn();
-
-                    if (!$storeEmail) {
-                        $stmt = $this->db->query("SELECT value FROM settings WHERE key = 'site_email'");
+                    if ($sendEmail) {
+                        $stmt = $this->db->query("SELECT value FROM settings WHERE key = 'order_confirmation_email'");
                         $storeEmail = $stmt->fetchColumn();
-                    }
 
-                    if ($storeEmail) {
-                        $emails = array_map('trim', explode(',', $storeEmail));
-                        foreach ($emails as $email) {
-                            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                                try {
-                                    $this->emailService->sendTemplate($email, 'store_order_confirmation', $placeholders, $orderStoreId);
-                                } catch (\Exception $e) {
-                                    error_log('Failed to send store order confirmation to ' . $email . ': ' . $e->getMessage());
+                        if (!$storeEmail) {
+                            $stmt = $this->db->query("SELECT value FROM settings WHERE key = 'site_email'");
+                            $storeEmail = $stmt->fetchColumn();
+                        }
+
+                        if ($storeEmail) {
+                            $emails = array_map('trim', explode(',', $storeEmail));
+                            foreach ($emails as $email) {
+                                if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                                    try {
+                                        $this->emailService->sendTemplate($email, 'store_order_confirmation', $placeholders, $orderStoreId);
+                                    } catch (\Exception $e) {
+                                        error_log('Failed to send store order confirmation to ' . $email . ': ' . $e->getMessage());
+                                    }
                                 }
                             }
                         }
