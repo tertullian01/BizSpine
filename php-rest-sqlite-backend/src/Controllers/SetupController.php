@@ -87,8 +87,8 @@ class SetupController extends ApiController
             $db->exec(<<<'SQL'
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                email TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
+                email TEXT UNIQUE,
+                password_hash TEXT,
                 display_name TEXT,
                 role TEXT DEFAULT 'customer',
                 is_email_verified INTEGER DEFAULT 0,

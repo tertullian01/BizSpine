@@ -19,7 +19,7 @@ components:
       type: object
       properties:
         id: { type: integer }
-        email: { type: string, format: email }
+        email: { type: string, format: email, nullable: true }
         display_name: { type: string }
         role: { type: string }
         is_email_verified: { type: integer }
@@ -66,7 +66,7 @@ components:
         user_id: { type: integer }
         store_id: { type: integer }
         order_number: { type: string }
-        customer_email: { type: string, format: email }
+        customer_email: { type: string, format: email, nullable: true }
         customer_name: { type: string }
         order_date: { type: string, format: date-time }
         fulfillment_status: { type: string, enum: [pending, processing, shipped, delivered, cancelled] }
@@ -866,7 +866,7 @@ paths:
             schema:
               type: object
               properties:
-                email: { type: string, format: email }
+                email: { type: string, format: email, nullable: true }
                 display_name: { type: string }
                 role: { type: string }
       responses:
@@ -899,6 +899,70 @@ paths:
       responses:
         '200':
           description: List of clients
+    post:
+      summary: Create new client
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [display_name]
+              properties:
+                email: { type: string, format: email, nullable: true }
+                display_name: { type: string }
+                first_name: { type: string }
+                last_name: { type: string }
+                mobile_number: { type: string }
+                whatsapp_number: { type: string }
+                street_line_1: { type: string }
+                street_line_2: { type: string }
+                city: { type: string }
+                state: { type: string }
+                postal_code: { type: string }
+                country: { type: string }
+      responses:
+        '201':
+          description: Client created
+  /clients/{id}:
+    get:
+      summary: Get client by ID
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Client details
+    put:
+      summary: Update client details
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string, format: email, nullable: true }
+                display_name: { type: string }
+                first_name: { type: string }
+                last_name: { type: string }
+                mobile_number: { type: string }
+                whatsapp_number: { type: string }
+                street_line_1: { type: string }
+                city: { type: string }
+                country: { type: string }
+      responses:
+        '200':
+          description: Client updated
   /clients/{id}/password:
     put:
       summary: Update client password (Admin)
