@@ -175,8 +175,11 @@ SQL;
         }
 
         // Custom validation for order creation
-        if (!isset($body['shipping_address']) || empty(trim($body['shipping_address']))) {
-            return $this->error($response, 'Shipping Address is required', 400);
+        // Shipping address is required only if a shipping method is specified and it is NOT a pickup order.
+        // If shipping_method is omitted (e.g. manual entry/POS), address is optional.
+        $isShipping = !empty($body['shipping_method']) && stripos($body['shipping_method'], 'pickup') === false;
+        if ($isShipping && (!isset($body['shipping_address']) || empty(trim($body['shipping_address'])))) {
+            return $this->error($response, 'Shipping Address is required for shipping orders', 400);
         }
 
         if (!isset($body['items']) || !is_array($body['items']) || empty($body['items'])) {
@@ -386,7 +389,7 @@ SQL;
                 ':customer_name' => $body['customer_name'] ?? null,
                 ':store_id' => $orderStoreId,
                 ':order_number' => $orderNumber,
-                ':shipping_address' => $body['shipping_address'],
+                ':shipping_address' => $body['shipping_address'] ?? null,
                 ':city' => $body['city'] ?? null,
                 ':state' => $body['state'] ?? null,
                 ':postal_code' => $body['postal_code'] ?? null,
@@ -530,7 +533,7 @@ SQL;
                         'total' => number_format($total, 2),
                         'shipping_method' => $body['shipping_method'] ?? 'Standard',
                         'shipping_carrier' => $body['shipping_carrier'] ?? '',
-                        'shipping_address' => $body['shipping_address'],
+                        'shipping_address' => $body['shipping_address'] ?? 'N/A',
                         'city' => $body['city'] ?? '',
                         'state' => $body['state'] ?? '',
                         'postal_code' => $body['postal_code'] ?? '',

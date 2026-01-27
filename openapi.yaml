@@ -71,7 +71,7 @@ components:
         order_date: { type: string, format: date-time }
         fulfillment_status: { type: string, enum: [pending, processing, shipped, delivered, cancelled] }
         shipping_date: { type: string, format: date-time }
-        shipping_address: { type: string }
+        shipping_address: { type: string, nullable: true }
         phone_number: { type: string }
         whatsapp_number: { type: string }
         subtotal: { type: number, format: float }

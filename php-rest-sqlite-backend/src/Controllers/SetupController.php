@@ -165,7 +165,7 @@ class SetupController extends ApiController
                 order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
                 fulfillment_status TEXT DEFAULT 'pending',
                 shipping_date DATETIME,
-                shipping_address TEXT NOT NULL,
+                shipping_address TEXT,
                 city TEXT,
                 state TEXT,
                 postal_code TEXT,
