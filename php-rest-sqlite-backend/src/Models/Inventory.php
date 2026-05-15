@@ -9,6 +9,7 @@ class Inventory extends BaseModel
     // Properties from JOINs
     public ?string $product_name = null;
     public ?string $store_name = null;
+    public ?float $product_cost = null;
     protected static string $tableName = 'inventory';
 
     public ?int $product_id;
@@ -27,6 +28,7 @@ class Inventory extends BaseModel
 SELECT 
     i.*,
     p.name as product_name,
+    p.cost as product_cost,
     s.name as store_name
 FROM inventory i
 LEFT JOIN products p ON i.product_id = p.id

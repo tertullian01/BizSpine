@@ -83,6 +83,7 @@ class InventoryController extends ApiController
 SELECT
     i.*,
     p.name as product_name,
+    p.cost as product_cost,
     s.name as store_name
 FROM inventory i
 LEFT JOIN products p ON i.product_id = p.id
