@@ -32,7 +32,7 @@ The Small Business Web Backend API provides comprehensive functionality for:
 - **Products**: Catalog management with inventory tracking
 - **Orders**: Complete order lifecycle management
 - **Stores**: Multi-location store management
-- **Inventory**: Stock level monitoring and adjustments
+- **Inventory**: Stock level monitoring, adjustments, and store-specific price overrides
 - **Reviews**: Customer product reviews and ratings
 - **Testimonials**: Customer testimonials management
 - **Bookkeeping**: Financial records and reporting

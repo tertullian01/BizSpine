@@ -516,6 +516,12 @@
                             ${result.data.message}<br><br>
                             Setup cannot proceed. If you need to reset the database, please contact your system administrator.
                         </div>
+                        <div style="margin-top: 30px; padding: 25px; border-radius: 8px; background: rgba(255,255,255,0.9); border: 2px dashed #667eea;">
+                            <h3 style="margin-bottom: 10px; color: #333;">Update Database Schema</h3>
+                            <p style="color: #666; margin-bottom: 20px; font-size: 14px;">Applying an update? Run pending database migrations (like schema changes) safely from here without losing any existing data.</p>
+                            <button type="button" class="btn-primary" id="runMigrationsBtn" onclick="runMigrations()">Run Database Migrations</button>
+                            <div id="migrationResult" style="margin-top: 15px;"></div>
+                        </div>
                     `;
                     document.getElementById('nextBtn').disabled = true;
                 } else {
@@ -528,6 +534,45 @@
                 }
             } catch (error) {
                 showMessage('Error checking database status: ' + error.message, 'error');
+            }
+        }
+
+        async function runMigrations() {
+            const btn = document.getElementById('runMigrationsBtn');
+            const resultDiv = document.getElementById('migrationResult');
+            
+            btn.disabled = true;
+            const originalText = btn.textContent;
+            btn.textContent = 'Applying Migrations...';
+            resultDiv.innerHTML = '';
+            
+            try {
+                const response = await fetch(`${apiBase}/run_migrations`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const text = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(text);
+                } catch (e) {
+                    console.error("Raw response from server:", text);
+                    throw new Error(`Server returned an invalid HTML/text response instead of JSON (HTTP Status: ${response.status}). Check the browser's developer console for the raw response text.`);
+                }
+                
+                if (result.success) {
+                    resultDiv.innerHTML = `<div class="message success"><strong>Success!</strong><br><pre style="margin-top:10px; white-space: pre-wrap; font-family: monospace; font-size: 12px;">${result.output}</pre></div>`;
+                } else {
+                    const errorMsg = result.error || 'Failed to apply migrations';
+                    const details = result.output && !errorMsg.includes(result.output) ? `\n\nPhinx Output:\n${result.output}` : '';
+                    throw new Error(errorMsg + details);
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="message error"><strong>Error:</strong><br><pre style="white-space: pre-wrap; font-family: inherit; margin-top: 10px;">${error.message}</pre></div>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
             }
         }
 

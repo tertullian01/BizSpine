@@ -16,6 +16,7 @@ class Inventory extends BaseModel
     public ?int $quantity;
     public ?int $min_quantity;
     public ?int $max_quantity = null;
+    public ?float $price_override = null;
     public ?string $last_restocked;
     public ?string $created_at = null;
     public ?string $updated_at = null;

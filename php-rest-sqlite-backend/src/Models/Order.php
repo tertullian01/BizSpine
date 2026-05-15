@@ -92,9 +92,6 @@ class Order extends BaseModel
                     continue;
                 }
 
-                $unitPrice = (float) $product->cost;
-                $itemSubtotal = $unitPrice * $quantity;
-                $subtotal += $itemSubtotal;
                 $inventory = Inventory::fetchOne('SELECT * FROM inventory WHERE product_id = :product_id AND store_id = :store_id', [':product_id' => $productId, ':store_id' => $storeId]);
                 if (!$inventory) {
                     $unavailableItems[] = [
@@ -117,6 +114,13 @@ class Order extends BaseModel
                     ];
                     continue;
                 }
+
+                $unitPrice = (float) $product->cost;
+                if (property_exists($inventory, 'price_override') && $inventory->price_override !== null) {
+                    $unitPrice = (float) $inventory->price_override;
+                }
+                $itemSubtotal = $unitPrice * $quantity;
+                $subtotal += $itemSubtotal;
 
                 $validatedItems[] = [
                     'product_id' => $productId,

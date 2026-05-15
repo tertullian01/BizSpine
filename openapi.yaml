@@ -58,6 +58,7 @@ components:
         quantity: { type: integer }
         min_quantity: { type: integer }
         max_quantity: { type: integer }
+        price_override: { type: number, format: float, nullable: true }
         last_restocked: { type: string, format: date-time }
     Order:
       type: object

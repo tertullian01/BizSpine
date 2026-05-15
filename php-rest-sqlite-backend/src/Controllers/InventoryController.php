@@ -168,6 +168,7 @@ SQL;
         $inventory->quantity = isset($body['quantity']) ? (int)$body['quantity'] : 0;
         $inventory->min_quantity = isset($body['min_quantity']) ? (int)$body['min_quantity'] : 0;
         $inventory->max_quantity = isset($body['max_quantity']) ? (int)$body['max_quantity'] : null;
+        $inventory->price_override = isset($body['price_override']) ? (float)$body['price_override'] : null;
         $inventory->save();
 // Fetch the full record with names for the response
         $newInventory = Inventory::find($inventory->id);
@@ -191,6 +192,8 @@ SQL;
         $quantity = isset($body['quantity']) ? (int)$body['quantity'] : null;
         $minQuantity = isset($body['min_quantity']) ? (int)$body['min_quantity'] : null;
         $maxQuantity = isset($body['max_quantity']) ? (int)$body['max_quantity'] : null;
+        $hasPriceOverride = array_key_exists('price_override', $body);
+        $priceOverride = $hasPriceOverride && $body['price_override'] !== null ? (float)$body['price_override'] : null;
         $storeId = isset($body['store_id']) ? (int)$body['store_id'] : null;
         $productId = isset($body['product_id']) ? (int)$body['product_id'] : null;
 
@@ -238,6 +241,10 @@ SQL;
         }
         if ($maxQuantity !== null) {
             $inventory->max_quantity = $maxQuantity;
+            $hasUpdates = true;
+        }
+        if ($hasPriceOverride) {
+            $inventory->price_override = $priceOverride;
             $hasUpdates = true;
         }
 
