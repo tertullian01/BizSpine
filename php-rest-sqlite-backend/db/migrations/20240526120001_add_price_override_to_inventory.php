@@ -14,7 +14,6 @@ final class AddPriceOverrideToInventory extends AbstractMigration
             $table->addColumn('price_override', 'float', [
                 'null' => true,
                 'default' => null,
-                'after' => 'max_quantity'
             ])->update();
         }
     }

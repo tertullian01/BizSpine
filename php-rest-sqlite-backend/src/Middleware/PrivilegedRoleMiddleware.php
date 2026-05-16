@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Middleware;
 
 use Firebase\JWT\JWT;
@@ -10,18 +12,26 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
 use Slim\Psr7\Response as SlimResponse;
 
-class AuthMiddleware implements MiddlewareInterface
+/**
+ * JWT authentication plus role allow-list (runs as a single layer to avoid stacking order issues).
+ */
+class PrivilegedRoleMiddleware implements MiddlewareInterface
 {
+    /** @var list<string> */
+    private array $allowedRoles;
     private string $secret;
 
-    public function __construct(string $secret)
+    /**
+     * @param list<string> $allowedRoles
+     */
+    public function __construct(string $secret, array $allowedRoles)
     {
         $this->secret = $secret;
+        $this->allowedRoles = array_values(array_unique(array_map('strval', $allowedRoles)));
     }
 
     public function process(Request $request, RequestHandler $handler): Response
     {
-        // Skip authentication for OPTIONS requests (CORS preflight)
         if ($request->getMethod() === 'OPTIONS') {
             return $handler->handle($request);
         }
@@ -40,8 +50,11 @@ class AuthMiddleware implements MiddlewareInterface
 
         try {
             $decoded = JWT::decode($token, new Key($this->secret, 'HS256'));
+            $role = $decoded->role ?? 'customer';
+            if (!in_array((string) $role, $this->allowedRoles, true)) {
+                return $this->forbiddenResponse();
+            }
 
-            // Add user_id to request attributes so controllers can access it
             $request = $request->withAttribute('user_id', $decoded->sub);
             $request = $request->withAttribute('token', $decoded);
         } catch (\Throwable $e) {
@@ -58,5 +71,14 @@ class AuthMiddleware implements MiddlewareInterface
         return $response
             ->withHeader('Content-Type', 'application/json')
             ->withStatus(401);
+    }
+
+    private function forbiddenResponse(): Response
+    {
+        $response = new SlimResponse();
+        $response->getBody()->write(json_encode(['error' => 'Forbidden']));
+        return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withStatus(403);
     }
 }

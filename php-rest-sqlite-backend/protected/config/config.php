@@ -47,4 +47,8 @@ return [
         'allowed_headers' => ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
         'allow_credentials' => true,
     ],
+    // Setup, system/import, /db-design, POST /run_migrations — NEVER enable on public hosts.
+    'security' => [
+        'allow_insecure_setup' => false,
+    ],
 ];

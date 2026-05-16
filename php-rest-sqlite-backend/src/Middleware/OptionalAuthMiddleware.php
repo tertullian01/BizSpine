@@ -42,6 +42,7 @@ class OptionalAuthMiddleware implements MiddlewareInterface
                 if (isset($decoded->role)) {
                     $request = $request->withAttribute('user_role', $decoded->role);
                 }
+                $request = $request->withAttribute('token', $decoded);
             } catch (\Exception $e) {
                 // Token invalid or expired; proceed as guest
             }

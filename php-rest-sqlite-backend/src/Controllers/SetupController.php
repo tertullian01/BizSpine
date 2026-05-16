@@ -500,11 +500,10 @@ class SetupController extends ApiController
             $db->exec("INSERT OR IGNORE INTO tax_rates (name, rate, region, is_default, description) VALUES ('Germany VAT', 19.0, 'DE', 1, 'Standard German VAT rate')");
             $db->exec("INSERT OR IGNORE INTO tax_rates (name, rate, region, is_default, description) VALUES ('USA Sales Tax', 7.5, 'US', 0, 'Average US sales tax')");
 
-            // Check if admin already exists
-            $stmt = $db->prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'");
-            $stmt->execute();
-            if ($stmt->fetch(PDO::FETCH_ASSOC)['count'] > 0) {
-                return $this->error($response, 'Admin user already exists', 400);
+            // Check if any user already exists (prevents hijack when only customers registered)
+            $stmt = $db->query('SELECT COUNT(*) AS c FROM users');
+            if ((int) $stmt->fetchColumn() > 0) {
+                return $this->error($response, 'Setup is disabled: user accounts already exist.', 400);
             }
 
             // Create admin user

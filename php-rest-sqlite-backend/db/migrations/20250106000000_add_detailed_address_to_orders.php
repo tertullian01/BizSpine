@@ -12,7 +12,7 @@ final class AddDetailedAddressToOrders extends AbstractMigration
         $columns = ['city', 'state', 'postal_code', 'country'];
         foreach ($columns as $column) {
             if (!$table->hasColumn($column)) {
-                $table->addColumn($column, 'string', ['null' => true, 'after' => 'shipping_address']);
+                $table->addColumn($column, 'string', ['null' => true]);
             }
         }
         

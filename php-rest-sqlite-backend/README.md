@@ -338,6 +338,36 @@ composer qa       # Run all quality checks
 ./vendor/bin/phinx rollback
 ```
 
+## Production deployment
+
+After deployment, apply the following so the API does not leak secrets or internal errors, and browsers can reach it from your frontend.
+
+### JWT secret
+
+- Set **`JWT_SECRET`** in a `.env` file at the project root (`php-rest-sqlite-backend/.env`). The application loads it via `vlucas/phpdotenv` in `src/Services/Config.php` and uses it for signing JWTs.
+- Use a long, random value in production. Do not commit `.env` or reuse development secrets.
+- If `JWT_SECRET` is unset, the app falls back to the value in `protected/config/config.php` (development fallback only).
+
+### CORS (`cors.allowed_origins`)
+
+- Configure allowed browser origins in **`protected/config/config.php`** under `cors` → **`allowed_origins`**.
+- Use an explicit list, for example: `['https://your-frontend.example.com']`. Multiple frontends can each be listed.
+- An empty array (`[]`) is secure by default (no cross-origin `Access-Control-Allow-Origin` for arbitrary sites) but **will block** browser-based SPAs until you add your real origin(s). Wildcard (`*`) is discouraged, especially with credentials.
+
+### PHP and Slim error exposure
+
+- In **`public/index.php`**, turn **off** client-visible PHP errors in production:
+  - Set `ini_set('display_errors', '0');` and `ini_set('display_startup_errors', '0');` (and keep `log_errors` enabled so issues still go to your log file).
+- Pass **`false`** as the first argument to **`$app->addErrorMiddleware(...)`** in the same file so Slim does not expose exception details in HTTP responses. Keep logging arguments as needed for the server log.
+
+### Application debug flag
+
+- In **`protected/config/config.php`**, set **`environment.debug`** to **`false`** in production. When `true`, `ErrorHandlerMiddleware` may include extra exception detail in responses.
+
+### Dangerous setup routes
+
+- Keep **`ALLOW_INSECURE_SETUP`** unset or **`false`** in `.env` on any public host (it maps to `security.allow_insecure_setup` in config). Only enable locally when you truly need setup/system routes or diagnostic endpoints documented elsewhere.
+
 ## Security Features
 
 - **JWT Authentication** with configurable expiration
@@ -346,7 +376,6 @@ composer qa       # Run all quality checks
 - **XSS Protection** with security headers middleware
 - **CSRF Protection** through JWT tokens
 - **Input Validation** with Respect/Validation
-- **Rate Limiting** (configurable)
 - **Secure File Uploads** with type and size validation
 
 ## Contributing

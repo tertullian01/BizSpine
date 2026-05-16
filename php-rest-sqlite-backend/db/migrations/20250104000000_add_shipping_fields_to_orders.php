@@ -10,11 +10,11 @@ final class AddShippingFieldsToOrders extends AbstractMigration
         $table = $this->table('orders');
         
         if (!$table->hasColumn('shipping_method')) {
-            $table->addColumn('shipping_method', 'string', ['null' => true, 'after' => 'tracking_number']);
+            $table->addColumn('shipping_method', 'string', ['null' => true]);
         }
         
         if (!$table->hasColumn('shipping_carrier')) {
-            $table->addColumn('shipping_carrier', 'string', ['null' => true, 'after' => 'shipping_method']);
+            $table->addColumn('shipping_carrier', 'string', ['null' => true]);
         }
         
         $table->update();

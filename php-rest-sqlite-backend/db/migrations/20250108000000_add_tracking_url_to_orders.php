@@ -10,7 +10,7 @@ final class AddTrackingUrlToOrders extends AbstractMigration
         $table = $this->table('orders');
         
         if (!$table->hasColumn('tracking_url')) {
-            $table->addColumn('tracking_url', 'string', ['null' => true, 'after' => 'tracking_number']);
+            $table->addColumn('tracking_url', 'string', ['null' => true]);
             $table->update();
         }
     }

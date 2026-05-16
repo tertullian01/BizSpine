@@ -16,14 +16,18 @@ class FileUploadServiceTest extends TestCase
     protected function setUp(): void
     {
         $this->logger = $this->createMock(Logger::class);
-        $this->testUploadDir = sys_get_temp_dir() . '/file_upload_test_' . uniqid();
+        $baseDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'protected' . DIRECTORY_SEPARATOR . 'database';
+        if (!is_dir($baseDir)) {
+            mkdir($baseDir, 0777, true);
+        }
+        $this->testUploadDir = $baseDir . DIRECTORY_SEPARATOR . 'upload_tmp_' . bin2hex(random_bytes(8));
 
         if (!is_dir($this->testUploadDir)) {
-            mkdir($this->testUploadDir, 0755, true);
+            mkdir($this->testUploadDir, 0777, true);
         }
 
         $config = [
-            'upload_path' => $this->testUploadDir . '/',
+            'upload_path' => $this->testUploadDir . DIRECTORY_SEPARATOR,
             'max_file_size' => 1024 * 1024, // 1MB for testing
             'allowed_extensions' => ['jpg', 'png'],
             'allowed_mime_types' => ['image/jpeg', 'image/png'],
@@ -48,7 +52,7 @@ class FileUploadServiceTest extends TestCase
 
         $files = array_diff(scandir($dir), ['.', '..']);
         foreach ($files as $file) {
-            $path = $dir . '/' . $file;
+            $path = $dir . DIRECTORY_SEPARATOR . $file;
             if (is_dir($path)) {
                 $this->removeDirectory($path);
             } else {

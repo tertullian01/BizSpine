@@ -10,7 +10,7 @@ final class AddStoreIdToEmailTemplates extends AbstractMigration
         $table = $this->table('email_templates');
         
         if (!$table->hasColumn('store_id')) {
-            $table->addColumn('store_id', 'integer', ['null' => true, 'after' => 'id'])
+            $table->addColumn('store_id', 'integer', ['null' => true])
                   ->addForeignKey('store_id', 'stores', 'id', ['delete' => 'CASCADE', 'update' => 'NO_ACTION'])
                   ->save();
         }

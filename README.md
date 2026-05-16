@@ -11,6 +11,7 @@ A comprehensive PHP/SQLite backend REST API designed to support a small business
 - [API Endpoints](#api-endpoints)
 - [Security Features](#security-features)
 - [Installation & Setup](#installation--setup)
+- [Production deployment](#production-deployment)
 - [Testing](#testing)
 - [Project Structure](#project-structure)
 
@@ -691,6 +692,36 @@ return [
     ],
 ];
 ```
+
+## 🚀 Production deployment
+
+After the API is deployed, apply the following so responses do not leak internal errors and browser clients can call the API from your frontend. All paths are relative to the [`php-rest-sqlite-backend/`](php-rest-sqlite-backend/) directory unless noted.
+
+### JWT secret
+
+- Set **`JWT_SECRET`** in a **`.env` file at** [`php-rest-sqlite-backend/.env`](php-rest-sqlite-backend/.env). The app loads it through `vlucas/phpdotenv` in [`src/Services/Config.php`](php-rest-sqlite-backend/src/Services/Config.php).
+- Use a long, random value in production. Do not commit `.env` or reuse development secrets.
+- If `JWT_SECRET` is unset, the process falls back to [`protected/config/config.php`](php-rest-sqlite-backend/protected/config/config.php) (development fallback only).
+
+### CORS (`cors.allowed_origins`)
+
+- Configure allowed browser origins in [`php-rest-sqlite-backend/protected/config/config.php`](php-rest-sqlite-backend/protected/config/config.php) under **`cors`** → **`allowed_origins`**.
+- Use an explicit list, for example: `['https://your-frontend.example.com']`. Multiple frontends can each be listed.
+- An empty array (`[]`) blocks cross-origin browser access until you add real origin(s). Wildcard (`*`) is discouraged, especially with credentials.
+
+### PHP and Slim error exposure
+
+- In [`php-rest-sqlite-backend/public/index.php`](php-rest-sqlite-backend/public/index.php), turn **off** client-visible PHP errors in production:
+  - Set `ini_set('display_errors', '0');` and `ini_set('display_startup_errors', '0');` (keep `log_errors` enabled).
+- Pass **`false`** as the first argument to **`$app->addErrorMiddleware(...)`** in the same file so Slim does not expose exception details in HTTP responses.
+
+### Application debug flag
+
+- In [`protected/config/config.php`](php-rest-sqlite-backend/protected/config/config.php), set **`environment.debug`** to **`false`** in production. When `true`, [`ErrorHandlerMiddleware`](php-rest-sqlite-backend/src/Middleware/ErrorHandlerMiddleware.php) may include extra exception detail in responses.
+
+### Dangerous setup routes
+
+- Keep **`ALLOW_INSECURE_SETUP`** unset or **`false`** in `.env` on any public host (it maps to `security.allow_insecure_setup` in config). Enable only locally when you need setup/system or diagnostic endpoints.
 
 ## 🧪 Testing
 

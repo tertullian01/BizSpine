@@ -114,6 +114,11 @@ class AuthController extends ApiController
         if (!$userId) {
             throw new ValidationException('Missing user_id');
         }
+        $stmt = $this->db->prepare('SELECT role FROM users WHERE id = :id');
+        $stmt->execute([':id' => $userId]);
+        $roleFromDb = $stmt->fetchColumn();
+        $role = is_string($roleFromDb) && $roleFromDb !== '' ? $roleFromDb : 'customer';
+
         // Issue new access token
         $now = time();
         $payload = [
@@ -121,6 +126,7 @@ class AuthController extends ApiController
             'iat' => $now,
             'exp' => $now + ($this->config['jwt']['access_exp'] ?? 900),
             'sub' => (string) $userId,
+            'role' => $role,
         ];
         $secret = (string)(Config::getInstance()->get('jwt.secret') ?: 'default_secret');
         $token = JWT::encode($payload, $secret, 'HS256');

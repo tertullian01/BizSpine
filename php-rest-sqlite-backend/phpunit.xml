@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.5/phpunit.xsd" bootstrap="tests/bootstrap.php" colors="true" verbose="true">
+    <php>
+        <env name="JWT_SECRET" value="test-secret-key" force="true"/>
+        <env name="ALLOW_INSECURE_SETUP" value="false" force="true"/>
+    </php>
     <testsuites>
         <testsuite name="Unit Tests">
             <directory>tests/Unit</directory>

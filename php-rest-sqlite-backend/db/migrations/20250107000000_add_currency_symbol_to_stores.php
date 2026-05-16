@@ -9,7 +9,7 @@ final class AddCurrencySymbolToStores extends AbstractMigration
     {
         $table = $this->table('stores');
         if (!$table->hasColumn('currency_symbol')) {
-            $table->addColumn('currency_symbol', 'string', ['default' => '$', 'null' => true, 'after' => 'email']);
+            $table->addColumn('currency_symbol', 'string', ['default' => '$', 'null' => true]);
             $table->update();
         }
     }

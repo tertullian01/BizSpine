@@ -9,7 +9,7 @@ final class AddTemplateTypeToEmailTemplates extends AbstractMigration
     {
         $table = $this->table('email_templates');
         if (!$table->hasColumn('template_type')) {
-            $table->addColumn('template_type', 'string', ['null' => true, 'after' => 'name'])
+            $table->addColumn('template_type', 'string', ['null' => true])
                   ->save();
         }
     }
