@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // Add product_reviews table to allow customers to review purchased products
 // Run from project root:
-// php php-rest-sqlite-backend/protected/scripts/add_reviews_table.php
+// php backend/protected/scripts/add_reviews_table.php
 
 $configPath = __DIR__ . '/../config/config.php';
 if (!file_exists($configPath)) {

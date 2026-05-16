@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // Initialize SQLite DB and schema for the project.
 // Run from project root:
-// php php-rest-sqlite-backend/protected/scripts/init_db.php
+// php backend/protected/scripts/init_db.php
 
 $configPath = __DIR__ . '/../config/config.php';
 if (!file_exists($configPath)) {

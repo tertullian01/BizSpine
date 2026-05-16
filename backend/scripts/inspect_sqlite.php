@@ -2,7 +2,7 @@
 /**
  * Print SQLite tables and columns (PRAGMA table_info).
  *
- * Usage (from php-rest-sqlite-backend):
+ * Usage (from backend):
  *   php scripts/inspect_sqlite.php
  *   php scripts/inspect_sqlite.php path/to/database.db
  */

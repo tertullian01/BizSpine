@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // Add orders and order_items tables to track customer purchases
 // Run from project root:
-// php php-rest-sqlite-backend/protected/scripts/add_orders_table.php
+// php backend/protected/scripts/add_orders_table.php
 
 $configPath = __DIR__ . '/../config/config.php';
 if (!file_exists($configPath)) {

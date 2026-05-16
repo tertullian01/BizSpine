@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // Fix testimonials table - add missing 'published' column
 // Run from project root:
-// php php-rest-sqlite-backend/protected/scripts/fix_testimonials_published_column.php
+// php backend/protected/scripts/fix_testimonials_published_column.php
 
 $configPath = __DIR__ . '/../config/config.php';
 if (!file_exists($configPath)) {

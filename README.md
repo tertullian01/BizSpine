@@ -1,6 +1,6 @@
-# SmallBusinessWebBackend
+# BizSpine
 
-A comprehensive PHP/SQLite backend REST API designed to support a small business storefront with features for customer tracking, inventory management, store locations, and reviews.
+The backbone for storefront and business operations: a PHP/SQLite REST API with customer tracking, inventory management, multi-store locations, orders, and reviews.
 
 ## 📋 Table of Contents
 
@@ -36,17 +36,17 @@ This project provides a production-ready RESTful API backend built with PHP and 
 ### Design Patterns
 
 1. **MVC (Model-View-Controller)**
-   - **Models**: Data structures representing database entities ([`User`](php-rest-sqlite-backend/src/Models/User.php:1), [`Product`](php-rest-sqlite-backend/src/Models/Product.php:1), [`Store`](php-rest-sqlite-backend/src/Models/Store.php:1), [`Inventory`](php-rest-sqlite-backend/src/Models/Inventory.php:1), [`Order`](php-rest-sqlite-backend/src/Models/Order.php:1), [`OrderItem`](php-rest-sqlite-backend/src/Models/OrderItem.php:1), [`ProductReview`](php-rest-sqlite-backend/src/Models/ProductReview.php:1), [`Testimonial`](php-rest-sqlite-backend/src/Models/Testimonial.php:1), [`Income`](php-rest-sqlite-backend/src/Models/Income.php:1), [`Expense`](php-rest-sqlite-backend/src/Models/Expense.php:1), [`UserReferral`](php-rest-sqlite-backend/src/Models/UserReferral.php:1), [`ReferralUsage`](php-rest-sqlite-backend/src/Models/ReferralUsage.php:1), [`Coupon`](php-rest-sqlite-backend/src/Models/Coupon.php:1), [`CouponUsage`](php-rest-sqlite-backend/src/Models/CouponUsage.php:1), [`TaxRate`](php-rest-sqlite-backend/src/Models/TaxRate.php:1), [`OrderReturn`](php-rest-sqlite-backend/src/Models/OrderReturn.php:1), [`ReturnItem`](php-rest-sqlite-backend/src/Models/ReturnItem.php:1))
-   - **Controllers**: Business logic handlers ([`AuthController`](php-rest-sqlite-backend/src/Controllers/AuthController.php:1), [`ProductController`](php-rest-sqlite-backend/src/Controllers/ProductController.php:1), [`StoreController`](php-rest-sqlite-backend/src/Controllers/StoreController.php:1), [`InventoryController`](php-rest-sqlite-backend/src/Controllers/InventoryController.php:1), [`OrderController`](php-rest-sqlite-backend/src/Controllers/OrderController.php:1), [`ReviewController`](php-rest-sqlite-backend/src/Controllers/ReviewController.php:1), [`TestimonialController`](php-rest-sqlite-backend/src/Controllers/TestimonialController.php:1), [`BookkeepingController`](php-rest-sqlite-backend/src/Controllers/BookkeepingController.php:1), [`ReferralController`](php-rest-sqlite-backend/src/Controllers/ReferralController.php:1), [`CouponController`](php-rest-sqlite-backend/src/Controllers/CouponController.php:1), [`TaxController`](php-rest-sqlite-backend/src/Controllers/TaxController.php:1), [`ReturnController`](php-rest-sqlite-backend/src/Controllers/ReturnController.php:1))
+   - **Models**: Data structures representing database entities ([`User`](backend/src/Models/User.php:1), [`Product`](backend/src/Models/Product.php:1), [`Store`](backend/src/Models/Store.php:1), [`Inventory`](backend/src/Models/Inventory.php:1), [`Order`](backend/src/Models/Order.php:1), [`OrderItem`](backend/src/Models/OrderItem.php:1), [`ProductReview`](backend/src/Models/ProductReview.php:1), [`Testimonial`](backend/src/Models/Testimonial.php:1), [`Income`](backend/src/Models/Income.php:1), [`Expense`](backend/src/Models/Expense.php:1), [`UserReferral`](backend/src/Models/UserReferral.php:1), [`ReferralUsage`](backend/src/Models/ReferralUsage.php:1), [`Coupon`](backend/src/Models/Coupon.php:1), [`CouponUsage`](backend/src/Models/CouponUsage.php:1), [`TaxRate`](backend/src/Models/TaxRate.php:1), [`OrderReturn`](backend/src/Models/OrderReturn.php:1), [`ReturnItem`](backend/src/Models/ReturnItem.php:1))
+   - **Controllers**: Business logic handlers ([`AuthController`](backend/src/Controllers/AuthController.php:1), [`ProductController`](backend/src/Controllers/ProductController.php:1), [`StoreController`](backend/src/Controllers/StoreController.php:1), [`InventoryController`](backend/src/Controllers/InventoryController.php:1), [`OrderController`](backend/src/Controllers/OrderController.php:1), [`ReviewController`](backend/src/Controllers/ReviewController.php:1), [`TestimonialController`](backend/src/Controllers/TestimonialController.php:1), [`BookkeepingController`](backend/src/Controllers/BookkeepingController.php:1), [`ReferralController`](backend/src/Controllers/ReferralController.php:1), [`CouponController`](backend/src/Controllers/CouponController.php:1), [`TaxController`](backend/src/Controllers/TaxController.php:1), [`ReturnController`](backend/src/Controllers/ReturnController.php:1))
    - **Views**: JSON responses (RESTful API)
 
 2. **Middleware Pattern**
-   - [`AuthMiddleware`](php-rest-sqlite-backend/src/Middleware/AuthMiddleware.php:1): JWT token validation and authentication
+   - [`AuthMiddleware`](backend/src/Middleware/AuthMiddleware.php:1): JWT token validation and authentication
    - Intercepts requests to protected routes
    - Validates token signature, expiration, and structure
 
 3. **Service Layer Pattern**
-   - [`Database`](php-rest-sqlite-backend/src/Services/Database.php:1) service: Centralized database connection management
+   - [`Database`](backend/src/Services/Database.php:1) service: Centralized database connection management
    - Singleton pattern for PDO instance
    - Automatic directory creation and permissions handling
 
@@ -639,12 +639,12 @@ return_items
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd SmallBusinessWebBackend
+   cd BizSpine
    ```
 
 2. **Install dependencies**
    ```bash
-   cd php-rest-sqlite-backend
+   cd backend
    composer install
    ```
 
@@ -663,7 +663,7 @@ return_items
 4. **Configure environment**
    - Copy `.env.example` to `.env` (if available)
    - Set `JWT_SECRET` to a secure random string
-   - Update configuration in [`protected/config/config.php`](php-rest-sqlite-backend/protected/config/config.php:1)
+   - Update configuration in [`protected/config/config.php`](backend/protected/config/config.php:1)
 
 5. **Start the development server**
    ```bash
@@ -676,7 +676,7 @@ return_items
 
 ### Configuration
 
-Edit [`protected/config/config.php`](php-rest-sqlite-backend/protected/config/config.php:1):
+Edit [`protected/config/config.php`](backend/protected/config/config.php:1):
 
 ```php
 return [
@@ -686,7 +686,7 @@ return [
     ],
     'jwt' => [
         'secret' => getenv('JWT_SECRET') ?: 'change-me-in-production',
-        'issuer' => 'smallbusiness.local',
+        'issuer' => 'bizspine.local',
         'access_exp' => 900,      // 15 minutes
         'refresh_exp' => 604800,  // 7 days
     ],
@@ -695,29 +695,29 @@ return [
 
 ## 🚀 Production deployment
 
-After the API is deployed, apply the following so responses do not leak internal errors and browser clients can call the API from your frontend. All paths are relative to the [`php-rest-sqlite-backend/`](php-rest-sqlite-backend/) directory unless noted.
+After the API is deployed, apply the following so responses do not leak internal errors and browser clients can call the API from your frontend. All paths are relative to the [`backend/`](backend/) directory unless noted.
 
 ### JWT secret
 
-- Set **`JWT_SECRET`** in a **`.env` file at** [`php-rest-sqlite-backend/.env`](php-rest-sqlite-backend/.env). The app loads it through `vlucas/phpdotenv` in [`src/Services/Config.php`](php-rest-sqlite-backend/src/Services/Config.php).
+- Set **`JWT_SECRET`** in a **`.env` file at** [`backend/.env`](backend/.env). The app loads it through `vlucas/phpdotenv` in [`src/Services/Config.php`](backend/src/Services/Config.php).
 - Use a long, random value in production. Do not commit `.env` or reuse development secrets.
-- If `JWT_SECRET` is unset, the process falls back to [`protected/config/config.php`](php-rest-sqlite-backend/protected/config/config.php) (development fallback only).
+- If `JWT_SECRET` is unset, the process falls back to [`protected/config/config.php`](backend/protected/config/config.php) (development fallback only).
 
 ### CORS (`cors.allowed_origins`)
 
-- Configure allowed browser origins in [`php-rest-sqlite-backend/protected/config/config.php`](php-rest-sqlite-backend/protected/config/config.php) under **`cors`** → **`allowed_origins`**.
+- Configure allowed browser origins in [`backend/protected/config/config.php`](backend/protected/config/config.php) under **`cors`** → **`allowed_origins`**.
 - Use an explicit list, for example: `['https://your-frontend.example.com']`. Multiple frontends can each be listed.
 - An empty array (`[]`) blocks cross-origin browser access until you add real origin(s). Wildcard (`*`) is discouraged, especially with credentials.
 
 ### PHP and Slim error exposure
 
-- In [`php-rest-sqlite-backend/public/index.php`](php-rest-sqlite-backend/public/index.php), turn **off** client-visible PHP errors in production:
+- In [`backend/public/index.php`](backend/public/index.php), turn **off** client-visible PHP errors in production:
   - Set `ini_set('display_errors', '0');` and `ini_set('display_startup_errors', '0');` (keep `log_errors` enabled).
 - Pass **`false`** as the first argument to **`$app->addErrorMiddleware(...)`** in the same file so Slim does not expose exception details in HTTP responses.
 
 ### Application debug flag
 
-- In [`protected/config/config.php`](php-rest-sqlite-backend/protected/config/config.php), set **`environment.debug`** to **`false`** in production. When `true`, [`ErrorHandlerMiddleware`](php-rest-sqlite-backend/src/Middleware/ErrorHandlerMiddleware.php) may include extra exception detail in responses.
+- In [`protected/config/config.php`](backend/protected/config/config.php), set **`environment.debug`** to **`false`** in production. When `true`, [`ErrorHandlerMiddleware`](backend/src/Middleware/ErrorHandlerMiddleware.php) may include extra exception detail in responses.
 
 ### Dangerous setup routes
 
@@ -729,7 +729,7 @@ After the API is deployed, apply the following so responses do not leak internal
 
 ```bash
 # Run all tests
-cd php-rest-sqlite-backend
+cd backend
 vendor\bin\phpunit
 
 # Run specific test file
@@ -755,7 +755,7 @@ vendor\bin\phpunit --coverage-html coverage
 
 ### Test Structure
 
-- **Unit Tests**: Located in [`tests/Unit/`](php-rest-sqlite-backend/tests/Unit/:1)
+- **Unit Tests**: Located in [`tests/Unit/`](backend/tests/Unit/:1)
 - **In-Memory Database**: Tests use SQLite `:memory:` for isolation
 - **Test Mode**: Controllers support test mode to capture responses
 - **Mocking**: Anonymous classes extend controllers to mock input
@@ -814,12 +814,12 @@ vendor\bin\phpunit --coverage-html coverage
 ## 📁 Project Structure
 
 ```
-SmallBusinessWebBackend/
+BizSpine/
 ├── README.md                          # This file
 ├── LICENSE                            # MIT License
 ├── db_inspector.php                   # Database inspection utility
 │
-└── php-rest-sqlite-backend/
+└── backend/
     ├── composer.json                  # Dependencies and autoloading
     ├── phpunit.xml                    # PHPUnit configuration
     ├── README.md                      # Detailed project documentation

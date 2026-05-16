@@ -55,7 +55,7 @@ class HealthController extends ApiController
             return $this->success($response, [
                 'status' => 'ok',
                 'time' => date(DATE_ATOM),
-                'app' => 'REST API',
+                'app' => 'BizSpine API',
                 'database' => 'initialized'
             ]);
         } catch (\Exception $e) {

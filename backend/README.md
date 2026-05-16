@@ -1,8 +1,8 @@
-# PHP REST SQLite Backend
+# BizSpine API
 
 ## Overview
 
-A comprehensive REST API backend for small business management built with **Slim Framework 4.0** and **SQLite**. This project provides a complete e-commerce and business management solution with user authentication, product management, order processing, inventory tracking, and more.
+**BizSpine** is the REST API backbone for storefront and business operations, built with **Slim Framework 4.0** and **SQLite**. It provides e-commerce and business management: authentication, products, orders, inventory, bookkeeping, and more.
 
 ## Features
 
@@ -37,7 +37,7 @@ A comprehensive REST API backend for small business management built with **Slim
 ## Project Structure
 
 ```
-php-rest-sqlite-backend/
+backend/
 ├── public/
 │   ├── index.php              # Application entry point
 │   ├── .htaccess              # URL rewriting and security
@@ -134,7 +134,7 @@ php-rest-sqlite-backend/
 1. **Clone the repository:**
    ```bash
    git clone <repository-url>
-   cd php-rest-sqlite-backend
+   cd backend
    ```
 
 2. **Install PHP dependencies:**
@@ -344,7 +344,7 @@ After deployment, apply the following so the API does not leak secrets or intern
 
 ### JWT secret
 
-- Set **`JWT_SECRET`** in a `.env` file at the project root (`php-rest-sqlite-backend/.env`). The application loads it via `vlucas/phpdotenv` in `src/Services/Config.php` and uses it for signing JWTs.
+- Set **`JWT_SECRET`** in a `.env` file at the project root (`backend/.env`). The application loads it via `vlucas/phpdotenv` in `src/Services/Config.php` and uses it for signing JWTs.
 - Use a long, random value in production. Do not commit `.env` or reuse development secrets.
 - If `JWT_SECRET` is unset, the app falls back to the value in `protected/config/config.php` (development fallback only).
 

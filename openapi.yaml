@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
-  title: Small Business Web Backend API
-  description: A comprehensive PHP/SQLite backend REST API designed to support a small business storefront with features for customer tracking, inventory management, store locations, and reviews.
+  title: BizSpine API
+  description: REST API backbone for storefront and business operations (PHP/SQLite). Inventory, orders, multi-store, reviews, bookkeeping, and more.
   version: 1.0.0
 servers:
   - url: http://localhost:8000

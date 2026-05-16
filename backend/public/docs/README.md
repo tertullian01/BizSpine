@@ -1,6 +1,6 @@
 # API Documentation
 
-This directory contains the OpenAPI documentation for the Small Business Web Backend API.
+This directory contains the OpenAPI documentation for the BizSpine API.
 
 ## Files
 
@@ -12,7 +12,7 @@ This directory contains the OpenAPI documentation for the Small Business Web Bac
 ### Option 1: Local Web Server
 1. Start a local web server in the project root:
    ```bash
-   cd php-rest-sqlite-backend
+   cd backend
    php -S localhost:8000 -t .
    ```
 
@@ -26,7 +26,7 @@ Open `docs/index.html` directly in your browser. Note that some features may not
 
 ## API Overview
 
-The Small Business Web Backend API provides comprehensive functionality for:
+The BizSpine API provides comprehensive functionality for:
 
 - **Authentication**: JWT-based user authentication
 - **Products**: Catalog management with inventory tracking

@@ -17,7 +17,7 @@ return [
     'jwt' => [
         // Load from environment in production. Change fallback for dev only.
         'secret' => getenv('JWT_SECRET') ?: 'dev-fallback-change-me',
-        'issuer' => 'smallbusiness.local',
+        'issuer' => 'bizspine.local',
         'access_exp' => 900,
         'refresh_exp' => 604800,
     ],

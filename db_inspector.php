@@ -1,5 +1,5 @@
 <?php
-$dbPath = __DIR__ . '/php-rest-sqlite-backend/protected/db/database.sqlite';
+$dbPath = __DIR__ . '/backend/protected/db/database.sqlite';
 $db = new PDO('sqlite:' . $dbPath);
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 

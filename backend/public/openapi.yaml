@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: Small Business Web Backend API
+  title: BizSpine API
   description: |
-    A comprehensive REST API for small business management built with Slim Framework 4.0 and SQLite.
+    BizSpine — REST API backbone for storefront and business operations (Slim 4, SQLite).
 
     ## Features
     - Product and inventory management
@@ -31,7 +31,7 @@ info:
 servers:
   - url: http://localhost:8000
     description: Development server
-  - url: https://api.smallbusiness.com
+  - url: https://api.bizspine.example
     description: Production server
 
 security:

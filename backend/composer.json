@@ -1,6 +1,6 @@
 {
-    "name": "smallbusiness/php-rest-sqlite-backend",
-    "description": "A simple PHP REST API with SQLite database.",
+    "name": "bizspine/api",
+    "description": "BizSpine — REST API backbone for storefront and business operations (PHP, Slim, SQLite).",
     "type": "project",
     "require": {
         "php": "^7.4 || ^8.0",

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // Add profile fields to users table
 // Run from project root:
-// php php-rest-sqlite-backend/protected/scripts/update_users_table_profile.php
+// php backend/protected/scripts/update_users_table_profile.php
 
 $configPath = __DIR__ . '/../config/config.php';
 if (!file_exists($configPath)) {

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // Add referral program tables to track user referrals and rewards
 // Run from project root:
-// php php-rest-sqlite-backend/protected/scripts/add_referral_tables.php
+// php backend/protected/scripts/add_referral_tables.php
 
 $configPath = __DIR__ . '/../config/config.php';
 if (!file_exists($configPath)) {

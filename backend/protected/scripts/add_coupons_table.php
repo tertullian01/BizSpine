@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // Add coupon codes table to track discount coupons
 // Run from project root:
-// php php-rest-sqlite-backend/protected/scripts/add_coupons_table.php
+// php backend/protected/scripts/add_coupons_table.php
 
 $configPath = __DIR__ . '/../config/config.php';
 if (!file_exists($configPath)) {
