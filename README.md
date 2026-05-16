@@ -3,9 +3,12 @@
 The backbone for storefront and business operations: a PHP/SQLite REST API with customer tracking, inventory management, multi-store locations, orders, and reviews.
 
 > **BizSpine** is a product of [Tech Diplomacy](https://techdiplomacy.dev/) — software where complex systems meet the people who rely on them.
+>
+> **Try it live:** [https://techdiplomacy.dev/BizSpine](https://techdiplomacy.dev/BizSpine) — see [Live demo site](#live-demo-site) for sign-in details and a walkthrough.
 
 ## 📋 Table of Contents
 
+- [Live demo site](#live-demo-site)
 - [Overview](#overview)
 - [Technology Stack](#technology-stack)
 - [Architecture Analysis](#architecture-analysis)
@@ -17,6 +20,56 @@ The backbone for storefront and business operations: a PHP/SQLite REST API with 
 - [Production hardening](#production-hardening)
 - [Testing](#testing)
 - [Project Structure](#project-structure)
+
+<a id="live-demo-site"></a>
+
+## 🌐 Live demo site
+
+A public demo is hosted at **[https://techdiplomacy.dev/BizSpine](https://techdiplomacy.dev/BizSpine)** with sample products, orders, and admin data. Use it to explore the storefront and dashboard without installing anything locally.
+
+| URL | Purpose |
+|-----|---------|
+| [Storefront](https://techdiplomacy.dev/BizSpine/) | Customer-facing shop (home, products, stores, account) |
+| [Admin dashboard](https://techdiplomacy.dev/BizSpine/admin) | Staff and administrator tools |
+| [API health](https://techdiplomacy.dev/BizSpine/api/health) | JSON health check (`"status":"ok"`) |
+
+> This is a **shared** demo environment. Data may be reset periodically; do not enter real personal or payment information.
+
+### Demo accounts
+
+All accounts use the same password: **`Example123!`**
+
+| Email | Role | Use for |
+|-------|------|---------|
+| `admin@bizspine.example` | admin | Full admin dashboard |
+| `staff@bizspine.example` | employee | Staff access (no admin-only pages such as coupons or bookkeeping) |
+| `alice@example.com` | customer | Storefront customer account |
+| `bob@example.com` | customer | Second customer account |
+
+### How to test the storefront
+
+1. Open [https://techdiplomacy.dev/BizSpine/](https://techdiplomacy.dev/BizSpine/).
+2. Browse **Products** and **Stores** from the navigation.
+3. Go to **Account**, sign in as `alice@example.com` / `Example123!`, and review order history or profile settings.
+4. To try checkout flows, add items to the cart and complete an order (use test addresses only).
+5. At checkout, try coupon codes **`WELCOME10`** (10% off orders over $25) or **`SAVE5`** ($5 off orders over $40).
+
+### How to test the admin dashboard
+
+1. Open [https://techdiplomacy.dev/BizSpine/admin](https://techdiplomacy.dev/BizSpine/admin).
+2. Sign in as `admin@bizspine.example` / `Example123!`.
+3. Walk through key areas:
+   - **Dashboard** — overview metrics
+   - **Orders** — sample orders with different fulfillment statuses
+   - **Inventory** — stock levels (includes low-stock examples)
+   - **Returns** — demo return request (`RET-DEMO-001`)
+   - **Reviews** / **Testimonials** — published and pending content
+   - **Coupons**, **Bookkeeping**, **Employees**, **Settings** — admin-only sections
+4. Sign out and sign in as `staff@bizspine.example` / `Example123!` to confirm employee access (staff can use most admin pages but not admin-only routes).
+
+### Resetting data locally
+
+To load the same demo dataset on your machine, run `php example_reset.php` from the repo root. See [`example_reset.md`](example_reset.md) for full details.
 
 <a id="overview"></a>
 
@@ -860,7 +913,7 @@ Verify: open `https://techdiplomacy.dev/BizSpine/` — storefront loads; sign in
 
 ### 6. Demo accounts (after `example_reset.php`)
 
-All use password **`Example123!`**:
+Same accounts as the [live demo site](#live-demo-site). All use password **`Example123!`**:
 
 | Email | Role |
 |-------|------|
