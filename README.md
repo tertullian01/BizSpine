@@ -13,14 +13,18 @@ The backbone for storefront and business operations: a PHP/SQLite REST API with 
 - [API Endpoints](#api-endpoints)
 - [Security Features](#security-features)
 - [Making a release](#making-a-release)
-- [Installation & Setup (shared hosting)](#installation--setup-shared-hosting)
+- [Installation & Setup (shared hosting)](#installation-setup-shared-hosting)
 - [Production hardening](#production-hardening)
 - [Testing](#testing)
 - [Project Structure](#project-structure)
 
+<a id="overview"></a>
+
 ## 🎯 Overview
 
 This project provides a production-ready RESTful API backend built with PHP and SQLite. It implements modern authentication patterns using JWT tokens, follows MVC architecture principles, and includes comprehensive test coverage. The system is designed to be lightweight, portable, and easy to deploy while maintaining enterprise-level security and code quality standards.
+
+<a id="technology-stack"></a>
 
 ## 🛠 Technology Stack
 
@@ -33,6 +37,8 @@ This project provides a production-ready RESTful API backend built with PHP and 
 | **Testing** | PHPUnit | 9.0 |
 | **Environment** | phpdotenv | 5.0 |
 | **HTTP** | PSR-7 (Slim PSR7) | 1.0 |
+
+<a id="architecture-analysis"></a>
 
 ## 🏗 Architecture Analysis
 
@@ -65,6 +71,8 @@ This project provides a production-ready RESTful API backend built with PHP and 
 - **Error Handling**: Try-catch blocks with appropriate HTTP status codes
 - **Separation of Concerns**: Clear separation between routing, business logic, and data access
 - **Test-Driven Development**: Comprehensive unit test coverage (100% for Store functionality)
+
+<a id="database-schema"></a>
 
 ## 💾 Database Schema
 
@@ -283,6 +291,7 @@ tax_rates
 
 **Note:** Orders table now includes `tax_rate` and `tax_amount` fields for tax tracking.
 
+```sql
 returns
 ├── id (INTEGER PRIMARY KEY)
 ├── order_id (INTEGER FK → orders.id)
@@ -317,6 +326,8 @@ return_items
 - **Automatic Timestamps**: `created_at` and `updated_at` fields
 - **Indexing**: Primary keys automatically indexed, plus custom indexes on inventory, orders, and reviews for performance
 - **Check Constraints**: Rating must be between 1 and 5
+
+<a id="api-endpoints"></a>
 
 ## 🔌 API Endpoints
 
@@ -586,6 +597,8 @@ return_items
 |--------|----------|------|-------------|
 | GET | `/health` | Public | API health status |
 
+<a id="security-features"></a>
+
 ## 🔒 Security Features
 
 ### Authentication & Authorization
@@ -627,6 +640,8 @@ return_items
 
 **Apache Configuration** (`.htaccess`):
 - URL rewriting for clean API endpoints
+
+<a id="making-a-release"></a>
 
 ## 📦 Making a release
 
@@ -704,6 +719,8 @@ Step-by-step copy is in [`deploy/INSTALL.html`](deploy/INSTALL.html) (included i
 Demo data option loads sample products and accounts (password `Example123!` — see [`example_reset.md`](example_reset.md)).
 
 ---
+
+<a id="installation-setup-shared-hosting"></a>
 
 ## 🌐 Installation & Setup (shared hosting)
 
@@ -872,6 +889,8 @@ Open `http://localhost:5173`. API health: `http://localhost:8000/health`.
 
 ---
 
+<a id="production-hardening"></a>
+
 ## 🚀 Production hardening
 
 After deployment on a public host, apply the following. Paths are relative to [`backend/`](backend/) unless noted.
@@ -901,6 +920,8 @@ After deployment on a public host, apply the following. Paths are relative to [`
 ### Dangerous setup routes
 
 - Keep **`ALLOW_INSECURE_SETUP`** unset or **`false`** in `.env` on any public host (it maps to `security.allow_insecure_setup` in config). Enable only locally when you need setup/system or diagnostic endpoints.
+
+<a id="testing"></a>
 
 ## 🧪 Testing
 
@@ -989,6 +1010,8 @@ vendor\bin\phpunit --coverage-html coverage
 6. ✅ Publish testimonial
 7. ✅ Unpublish testimonial
 8. ✅ Delete testimonial
+
+<a id="project-structure"></a>
 
 ## 📁 Project Structure
 
