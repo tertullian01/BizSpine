@@ -41,6 +41,15 @@ $container = new Container();
 AppFactory::setContainer($container);
 $app = AppFactory::create();
 
+// Subdirectory deploy: public_html/BizSpine/api/index.php → strip /BizSpine/api from URIs
+$scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+if (str_ends_with($scriptName, '/api/index.php')) {
+    $apiBasePath = dirname($scriptName);
+    if ($apiBasePath !== '/' && $apiBasePath !== '.') {
+        $app->setBasePath($apiBasePath);
+    }
+}
+
 // Add the config to the DI container
 $container->singleton(Config::class, fn() => $config);
 
@@ -92,6 +101,7 @@ $container->bind(\App\Controllers\SettingsController::class, fn($c) => new \App\
 ));
 $container->bind(\App\Controllers\EmailLogController::class, fn($c) => new \App\Controllers\EmailLogController($c->get(\App\Services\PaginationService::class)));
 $container->bind(\App\Controllers\EmailTemplateController::class, fn($c) => new \App\Controllers\EmailTemplateController($db));
+$container->bind(\App\Controllers\HealthController::class, fn($c) => new \App\Controllers\HealthController($config->getAll()));
 
 // Add Metrics Middleware (must be first to measure all requests)
 $app->add(new \App\Middleware\MetricsMiddleware($container->get(\App\Services\Metrics::class)));

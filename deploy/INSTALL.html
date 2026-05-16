@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BizSpine — Install on cPanel / shared hosting</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; color: #1a2332; }
+    h1 { font-size: 1.75rem; }
+    h2 { font-size: 1.15rem; margin-top: 2rem; }
+    code, kbd { background: #f0f4f8; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.92em; }
+    ol { padding-left: 1.25rem; }
+    .note { background: #eef6ff; border-left: 4px solid #3d9cf5; padding: 0.75rem 1rem; margin: 1rem 0; }
+    a { color: #2563eb; }
+  </style>
+</head>
+<body>
+  <h1>Install BizSpine (no SSH required)</h1>
+  <p>This guide is for non-technical users installing from the <strong>release ZIP</strong> on Apache shared hosting (cPanel, Plesk, etc.).</p>
+
+  <div class="note">
+    You need: PHP 8.0+, SQLite, and a folder on your site (default name <code>BizSpine</code>).
+  </div>
+
+  <h2>1. Upload the ZIP</h2>
+  <ol>
+    <li>In cPanel, open <strong>File Manager</strong>.</li>
+    <li>Go to your home folder (one level above <code>public_html</code>).</li>
+    <li>Upload <code>BizSpine-release.zip</code> and <strong>Extract</strong> it.</li>
+  </ol>
+  <p>After extraction you should have:</p>
+  <ul>
+    <li><code>bizspine-backend/</code> — next to <code>public_html</code> (not inside it)</li>
+    <li><code>public_html/BizSpine/</code> — your storefront and installer</li>
+  </ul>
+
+  <h2>2. Run the web installer</h2>
+  <ol>
+    <li>Open <code>https://YOUR-DOMAIN.com/BizSpine/install.php</code> in your browser.</li>
+    <li>Enter your store URL, store name, and administrator account (or tick <strong>Load demo data</strong> for a ready-made sample store).</li>
+    <li>Click <strong>Install BizSpine</strong>.</li>
+  </ol>
+
+  <h2>3. After installation</h2>
+  <ul>
+    <li>Visit your store at <code>https://YOUR-DOMAIN.com/BizSpine/</code></li>
+    <li>Admin dashboard: <code>https://YOUR-DOMAIN.com/BizSpine/admin</code></li>
+    <li><strong>Delete</strong> <code>install.php</code> from <code>public_html/BizSpine/</code> for security.</li>
+  </ul>
+
+  <h2>Demo accounts (if you loaded demo data)</h2>
+  <p>Password for all demo users: <code>Example123!</code></p>
+  <ul>
+    <li><code>admin@bizspine.example</code> — administrator</li>
+    <li><code>staff@bizspine.example</code> — employee</li>
+  </ul>
+
+  <h2>Different folder name?</h2>
+  <p>If your folder is not <code>BizSpine</code>, edit <code>RewriteBase</code> in <code>public_html/YourFolder/.htaccess</code> and <code>api/.htaccess</code> to match (e.g. <code>/YourFolder/</code>).</p>
+
+  <h2>Need help?</h2>
+  <p>See the full README in the developer package, or contact whoever provided this ZIP.</p>
+</body>
+</html>

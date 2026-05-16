@@ -1,0 +1,15 @@
+# Apache: Slim API under /BizSpine/api/
+# Place as public_html/BizSpine/api/.htaccess
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /BizSpine/api/
+
+  RewriteCond %{REQUEST_FILENAME} \.php$
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule ^ - [L]
+
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ index.php [L,QSA]
+</IfModule>
