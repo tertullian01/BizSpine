@@ -12,6 +12,7 @@ The backbone for storefront and business operations: a PHP/SQLite REST API with 
 - [Database Schema](#database-schema)
 - [API Endpoints](#api-endpoints)
 - [Security Features](#security-features)
+- [Making a release](#-making-a-release)
 - [Installation & Setup](#installation--setup)
 - [Production hardening](#production-hardening)
 - [Testing](#testing)
@@ -627,13 +628,23 @@ return_items
 **Apache Configuration** (`.htaccess`):
 - URL rewriting for clean API endpoints
 
-## 📤 Distributing to non-technical users
+## 📦 Making a release
 
-Ship a **pre-built ZIP** so installers never run Git, Composer, or Node on the server.
+Use the release scripts to produce a **shared-hosting ZIP** (storefront + API + installer). End users upload and extract the archive; they do not need Git, Composer, or Node on the server.
 
-### Build the release ZIP (developer machine)
+### Prerequisites
 
-**Windows (PowerShell):**
+Run from the **repository root** with these installed:
+
+| Tool | Purpose |
+|------|---------|
+| **Node.js 18+** | Builds the React frontend (`npm ci` / `npm run build`) |
+| **Composer** | Installs PHP dependencies (`composer install --no-dev`) |
+| **PowerShell** (Windows) or **bash** (macOS/Linux) | Runs the packaging script |
+
+### Command
+
+**Windows (PowerShell)** — from the repo root:
 
 ```powershell
 .\scripts\build-release.ps1 -Subdir BizSpine -SiteUrl https://yourdomain.com/BizSpine
@@ -646,7 +657,35 @@ chmod +x scripts/build-release.sh
 ./scripts/build-release.sh BizSpine https://yourdomain.com/BizSpine
 ```
 
-Output: [`release/BizSpine-release.zip`](release/BizSpine-release.zip) containing:
+| Argument | Default | Meaning |
+|----------|---------|---------|
+| `Subdir` / first positional | `BizSpine` | Folder name under `public_html` (sets `VITE_BASE_PATH` and `RewriteBase` in `.htaccess`) |
+| `SiteUrl` / second positional | *(empty)* | Full public URL of the storefront, **without** trailing slash. Sets `VITE_API_BASE_URL` to `{SiteUrl}/api` at build time. Omit for a generic ZIP and configure the API URL later. |
+
+**Examples:**
+
+```powershell
+# Production ZIP for techdiplomacy.dev/BizSpine
+.\scripts\build-release.ps1 -Subdir BizSpine -SiteUrl https://techdiplomacy.dev/BizSpine
+
+# Different subdirectory name, same host
+.\scripts\build-release.ps1 -Subdir MyShop -SiteUrl https://example.com/MyShop
+
+# Generic ZIP (installer still works; rebuild frontend with SiteUrl when you know the host)
+.\scripts\build-release.ps1
+```
+
+### What the script does
+
+1. `npm run build` in `frontend/` with `VITE_BASE_PATH=/{Subdir}/`
+2. `composer install --no-dev` in `backend/`
+3. Assembles `bizspine-backend/` and `public_html/{Subdir}/` (including `install.php`, `.htaccess`, API bootstrap)
+4. **Excludes** dev database, `.env`, coverage output, and tests
+5. Writes **`release/BizSpine-release.zip`**
+
+### Output
+
+[`release/BizSpine-release.zip`](release/BizSpine-release.zip) containing:
 
 | Path on server | Contents |
 |----------------|----------|
@@ -732,7 +771,7 @@ chmod 775 ~/bizspine/backend/public/logs
 
 ### 3. Create the database
 
-**Easiest (release ZIP):** open `https://yourdomain.com/BizSpine/install.php` and follow the wizard (see [Distributing to non-technical users](#-distributing-to-non-technical-users)).
+**Easiest (release ZIP):** open `https://yourdomain.com/BizSpine/install.php` and follow the wizard (see [Making a release](#-making-a-release)).
 
 **Developers (SSH):** from the repo root (upload `example_reset.php` to `~/bizspine/` if needed):
 
