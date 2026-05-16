@@ -187,11 +187,13 @@ class FileUploadService
             ];
 
             if (isset($mimeMap[$extension]) && $actualMimeType !== $mimeMap[$extension]) {
-                throw new Exception("File content does not match the claimed file type");
+                throw new Exception('File content does not match the claimed file type');
             }
         } catch (Exception $e) {
-            // Log warning but don't fail if content validation fails
-            $this->logger->warning('File content validation failed', ['error' => $e->getMessage()]);
+            if ($e->getMessage() === 'File content does not match the claimed file type') {
+                throw $e;
+            }
+            $this->logger->warning('File content validation skipped', ['error' => $e->getMessage()]);
         }
     }
 

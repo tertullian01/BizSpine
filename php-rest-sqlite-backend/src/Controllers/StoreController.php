@@ -140,7 +140,7 @@ class StoreController extends ApiController
             if ($e->getCode() == '23000') {
                 return $this->error($response, 'Cannot delete store because it is referenced by other records. Please contact support.', 409);
             }
-            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+            return $this->internalError($response);
         }
     }
 

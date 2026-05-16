@@ -153,7 +153,7 @@ class EmailService
             return $value;
         }
         
-        $key = Config::getInstance()->get('jwt.secret') ?? 'default_secret';
+        $key = \App\Routes\RouteSecurity::jwtSecret();
         $payload = base64_decode(substr($value, 4));
         if (!$payload || strpos($payload, '::') === false) return $value;
         

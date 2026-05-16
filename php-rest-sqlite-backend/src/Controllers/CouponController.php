@@ -109,7 +109,7 @@ SQL;
             if (strpos($e->getMessage(), 'UNIQUE constraint failed') !== false) {
                 return $this->error($response, 'Coupon code already exists', 409);
             } else {
-                return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+                return $this->internalError($response);
             }
         }
     }
@@ -210,7 +210,7 @@ SQL;
             if (strpos($e->getMessage(), 'UNIQUE constraint failed') !== false) {
                 return $this->error($response, 'Coupon code already exists', 409);
             } else {
-                return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+                return $this->internalError($response);
             }
         }
     }

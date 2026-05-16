@@ -147,7 +147,7 @@ class EmailTemplateController extends ApiController
             if (strpos($e->getMessage(), 'UNIQUE constraint failed') !== false) {
                 return $this->error($response, 'Template name already exists for this store', 409);
             }
-            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+            return $this->internalError($response);
         }
     }
 

@@ -93,7 +93,7 @@ class TaxController extends ApiController
             $rate->save();
             return $this->success($response, $rate);
         } catch (\Exception $e) {
-            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+            return $this->internalError($response);
         }
     }
 
@@ -109,7 +109,7 @@ class TaxController extends ApiController
             $rate->delete();
             return $response->withStatus(204);
         } catch (\Exception $e) {
-            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+            return $this->internalError($response);
         }
     }
 
@@ -157,7 +157,7 @@ class TaxController extends ApiController
             $rate->save();
             return $this->success($response, $rate, 201);
         } catch (\Exception $e) {
-            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+            return $this->internalError($response);
         }
     }
 }

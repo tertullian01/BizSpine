@@ -826,7 +826,7 @@ SQL;
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
-            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+            return $this->internalError($response);
         }
     }
 
@@ -986,7 +986,7 @@ SQL;
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
-            return $this->error($response, 'Error recording payment: ' . $e->getMessage(), 500);
+            return $this->internalError($response);
         }
     }
 
@@ -1039,7 +1039,7 @@ SQL;
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
-            return $this->error($response, 'Error cancelling order: ' . $e->getMessage(), 500);
+            return $this->internalError($response);
         }
     }
 
@@ -1083,7 +1083,7 @@ SQL;
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
-            return $this->error($response, 'Error deleting order: ' . $e->getMessage(), 500);
+            return $this->internalError($response);
         }
     }
 }

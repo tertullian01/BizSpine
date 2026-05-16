@@ -36,4 +36,10 @@ abstract class ApiController
             ->withHeader('Content-Type', 'application/json')
             ->withStatus($status);
     }
+
+    /** Generic 500 — do not pass exception messages to clients. */
+    protected function internalError(Response $response): Response
+    {
+        return $this->error($response, 'An internal error occurred', 500);
+    }
 }

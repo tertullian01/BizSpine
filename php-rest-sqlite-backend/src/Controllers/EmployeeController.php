@@ -141,7 +141,7 @@ class EmployeeController extends ApiController
             if ($e->getCode() == '23000') {
                 return $this->error($response, 'Cannot delete employee because they are associated with other records (e.g., orders, reviews).', 409);
             }
-            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+            return $this->internalError($response);
         } catch (\Exception $e) {
             return $this->error($response, 'Error deleting employee: ' . $e->getMessage(), 500);
         }

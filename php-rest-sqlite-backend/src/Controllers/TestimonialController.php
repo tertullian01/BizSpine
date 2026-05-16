@@ -232,7 +232,7 @@ SQL;
             $id = (int)$this->db->lastInsertId();
             return $this->getById($request, $response->withStatus(201), ['id' => $id]);
         } catch (\PDOException $e) {
-            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+            return $this->internalError($response);
         }
     }
 
@@ -318,7 +318,7 @@ SQL;
             $stmt->execute($params);
             return $this->getById($request, $response, ['id' => $id]);
         } catch (\PDOException $e) {
-            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+            return $this->internalError($response);
         }
     }
 

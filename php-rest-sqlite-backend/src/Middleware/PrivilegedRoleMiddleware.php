@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Middleware;
 
+use App\Services\Config;
+use App\Services\Database;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -13,7 +15,8 @@ use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
 use Slim\Psr7\Response as SlimResponse;
 
 /**
- * JWT authentication plus role allow-list (runs as a single layer to avoid stacking order issues).
+ * JWT authentication plus role allow-list. Role is loaded from the database
+ * so demoted users cannot retain elevated access via an old token claim.
  */
 class PrivilegedRoleMiddleware implements MiddlewareInterface
 {
@@ -50,18 +53,49 @@ class PrivilegedRoleMiddleware implements MiddlewareInterface
 
         try {
             $decoded = JWT::decode($token, new Key($this->secret, 'HS256'));
-            $role = $decoded->role ?? 'customer';
-            if (!in_array((string) $role, $this->allowedRoles, true)) {
+            $userId = (int) ($decoded->sub ?? 0);
+            if ($userId <= 0) {
+                return $this->unauthorizedResponse('Invalid or expired token');
+            }
+
+            $role = $this->loadRoleFromDatabase($userId);
+            if ($role === null) {
+                return $this->unauthorizedResponse('Invalid or expired token');
+            }
+
+            if (!in_array($role, $this->allowedRoles, true)) {
                 return $this->forbiddenResponse();
             }
 
-            $request = $request->withAttribute('user_id', $decoded->sub);
+            $request = $request->withAttribute('user_id', (string) $userId);
+            $request = $request->withAttribute('user_role', $role);
             $request = $request->withAttribute('token', $decoded);
         } catch (\Throwable $e) {
             return $this->unauthorizedResponse('Invalid or expired token');
         }
 
         return $handler->handle($request);
+    }
+
+    private function loadRoleFromDatabase(int $userId): ?string
+    {
+        $dbPath = Config::getInstance()->get('database.database_path');
+        if (!is_string($dbPath) || $dbPath === '') {
+            return null;
+        }
+
+        $db = Database::get($dbPath);
+        $stmt = $db->prepare('SELECT role FROM users WHERE id = :id');
+        $stmt->execute([':id' => $userId]);
+        $role = $stmt->fetchColumn();
+
+        if ($role === false) {
+            return null;
+        }
+
+        $role = is_string($role) && $role !== '' ? $role : 'customer';
+
+        return $role;
     }
 
     private function unauthorizedResponse(string $message): Response

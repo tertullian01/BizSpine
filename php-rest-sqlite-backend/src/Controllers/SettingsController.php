@@ -155,7 +155,7 @@ class SettingsController extends ApiController
 
         } catch (\Exception $e) {
             $this->db->rollBack();
-            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+            return $this->internalError($response);
         }
     }
 
@@ -252,7 +252,7 @@ class SettingsController extends ApiController
 
             return $this->success($response, ['message' => 'Logo uploaded successfully']);
         } catch (\Exception $e) {
-            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+            return $this->internalError($response);
         }
     }
 
@@ -357,7 +357,7 @@ class SettingsController extends ApiController
 
     private function encrypt(string $value): string
     {
-        $key = Config::getInstance()->get('jwt.secret') ?? 'default_secret';
+        $key = \App\Routes\RouteSecurity::jwtSecret();
         $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length('aes-256-cbc'));
         $encrypted = openssl_encrypt($value, 'aes-256-cbc', $key, 0, $iv);
         return 'ENC:' . base64_encode($encrypted . '::' . $iv);

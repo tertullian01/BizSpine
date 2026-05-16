@@ -82,6 +82,8 @@ SQL;
             return $this->error($response, 'Referral code not found', 404);
         }
 
+        unset($referral['user_email']);
+
         return $this->success($response, $referral);
     }
 
@@ -126,7 +128,7 @@ SQL;
             $id = (int)$this->db->lastInsertId();
             return $this->getById($request, $response->withStatus(201), ['id' => $id]);
         } catch (\PDOException $e) {
-            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+            return $this->internalError($response);
         }
     }
 

@@ -289,7 +289,7 @@ SQL;
             if ($e->getCode() == '23000') {
                 return $this->error($response, 'Cannot delete user because they are associated with other records (e.g., orders, reviews).', 409);
             }
-            return $this->error($response, 'Database error: ' . $e->getMessage(), 500);
+            return $this->internalError($response);
         }
     }
 
