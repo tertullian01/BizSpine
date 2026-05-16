@@ -3,10 +3,6 @@
 namespace Tests;
 
 use PDO;
-use Phinx\Config\Config;
-use Phinx\Migration\Manager;
-use Symfony\Component\Console\Input\StringInput;
-use Symfony\Component\Console\Output\NullOutput;
 use App\Services\Config as AppConfig;
 use App\Services\Database;
 use App\Models\BaseModel;
@@ -21,33 +17,13 @@ class DatabaseTestCase extends TestCase
         parent::setUp();
 
         if (self::$db === null) {
-            // Set the database path for the testing environment
-            AppConfig::getInstance()->set('database.database_path', __DIR__ . '/../protected/database/testing.db');
+            $backendRoot = dirname(__DIR__);
+            $dbPath = $backendRoot . '/protected/database/testing.db';
 
-            $dbDir = __DIR__ . '/../protected/database';
-            $dbPath = $dbDir . '/testing.db';
+            AppConfig::getInstance()->set('database.database_path', $dbPath);
 
-            // Ensure the database directory exists
-            if (!is_dir($dbDir)) {
-                mkdir($dbDir, 0777, true);
-            }
-
-            // Only migrate if it hasn't been done in this process
             if (!self::$migrated) {
-                // Ensure the database is clean before the first test
-                if (file_exists($dbPath)) {
-                    unlink($dbPath);
-                }
-
-                // Load the Phinx config array
-                $configArray = require(__DIR__ . '/../phinx.php');
-
-                // Use the Phinx Manager to run migrations programmatically
-                $config = new Config($configArray);
-                $manager = new Manager($config, new StringInput(''), new NullOutput());
-
-                // Migrate the database for the 'testing' environment
-                $manager->migrate('testing');
+                self::runTestingMigrations($backendRoot, $dbPath);
                 self::$migrated = true;
             }
 
@@ -55,28 +31,70 @@ class DatabaseTestCase extends TestCase
             self::$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             self::$db->exec('PRAGMA foreign_keys = ON;');
 
-            // SQLite / Phinx edge cases in subprocesses: ensure critical columns exist
-            self::ensureSqliteTestColumns(self::$db);
+            self::ensureSqliteTestSchema(self::$db);
 
-            // Set the database connection for models
             BaseModel::setDatabase(self::$db);
-
-            // Set the database instance for Database service (used by controllers)
             Database::setInstance(self::$db);
         }
 
-        // Truncate all tables to ensure a clean state for each test
-        $tables = self::$db->query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'phinxlog';")->fetchAll(PDO::FETCH_COLUMN);
-        foreach ($tables as $table) {
-            self::$db->exec("DELETE FROM `$table`;");
+        self::truncateAllTables(self::$db);
+    }
+
+    private static function runTestingMigrations(string $backendRoot, string $dbPath): void
+    {
+        $dbDir = dirname($dbPath);
+        if (!is_dir($dbDir)) {
+            mkdir($dbDir, 0777, true);
+        }
+
+        if (file_exists($dbPath)) {
+            unlink($dbPath);
+        }
+
+        $phinx = $backendRoot . '/vendor/bin/phinx';
+        $config = $backendRoot . '/phinx.php';
+        $command = escapeshellarg(PHP_BINARY) . ' '
+            . escapeshellarg($phinx)
+            . ' migrate -c ' . escapeshellarg($config)
+            . ' -e testing 2>&1';
+
+        $output = [];
+        $exitCode = 0;
+        exec($command, $output, $exitCode);
+
+        if ($exitCode !== 0) {
+            throw new \RuntimeException(
+                'Phinx migrate failed (exit ' . $exitCode . "):\n" . implode("\n", $output)
+            );
+        }
+
+        if (!is_file($dbPath)) {
+            throw new \RuntimeException('Testing database was not created at: ' . $dbPath);
         }
     }
 
-    /**
-     * Defensive column adds for PHPUnit (separate-process runs, Phinx quirks).
-     */
-    private static function ensureSqliteTestColumns(PDO $db): void
+    private static function truncateAllTables(PDO $db): void
     {
+        $tables = $db->query(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != 'phinxlog'"
+        )->fetchAll(PDO::FETCH_COLUMN);
+
+        $db->exec('PRAGMA foreign_keys = OFF;');
+        foreach ($tables as $table) {
+            $escaped = str_replace('"', '""', $table);
+            $db->exec('DELETE FROM "' . $escaped . '";');
+        }
+        $db->exec('DELETE FROM sqlite_sequence;');
+        $db->exec('PRAGMA foreign_keys = ON;');
+    }
+
+    /**
+     * Columns added by legacy scripts but not yet in every Phinx migration path.
+     */
+    private static function ensureSqliteTestSchema(PDO $db): void
+    {
+        require_once dirname(__DIR__) . '/tools/install_lib.php';
+        bizspine_ensure_optional_columns($db);
         self::addSqliteColumnIfMissing($db, 'income', 'transaction_id', 'TEXT');
         self::addSqliteColumnIfMissing($db, 'inventory', 'price_override', 'REAL');
     }
