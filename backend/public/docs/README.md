@@ -1,6 +1,6 @@
 # API Documentation
 
-This directory contains the OpenAPI documentation for the BizSpine API.
+This directory contains the OpenAPI documentation for the BizSpine API — a [Tech Diplomacy](https://techdiplomacy.dev/) product.
 
 ## Files
 

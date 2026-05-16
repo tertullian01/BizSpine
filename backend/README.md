@@ -1,5 +1,7 @@
 # BizSpine API
 
+A [Tech Diplomacy](https://techdiplomacy.dev/) product.
+
 ## Overview
 
 **BizSpine** is the REST API backbone for storefront and business operations, built with **Slim Framework 4.0** and **SQLite**. It provides e-commerce and business management: authentication, products, orders, inventory, bookkeeping, and more.
@@ -388,9 +390,13 @@ After deployment, apply the following so the API does not leak secrets or intern
 
 ## License
 
-This project is licensed under the MIT License. See the LICENSE file for more details.
+This project is licensed under the GNU Affero General Public License v3.0. See the LICENSE file in the repository root.
 
 ## Support
 
 For API documentation, see the OpenAPI specification at `/openapi.yaml` or interactive docs at `/docs/`.
 For issues and questions, please create an issue in the repository.
+
+---
+
+**BizSpine** · [Tech Diplomacy](https://techdiplomacy.dev/)

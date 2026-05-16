@@ -2,6 +2,13 @@
     "name": "bizspine/api",
     "description": "BizSpine — REST API backbone for storefront and business operations (PHP, Slim, SQLite).",
     "type": "project",
+    "homepage": "https://techdiplomacy.dev/BizSpine",
+    "authors": [
+        {
+            "name": "Tech Diplomacy",
+            "homepage": "https://techdiplomacy.dev/BizSpine"
+        }
+    ],
     "require": {
         "php": "^7.4 || ^8.0",
         "slim/slim": "^4.0",

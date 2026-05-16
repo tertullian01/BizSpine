@@ -2,6 +2,8 @@
 
 The backbone for storefront and business operations: a PHP/SQLite REST API with customer tracking, inventory management, multi-store locations, orders, and reviews.
 
+> **BizSpine** is a product of [Tech Diplomacy](https://techdiplomacy.dev/) — software where complex systems meet the people who rely on them.
+
 ## 📋 Table of Contents
 
 - [Overview](#overview)
@@ -944,4 +946,4 @@ For issues, questions, or contributions, please open an issue on the project rep
 
 ---
 
-**Built with ❤️ for small businesses**
+**BizSpine** · A [Tech Diplomacy](https://techdiplomacy.dev/) product

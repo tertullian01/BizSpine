@@ -1,8 +1,11 @@
 openapi: 3.0.0
 info:
   title: BizSpine API
-  description: REST API backbone for storefront and business operations (PHP/SQLite). Inventory, orders, multi-store, reviews, bookkeeping, and more.
+  description: REST API backbone for storefront and business operations (PHP/SQLite). Inventory, orders, multi-store, reviews, bookkeeping, and more. A product of Tech Diplomacy (https://techdiplomacy.dev/).
   version: 1.0.0
+  contact:
+    name: Tech Diplomacy
+    url: https://techdiplomacy.dev/
 servers:
   - url: http://localhost:8000
     description: Local Development Server

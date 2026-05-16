@@ -56,6 +56,8 @@ class HealthController extends ApiController
                 'status' => 'ok',
                 'time' => date(DATE_ATOM),
                 'app' => 'BizSpine API',
+                'vendor' => 'Tech Diplomacy',
+                'vendor_url' => 'https://techdiplomacy.dev/',
                 'database' => 'initialized'
             ]);
         } catch (\Exception $e) {
