@@ -12,8 +12,8 @@ The backbone for storefront and business operations: a PHP/SQLite REST API with 
 - [Database Schema](#database-schema)
 - [API Endpoints](#api-endpoints)
 - [Security Features](#security-features)
-- [Making a release](#-making-a-release)
-- [Installation & Setup](#installation--setup)
+- [Making a release](#making-a-release)
+- [Installation & Setup (shared hosting)](#installation--setup-shared-hosting)
 - [Production hardening](#production-hardening)
 - [Testing](#testing)
 - [Project Structure](#project-structure)
@@ -39,17 +39,17 @@ This project provides a production-ready RESTful API backend built with PHP and 
 ### Design Patterns
 
 1. **MVC (Model-View-Controller)**
-   - **Models**: Data structures representing database entities ([`User`](backend/src/Models/User.php:1), [`Product`](backend/src/Models/Product.php:1), [`Store`](backend/src/Models/Store.php:1), [`Inventory`](backend/src/Models/Inventory.php:1), [`Order`](backend/src/Models/Order.php:1), [`OrderItem`](backend/src/Models/OrderItem.php:1), [`ProductReview`](backend/src/Models/ProductReview.php:1), [`Testimonial`](backend/src/Models/Testimonial.php:1), [`Income`](backend/src/Models/Income.php:1), [`Expense`](backend/src/Models/Expense.php:1), [`UserReferral`](backend/src/Models/UserReferral.php:1), [`ReferralUsage`](backend/src/Models/ReferralUsage.php:1), [`Coupon`](backend/src/Models/Coupon.php:1), [`CouponUsage`](backend/src/Models/CouponUsage.php:1), [`TaxRate`](backend/src/Models/TaxRate.php:1), [`OrderReturn`](backend/src/Models/OrderReturn.php:1), [`ReturnItem`](backend/src/Models/ReturnItem.php:1))
-   - **Controllers**: Business logic handlers ([`AuthController`](backend/src/Controllers/AuthController.php:1), [`ProductController`](backend/src/Controllers/ProductController.php:1), [`StoreController`](backend/src/Controllers/StoreController.php:1), [`InventoryController`](backend/src/Controllers/InventoryController.php:1), [`OrderController`](backend/src/Controllers/OrderController.php:1), [`ReviewController`](backend/src/Controllers/ReviewController.php:1), [`TestimonialController`](backend/src/Controllers/TestimonialController.php:1), [`BookkeepingController`](backend/src/Controllers/BookkeepingController.php:1), [`ReferralController`](backend/src/Controllers/ReferralController.php:1), [`CouponController`](backend/src/Controllers/CouponController.php:1), [`TaxController`](backend/src/Controllers/TaxController.php:1), [`ReturnController`](backend/src/Controllers/ReturnController.php:1))
+   - **Models**: Data structures representing database entities ([`User`](backend/src/Models/User.php), [`Product`](backend/src/Models/Product.php), [`Store`](backend/src/Models/Store.php), [`Inventory`](backend/src/Models/Inventory.php), [`Order`](backend/src/Models/Order.php), [`OrderItem`](backend/src/Models/OrderItem.php), [`ProductReview`](backend/src/Models/ProductReview.php), [`Testimonial`](backend/src/Models/Testimonial.php), [`Income`](backend/src/Models/Income.php), [`Expense`](backend/src/Models/Expense.php), [`UserReferral`](backend/src/Models/UserReferral.php), [`ReferralUsage`](backend/src/Models/ReferralUsage.php), [`Coupon`](backend/src/Models/Coupon.php), [`CouponUsage`](backend/src/Models/CouponUsage.php), [`TaxRate`](backend/src/Models/TaxRate.php), [`OrderReturn`](backend/src/Models/OrderReturn.php), [`ReturnItem`](backend/src/Models/ReturnItem.php))
+   - **Controllers**: Business logic handlers ([`AuthController`](backend/src/Controllers/AuthController.php), [`ProductController`](backend/src/Controllers/ProductController.php), [`StoreController`](backend/src/Controllers/StoreController.php), [`InventoryController`](backend/src/Controllers/InventoryController.php), [`OrderController`](backend/src/Controllers/OrderController.php), [`ReviewController`](backend/src/Controllers/ReviewController.php), [`TestimonialController`](backend/src/Controllers/TestimonialController.php), [`BookkeepingController`](backend/src/Controllers/BookkeepingController.php), [`ReferralController`](backend/src/Controllers/ReferralController.php), [`CouponController`](backend/src/Controllers/CouponController.php), [`TaxController`](backend/src/Controllers/TaxController.php), [`ReturnController`](backend/src/Controllers/ReturnController.php))
    - **Views**: JSON responses (RESTful API)
 
 2. **Middleware Pattern**
-   - [`AuthMiddleware`](backend/src/Middleware/AuthMiddleware.php:1): JWT token validation and authentication
+   - [`AuthMiddleware`](backend/src/Middleware/AuthMiddleware.php): JWT token validation and authentication
    - Intercepts requests to protected routes
    - Validates token signature, expiration, and structure
 
 3. **Service Layer Pattern**
-   - [`Database`](backend/src/Services/Database.php:1) service: Centralized database connection management
+   - [`Database`](backend/src/Services/Database.php) service: Centralized database connection management
    - Singleton pattern for PDO instance
    - Automatic directory creation and permissions handling
 
@@ -685,7 +685,7 @@ chmod +x scripts/build-release.sh
 
 ### Output
 
-[`release/BizSpine-release.zip`](release/BizSpine-release.zip) containing:
+The script writes [`release/BizSpine-release.zip`](release/BizSpine-release.zip) with this layout on the server:
 
 | Path on server | Contents |
 |----------------|----------|
@@ -705,14 +705,16 @@ Demo data option loads sample products and accounts (password `Example123!` — 
 
 ---
 
-## 📦 Installation & Setup (shared hosting)
+## 🌐 Installation & Setup (shared hosting)
+
+> **Prefer the release ZIP:** see [Making a release](#making-a-release), upload `release/BizSpine-release.zip`, and open `/BizSpine/install.php`. The steps below are for **manual** assembly when you are not using the release script.
 
 This guide targets **Apache shared hosting** (cPanel, Plesk, etc.) with the app served from a **subdirectory**, for example:
 
 - Storefront: `https://techdiplomacy.dev/BizSpine/`
 - API: `https://techdiplomacy.dev/BizSpine/api/`
 
-Build the React frontend on your computer, upload static files, and keep the PHP backend **outside** `public_html` so `protected/`, `vendor/`, and the SQLite file are not web-accessible.
+Keep the PHP backend **outside** `public_html` so `protected/`, `vendor/`, and the SQLite file are not web-accessible.
 
 ### What you need
 
@@ -771,7 +773,7 @@ chmod 775 ~/bizspine/backend/public/logs
 
 ### 3. Create the database
 
-**Easiest (release ZIP):** open `https://yourdomain.com/BizSpine/install.php` and follow the wizard (see [Making a release](#-making-a-release)).
+**Easiest (release ZIP):** open `https://yourdomain.com/BizSpine/install.php` and follow the wizard (see [Making a release](#making-a-release)).
 
 **Developers (SSH):** from the repo root (upload `example_reset.php` to `~/bizspine/` if needed):
 
@@ -932,7 +934,7 @@ vendor\bin\phpunit --coverage-html coverage
 
 ### Test Structure
 
-- **Unit Tests**: Located in [`tests/Unit/`](backend/tests/Unit/:1)
+- **Unit Tests**: Located in [`tests/Unit/`](backend/tests/Unit/)
 - **In-Memory Database**: Tests use SQLite `:memory:` for isolation
 - **Test Mode**: Controllers support test mode to capture responses
 - **Mocking**: Anonymous classes extend controllers to mock input
@@ -992,9 +994,14 @@ vendor\bin\phpunit --coverage-html coverage
 
 ```
 BizSpine/
-├── README.md                          # This file
-├── LICENSE                            # MIT License
-├── db_inspector.php                   # Database inspection utility
+├── README.md
+├── LICENSE
+├── example_reset.md                   # Demo DB reset docs (script: example_reset.php, gitignored)
+├── deploy/                            # Shared-hosting templates (install.php, .htaccess, API bootstrap)
+├── scripts/                           # build-release.ps1 / .sh
+├── frontend/                          # React storefront + admin UI
+│   ├── src/
+│   └── public/                        # Brand assets
 │
 └── backend/
     ├── composer.json                  # Dependencies and autoloading
@@ -1037,7 +1044,8 @@ BizSpine/
     │   │   └── ValidationException.php
     │   │
     │   └── Services/                  # Business services
-    │       └── Database.php           # Database connection service
+    │
+    ├── tools/                         # install_lib.php, seed_demo_data.php (release installer)
     │
     ├── protected/                     # Non-web-accessible files
     │   ├── config/                    # Configuration files
@@ -1101,7 +1109,7 @@ BizSpine/
 
 ## 📄 License
 
-This project is licensed under the MIT License. See the [`LICENSE`](LICENSE:1) file for details.
+This project is licensed under the MIT License. See the [`LICENSE`](LICENSE) file for details.
 
 ## 🤝 Contributing
 
