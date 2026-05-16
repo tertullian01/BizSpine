@@ -18,6 +18,7 @@ class TestimonialRoutes
 
         // Protected endpoints - authentication required
         $app->group('/testimonials', function ($group) {
+            $group->get('/admin', [TestimonialController::class, 'getAllAdmin']);
             $group->get('', [TestimonialController::class, 'getAll']);
             $group->get('/{id}', [TestimonialController::class, 'getById']);
             $group->put('/{id}', [TestimonialController::class, 'update']);

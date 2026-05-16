@@ -1,9 +1,20 @@
 import { FormEvent, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ApiRequestError } from '../api/client';
+import { isStaffRole } from '../utils/roles';
 
 export function AccountPage() {
   const { isAuthenticated, isLoading, user, role, login, register, logout } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const returnTo =
+    typeof location.state === 'object' &&
+    location.state &&
+    'from' in location.state &&
+    typeof location.state.from === 'string'
+      ? location.state.from
+      : null;
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,6 +30,9 @@ export function AccountPage() {
         await login(email, password);
       } else {
         await register(email, password);
+      }
+      if (returnTo?.startsWith('/admin')) {
+        navigate(returnTo, { replace: true });
       }
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : 'Authentication failed');
@@ -67,9 +81,16 @@ export function AccountPage() {
             ) : null}
           </dl>
 
-          <button type="button" className="btn btn-secondary" onClick={() => void logout()}>
-            Sign out
-          </button>
+          <div className="hero-actions">
+            {isStaffRole(role ?? user.role) ? (
+              <Link to="/admin" className="btn btn-primary">
+                Open administration
+              </Link>
+            ) : null}
+            <button type="button" className="btn btn-secondary" onClick={() => void logout()}>
+              Sign out
+            </button>
+          </div>
         </section>
       </div>
     );
@@ -79,7 +100,10 @@ export function AccountPage() {
     <div className="page account-page">
       <header className="page-header">
         <h1>{mode === 'login' ? 'Sign in' : 'Create account'}</h1>
-        <p className="muted">Password must be at least 8 characters.</p>
+        <p className="muted">
+          Password must be at least 8 characters.
+          {returnTo ? ' Sign in with a staff account to open the administration dashboard.' : null}
+        </p>
       </header>
 
       <section className="card auth-card">

@@ -1,6 +1,8 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getApiBaseUrl } from '../api/client';
+import { branding } from '../branding';
+import { isStaffRole } from '../utils/roles';
 
 export function Layout() {
   const { isAuthenticated, user, role, logout, isLoading } = useAuth();
@@ -11,11 +13,15 @@ export function Layout() {
       <header className="site-header">
         <div className="header-inner">
           <NavLink to="/" className="brand">
-            <span className="brand-mark">B</span>
-            <span>
-              <strong>BizSpine</strong>
-              <small>Example storefront</small>
-            </span>
+            <img
+              src={branding.header}
+              alt="BizSpine"
+              className="brand-logo"
+              width={120}
+              height={160}
+              decoding="async"
+            />
+            <span className="brand-tagline">Example storefront</span>
           </NavLink>
 
           <nav className="main-nav" aria-label="Main">
@@ -25,6 +31,7 @@ export function Layout() {
             <NavLink to="/products">Products</NavLink>
             <NavLink to="/stores">Stores</NavLink>
             <NavLink to="/account">Account</NavLink>
+            {isStaffRole(role) ? <NavLink to="/admin">Admin</NavLink> : null}
           </nav>
 
           <div className="header-actions">

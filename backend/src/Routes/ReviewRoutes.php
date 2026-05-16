@@ -25,6 +25,7 @@ class ReviewRoutes
             $group->delete('/{id}', [ReviewController::class, 'delete']);
         })->add(AuthMiddleware::class);
 
+        $app->get('/reviews/pending', [ReviewController::class, 'getPending'])->add($staff);
         $app->post('/reviews/{id}/publish', [ReviewController::class, 'publish'])->add($staff);
         $app->post('/reviews/{id}/unpublish', [ReviewController::class, 'unpublish'])->add($staff);
     }

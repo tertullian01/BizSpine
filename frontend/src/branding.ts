@@ -1,0 +1,17 @@
+/**
+ * Brand assets in /public. Pick one canonical file per role; SVG preferred for UI.
+ *
+ * - Symbol: icon mark only
+ * - SymbolName: icon + “BizSpine” wordmark
+ * - Logo: full lockup (icon, name, tagline)
+ */
+export const branding = {
+  /** Browser tab — icon only, PNG for broad support */
+  favicon: '/BizSpine_Symbol_32x32.png',
+  /** Nav header — compact symbol + name (3∶4) */
+  header: '/BizSpine_SymbolName_300x400.svg',
+  /** Home hero — full brand lockup */
+  hero: '/BizSpine_Logo_2048x2048.svg',
+  /** iOS home screen (optional) */
+  appleTouchIcon: '/BizSpine_Logo_320x320.png',
+} as const;
