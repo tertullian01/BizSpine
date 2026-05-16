@@ -30,6 +30,25 @@ class ReviewController extends ApiController
         $this->paginationService = $paginationService ?? new PaginationService();
     }
 
+    public function getPending(Request $request, Response $response): Response
+    {
+        $sql = <<<'SQL'
+SELECT
+    r.*,
+    u.email as user_email,
+    p.name as product_name
+FROM product_reviews r
+LEFT JOIN users u ON r.user_id = u.id
+LEFT JOIN products p ON r.product_id = p.id
+WHERE r.published = 0
+ORDER BY r.created_at DESC
+SQL;
+        $stmt = $this->db->query($sql);
+        $reviews = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        return $this->success($response, $reviews);
+    }
+
     public function getAll(Request $request, Response $response): Response
     {
         $pagination = $this->paginationService->getPaginationParams($request);
