@@ -1,0 +1,17 @@
+# Apache: React SPA + static assets under a subdirectory (e.g. /BizSpine/)
+# Place this file as public_html/BizSpine/.htaccess after uploading frontend/dist
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /BizSpine/
+
+  # Serve existing files and directories
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # API requests are handled in the api/ subfolder — do not send them to index.html
+  RewriteRule ^api/ - [L]
+
+  RewriteRule ^ index.html [L]
+</IfModule>

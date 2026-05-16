@@ -17,7 +17,9 @@ class ReviewRoutes
         $app->get('/reviews', [ReviewController::class, 'getAll']);
         $app->get('/reviews/product/{id}', [ReviewController::class, 'getByProduct']);
 
-        $app->group('/reviews', function ($group) {
+        $app->group('/reviews', function ($group) use ($staff) {
+            // Literal segments before /{id} — required by FastRoute
+            $group->get('/pending', [ReviewController::class, 'getPending'])->add($staff);
             $group->get('/my', [ReviewController::class, 'getMyReviews']);
             $group->get('/{id}', [ReviewController::class, 'getById']);
             $group->post('', [ReviewController::class, 'create']);
@@ -25,7 +27,6 @@ class ReviewRoutes
             $group->delete('/{id}', [ReviewController::class, 'delete']);
         })->add(AuthMiddleware::class);
 
-        $app->get('/reviews/pending', [ReviewController::class, 'getPending'])->add($staff);
         $app->post('/reviews/{id}/publish', [ReviewController::class, 'publish'])->add($staff);
         $app->post('/reviews/{id}/unpublish', [ReviewController::class, 'unpublish'])->add($staff);
     }

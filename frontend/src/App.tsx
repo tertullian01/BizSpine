@@ -26,9 +26,12 @@ function AdminOnly({ children }: { children: React.ReactNode }) {
   return <RequireRole adminOnly>{children}</RequireRole>;
 }
 
+const routerBasename =
+  import.meta.env.BASE_URL === '/' ? undefined : import.meta.env.BASE_URL.replace(/\/$/, '');
+
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={routerBasename}>
       <AuthProvider>
         <Routes>
           <Route element={<Layout />}>

@@ -1,7 +1,7 @@
 <?php
 // Configuration settings for the application
 
-return [
+$config = [
     'database' => [
         'driver' => 'sqlite',
         'database_path' => __DIR__ . '/../db/database.sqlite',
@@ -52,3 +52,13 @@ return [
         'allow_insecure_setup' => false,
     ],
 ];
+
+$localPath = __DIR__ . '/install_local.php';
+if (is_file($localPath)) {
+    $local = require $localPath;
+    if (is_array($local)) {
+        $config = array_replace_recursive($config, $local);
+    }
+}
+
+return $config;

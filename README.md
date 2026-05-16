@@ -13,7 +13,7 @@ The backbone for storefront and business operations: a PHP/SQLite REST API with 
 - [API Endpoints](#api-endpoints)
 - [Security Features](#security-features)
 - [Installation & Setup](#installation--setup)
-- [Production deployment](#production-deployment)
+- [Production hardening](#production-hardening)
 - [Testing](#testing)
 - [Project Structure](#project-structure)
 
@@ -627,77 +627,213 @@ return_items
 **Apache Configuration** (`.htaccess`):
 - URL rewriting for clean API endpoints
 
-## 📦 Installation & Setup
+## 📤 Distributing to non-technical users
 
-### Prerequisites
+Ship a **pre-built ZIP** so installers never run Git, Composer, or Node on the server.
 
-- PHP 7.4 or higher (8.0+ recommended)
-- Composer (dependency manager)
-- SQLite 3.x
-- Web server (Apache/Nginx) or PHP built-in server
+### Build the release ZIP (developer machine)
 
-### Installation Steps
+**Windows (PowerShell):**
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd BizSpine
-   ```
-
-2. **Install dependencies**
-   ```bash
-   cd backend
-   composer install
-   ```
-
-3. **Initialize the database**
-   ```bash
-   php protected/scripts/init_db.php
-   php protected/scripts/add_products_table.php
-   php protected/scripts/add_stores_table.php
-   php protected/scripts/add_inventory_table.php
-   php protected/scripts/add_orders_table.php
-   php protected/scripts/add_reviews_table.php
-   php protected/scripts/add_testimonials_table.php
-   php protected/scripts/add_bookkeeping_tables.php
-   ```
-
-4. **Configure environment**
-   - Copy `.env.example` to `.env` (if available)
-   - Set `JWT_SECRET` to a secure random string
-   - Update configuration in [`protected/config/config.php`](backend/protected/config/config.php:1)
-
-5. **Start the development server**
-   ```bash
-   php -S localhost:8000 -t public
-   ```
-
-6. **Access the API**
-   - Base URL: `http://localhost:8000`
-   - Health check: `http://localhost:8000/health`
-
-### Configuration
-
-Edit [`protected/config/config.php`](backend/protected/config/config.php:1):
-
-```php
-return [
-    'database' => [
-        'driver' => 'sqlite',
-        'database_path' => __DIR__ . '/../db/database.sqlite',
-    ],
-    'jwt' => [
-        'secret' => getenv('JWT_SECRET') ?: 'change-me-in-production',
-        'issuer' => 'bizspine.local',
-        'access_exp' => 900,      // 15 minutes
-        'refresh_exp' => 604800,  // 7 days
-    ],
-];
+```powershell
+.\scripts\build-release.ps1 -Subdir BizSpine -SiteUrl https://yourdomain.com/BizSpine
 ```
 
-## 🚀 Production deployment
+**macOS / Linux:**
 
-After the API is deployed, apply the following so responses do not leak internal errors and browser clients can call the API from your frontend. All paths are relative to the [`backend/`](backend/) directory unless noted.
+```bash
+chmod +x scripts/build-release.sh
+./scripts/build-release.sh BizSpine https://yourdomain.com/BizSpine
+```
+
+Output: [`release/BizSpine-release.zip`](release/BizSpine-release.zip) containing:
+
+| Path on server | Contents |
+|----------------|----------|
+| `~/bizspine-backend/` | PHP API + `vendor/` (outside web root) |
+| `~/public_html/BizSpine/` | React storefront, `install.php`, `INSTALL.html` |
+| `~/public_html/BizSpine/api/` | API bootstrap (auto-detects backend path) |
+
+### End-user install (cPanel, no SSH)
+
+1. Extract the ZIP so `bizspine-backend` sits **next to** `public_html`, not inside it.
+2. Open `https://yourdomain.com/BizSpine/install.php` and complete the wizard.
+3. Delete `install.php` when finished.
+
+Step-by-step copy is in [`deploy/INSTALL.html`](deploy/INSTALL.html) (included in the ZIP).
+
+Demo data option loads sample products and accounts (password `Example123!` — see [`example_reset.md`](example_reset.md)).
+
+---
+
+## 📦 Installation & Setup (shared hosting)
+
+This guide targets **Apache shared hosting** (cPanel, Plesk, etc.) with the app served from a **subdirectory**, for example:
+
+- Storefront: `https://techdiplomacy.dev/BizSpine/`
+- API: `https://techdiplomacy.dev/BizSpine/api/`
+
+Build the React frontend on your computer, upload static files, and keep the PHP backend **outside** `public_html` so `protected/`, `vendor/`, and the SQLite file are not web-accessible.
+
+### What you need
+
+| On the server | On your computer |
+|---------------|------------------|
+| PHP 8.0+ with SQLite, PDO, `mbstring`, `json` | Node.js 18+ (to build the frontend) |
+| Apache + `mod_rewrite` | Git (optional) |
+| SSH or cPanel Terminal (for Composer) | Composer (optional locally; can run on server via SSH) |
+
+### 1. Upload the backend (outside the web root)
+
+On the server, create a folder **above** `public_html`, for example:
+
+```text
+/home/you/bizspine/backend/     ← full backend/ directory from this repo
+```
+
+Upload everything under [`backend/`](backend/) (`src/`, `protected/`, `public/`, `db/`, `composer.json`, etc.).
+
+**Do not** place `protected/` or `vendor/` inside a URL that browsers can request.
+
+Via SSH:
+
+```bash
+cd ~/bizspine/backend
+composer install --no-dev --optimize-autoloader
+```
+
+### 2. Configure the API
+
+**JWT secret** — create [`backend/.env`](backend/.env) on the server:
+
+```env
+JWT_SECRET=your-long-random-secret-here
+ALLOW_INSECURE_SETUP=false
+```
+
+**CORS** — in [`backend/protected/config/config.php`](backend/protected/config/config.php), allow your site origin (no path suffix):
+
+```php
+'cors' => [
+    'allowed_origins' => ['https://techdiplomacy.dev'],
+    // ...
+],
+```
+
+**Production flags** — set `environment.debug` to `false` in the same config file. In [`backend/public/index.php`](backend/public/index.php), disable displaying errors to clients (`display_errors` off; Slim error middleware not exposing stack traces). See [Production hardening](#production-hardening) below.
+
+**Writable directories** (via SSH or File Manager):
+
+```bash
+chmod 775 ~/bizspine/backend/protected/db
+chmod 775 ~/bizspine/backend/uploads
+chmod 775 ~/bizspine/backend/public/logs
+```
+
+### 3. Create the database
+
+**Easiest (release ZIP):** open `https://yourdomain.com/BizSpine/install.php` and follow the wizard (see [Distributing to non-technical users](#-distributing-to-non-technical-users)).
+
+**Developers (SSH):** from the repo root (upload `example_reset.php` to `~/bizspine/` if needed):
+
+```bash
+cd ~/bizspine
+php example_reset.php
+```
+
+That deletes any old SQLite file, runs Phinx migrations, and loads demo data. See [`example_reset.md`](example_reset.md) for demo logins.
+
+Alternatively, run migrations only:
+
+```bash
+cd ~/bizspine/backend
+vendor/bin/phinx migrate -c phinx.php
+```
+
+### 4. Expose the API at `/BizSpine/api/`
+
+In `public_html/BizSpine/api/`:
+
+1. Copy [`deploy/BizSpine-api-index.php`](deploy/BizSpine-api-index.php) to `index.php`.
+2. Edit `$backendPublic` to the **absolute** path to `backend/public` on your server, e.g. `/home/you/bizspine/backend/public`.
+3. Copy [`deploy/BizSpine-api.htaccess`](deploy/BizSpine-api.htaccess) to `.htaccess` (adjust `RewriteBase` if your folder name is not `BizSpine`).
+
+Verify: open `https://techdiplomacy.dev/BizSpine/api/health` — you should get JSON with `"status":"ok"`.
+
+### 5. Build and upload the frontend
+
+On your **local** machine, in [`frontend/`](frontend/):
+
+```bash
+cd frontend
+cp .env.example .env
+```
+
+Edit `.env` for your subdirectory deploy:
+
+```env
+VITE_BASE_PATH=/BizSpine/
+VITE_API_BASE_URL=https://techdiplomacy.dev/BizSpine/api
+```
+
+Build:
+
+```bash
+npm install
+npm run build
+```
+
+Upload the **contents** of `frontend/dist/` into `public_html/BizSpine/` (alongside the `api/` folder):
+
+```text
+public_html/BizSpine/
+├── index.html
+├── assets/
+├── BizSpine_*.png / .svg   (from frontend/public/)
+├── .htaccess               ← from deploy/BizSpine-frontend.htaccess
+└── api/
+    ├── index.php
+    └── .htaccess
+```
+
+Copy [`deploy/BizSpine-frontend.htaccess`](deploy/BizSpine-frontend.htaccess) to `public_html/BizSpine/.htaccess`. If your path is not `/BizSpine/`, change `RewriteBase` to match.
+
+Verify: open `https://techdiplomacy.dev/BizSpine/` — storefront loads; sign in with demo accounts from [`example_reset.md`](example_reset.md).
+
+### 6. Demo accounts (after `example_reset.php`)
+
+All use password **`Example123!`**:
+
+| Email | Role |
+|-------|------|
+| `admin@bizspine.example` | admin — use `/BizSpine/admin` |
+| `staff@bizspine.example` | employee |
+| `alice@example.com` | customer |
+| `bob@example.com` | customer |
+
+### Local development (optional)
+
+For day-to-day coding on your laptop:
+
+```bash
+# Terminal 1 — API
+cd backend
+composer install
+php -S localhost:8000 -t public
+
+# Terminal 2 — frontend (uses Vite proxy; no VITE_* needed)
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173`. API health: `http://localhost:8000/health`.
+
+---
+
+## 🚀 Production hardening
+
+After deployment on a public host, apply the following. Paths are relative to [`backend/`](backend/) unless noted.
 
 ### JWT secret
 

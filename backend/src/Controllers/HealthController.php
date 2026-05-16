@@ -17,15 +17,11 @@ class HealthController extends ApiController
 
     public function index(Request $request, Response $response): Response
     {
-        // Check if database is initialized
         $dbPath = $this->config['database']['database_path'] ?? null;
-
-        // If no path configured, assume default location
         if (!$dbPath) {
-            $dbPath = __DIR__ . '/../../protected/db/database.sqlite';
+            $dbPath = dirname(__DIR__, 2) . '/protected/db/database.sqlite';
         }
 
-        // Check if database file exists and has tables
         if (!file_exists($dbPath)) {
             $setupUrl = $this->getSetupUrl($request);
             return $this->error(
@@ -93,6 +89,6 @@ class HealthController extends ApiController
             $baseUrl .= $path;
         }
 
-        return $baseUrl . '/setup.html';
+        return $baseUrl . '/install.php';
     }
 }
