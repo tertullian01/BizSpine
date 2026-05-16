@@ -26,9 +26,7 @@ class CacheableProductServiceTest extends TestCase
         $this->redisClient = $this->createMock(Client::class);
         $this->redisAdapter = $this->createMock(RedisAdapter::class);
 
-        // Create service with mocked dependencies
         $this->service = new CacheableProductService();
-        // We'll need to inject the mocked adapter, but for now let's test the basic functionality
     }
 
     public function testServiceCanBeInstantiated(): void

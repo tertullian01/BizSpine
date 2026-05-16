@@ -23,7 +23,6 @@ class StoreController extends ApiController
 
     public function getAll(Request $request, Response $response): Response
     {
-        // Use optimized query with specific columns
         $stores = Store::select(['id', 'name', 'description', 'currency_symbol', 'created_at', 'updated_at'])
                       ->orderBy('name')
                       ->get();
@@ -33,7 +32,6 @@ class StoreController extends ApiController
     public function getById(Request $request, Response $response, array $args): Response
     {
         $id = (int)$args['id'];
-// Use optimized query for single store
         $store = Store::select(['id', 'name', 'description', 'currency_symbol', 'created_at', 'updated_at'])
                       ->where('id', '=', $id)
                       ->first();
@@ -77,7 +75,6 @@ class StoreController extends ApiController
         }
 
         $name = trim($body['name']);
- // Check if store exists
         $store = Store::find($id);
         if (!$store) {
             return $this->error($response, 'Store not found', 404);

@@ -21,7 +21,6 @@ class TaxController extends ApiController
         $pagination = $this->paginationService->getPaginationParams($request);
         $total = TaxRate::select()->count();
 
-        // Use optimized query with specific columns and conditions
         $rates = TaxRate::select(['id', 'name', 'rate', 'region', 'is_default', 'description', 'is_active'])
                        ->orderBy('name')
                        ->limit($pagination['limit'], $pagination['offset'])
@@ -34,7 +33,6 @@ class TaxController extends ApiController
 
     public function getDefault(Request $request, Response $response): Response
     {
-        // Use optimized query for default tax rate
         $rate = TaxRate::select(['id', 'name', 'rate', 'region', 'is_default', 'description'])
                       ->where('is_default', '=', 1)
                       ->where('is_active', '=', 1)
@@ -49,7 +47,6 @@ class TaxController extends ApiController
     public function getByRegion(Request $request, Response $response, array $args): Response
     {
         $region = $args['region'];
-// Use optimized query for region-specific tax rate
         $rate = TaxRate::select(['id', 'name', 'rate', 'region', 'is_default', 'description'])
                       ->where('region', '=', $region)
                       ->where('is_active', '=', 1)

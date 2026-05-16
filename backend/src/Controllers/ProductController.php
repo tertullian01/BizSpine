@@ -161,7 +161,6 @@ class ProductController extends ApiController
         $countStmt->execute($params);
         $total = (int)$countStmt->fetch(PDO::FETCH_ASSOC)['total'];
 
-        // Use optimized query with specific columns
         $sql = "SELECT id, name, type, description, size, cost, image_url, state, created_at, updated_at FROM products $whereClause ORDER BY $sort $order LIMIT :limit OFFSET :offset";
         
         $stmt = $this->db->prepare($sql);
@@ -252,7 +251,6 @@ SQL;
             $stmt->execute();
             $products = $stmt->fetchAll(PDO::FETCH_OBJ);
         } else {
-            // Use optimized query with specific columns
             $products = Product::select(['id', 'name', 'type', 'description', 'size', 'cost', 'image_url', 'state', 'featured_ingredients', 'all_ingredients', 'created_at', 'updated_at'])
                                 ->where('type', '=', $type)
                                 ->orderBy('name')

@@ -191,10 +191,6 @@ SQL;
     public function getExpensesByCategory(Request $request, Response $response, array $args): Response
     {
         $category = $args['category'];
-        // Assuming category is passed as an argument or query param?
-        // Wait, the original code didn't use args, but it was likely intended for a route like /expenses/category/{category}
-        // But looking at api.php, there is no route for getExpensesByCategory.
-        // I'll keep it but it might be unused.
 
         $sql = <<<'SQL'
 SELECT 

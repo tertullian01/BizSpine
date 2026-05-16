@@ -1,27 +1,7 @@
 openapi: 3.0.3
 info:
   title: BizSpine API
-  description: |
-    BizSpine — REST API backbone for storefront and business operations (Slim 4, SQLite).
-
-    ## Features
-    - Product and inventory management
-    - Order processing and fulfillment
-    - Customer testimonials and reviews
-    - User authentication and authorization
-    - Coupon and discount system
-    - Referral program
-    - Tax rate management
-    - Return and refund processing
-    - Bookkeeping and financial reporting
-
-    ## Authentication
-    Most endpoints require JWT authentication. Include the token in the Authorization header:
-    ```
-    Authorization: Bearer <your-jwt-token>
-    ```
-
-    A product of [Tech Diplomacy](https://techdiplomacy.dev/).
+  description: BizSpine REST API (Slim 4, SQLite). JWT on protected routes. Product of Tech Diplomacy.
   version: 1.0.0
   contact:
     name: Tech Diplomacy
@@ -338,9 +318,6 @@ paths:
   /clients:
     get:
       summary: Get all clients with full data
-      description: |
-        Retrieve a comprehensive list of all customers with their complete profile data and order statistics.
-        Returns detailed information including contact details, address, social media links, and purchasing history.
       tags:
         - Users
       security:
@@ -1864,7 +1841,6 @@ paths:
   /settings/verify-email:
     post:
       summary: Send verification email
-      description: Sends a 6-digit verification code to the configured store email or sender email to verify SMTP settings.
       tags:
         - Settings
       security:
@@ -2226,7 +2202,6 @@ paths:
   /referrals/my:
     get:
       summary: Get my referral info
-      description: Retrieve user's referral code and statistics. Automatically creates a referral code if one does not exist.
       tags:
         - Referrals
       security:
