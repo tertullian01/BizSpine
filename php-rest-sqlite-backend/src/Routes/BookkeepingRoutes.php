@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Routes;
 
 use App\Controllers\BookkeepingController;
-use App\Middleware\AuthMiddleware;
 use Slim\App;
 
 class BookkeepingRoutes
 {
     public static function register(App $app): void
     {
+        $admin = RouteSecurity::requireAdmin();
         $app->group('/bookkeeping', function ($group) {
             $group->get('/income', [BookkeepingController::class, 'getAllIncome']);
             $group->get('/income/{id}', [BookkeepingController::class, 'getIncomeById']);
@@ -25,6 +25,6 @@ class BookkeepingRoutes
             $group->delete('/expenses/{id}', [BookkeepingController::class, 'deleteExpense']);
             $group->post('/expenses/{id}/upload-receipt', [BookkeepingController::class, 'uploadReceipt']);
             $group->get('/summary', [BookkeepingController::class, 'getSummary']);
-        })->add(AuthMiddleware::class);
+        })->add($admin);
     }
 }

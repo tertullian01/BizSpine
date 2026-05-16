@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Services\Config;
 use Slim\App;
 
 /** @var App $app */
+
+$exposeDangerous = Config::getInstance()->get('security.allow_insecure_setup', false);
 
 // CORS test route
 $app->get('/cors-test', function ($request, $response) {
@@ -20,8 +23,11 @@ $app->get('/cors-test', function ($request, $response) {
     return $response->withHeader('Content-Type', 'application/json');
 });
 
-// Register all routes
-\App\Routes\SetupRoutes::register($app);
+// Register all routes (setup/system only when ALLOW_INSECURE_SETUP=true — see README)
+if ($exposeDangerous) {
+    \App\Routes\SetupRoutes::register($app);
+}
+
 \App\Routes\ProductRoutes::register($app);
 \App\Routes\OrderRoutes::register($app);
 \App\Routes\AuthRoutes::register($app);
@@ -37,7 +43,9 @@ $app->get('/cors-test', function ($request, $response) {
 \App\Routes\UserRoutes::register($app);
 \App\Routes\EmployeeRoutes::register($app);
 \App\Routes\HealthRoutes::register($app);
-\App\Routes\SystemRoutes::register($app);
+if ($exposeDangerous) {
+    \App\Routes\SystemRoutes::register($app);
+}
 \App\Routes\CategoryRoutes::register($app);
 \App\Routes\SettingsRoutes::register($app);
 $app->post('/contact', [\App\Controllers\ContactController::class, 'send']);

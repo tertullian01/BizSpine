@@ -11,7 +11,7 @@ final class AddReplyToEmailLogs extends AbstractMigration
         $table = $this->table('email_logs');
         
         if ($table->exists() && !$table->hasColumn('reply_to')) {
-            $table->addColumn('reply_to', 'string', ['null' => true, 'after' => 'subject'])
+            $table->addColumn('reply_to', 'string', ['null' => true])
                   ->update();
         }
     }

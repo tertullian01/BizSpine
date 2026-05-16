@@ -39,6 +39,12 @@ class Config
         $config['database']['database_path'] = $_ENV['DB_DATABASE'] ?? $config['database']['database_path'];
         $config['jwt']['secret'] = $_ENV['JWT_SECRET'] ?? $config['jwt']['secret'];
 
+        $allowSetup = $_ENV['ALLOW_INSECURE_SETUP'] ?? getenv('ALLOW_INSECURE_SETUP');
+        $config['security']['allow_insecure_setup'] = filter_var(
+            $allowSetup !== false && $allowSetup !== null ? $allowSetup : 'false',
+            FILTER_VALIDATE_BOOLEAN
+        );
+
         $this->config = $config;
     }
 

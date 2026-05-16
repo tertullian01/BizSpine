@@ -12,6 +12,7 @@ final class CreateEmailLogsTable extends AbstractMigration
         $table->addColumn('recipient', 'text', ['null' => false])
               ->addColumn('subject', 'text', ['null' => false])
               ->addColumn('body', 'text', ['null' => true])
+              ->addColumn('reply_to', 'string', ['null' => true])
               ->addColumn('status', 'string', ['null' => false])
               ->addColumn('error_message', 'text', ['null' => true])
               ->addColumn('sent_at', 'datetime', ['default' => 'CURRENT_TIMESTAMP'])

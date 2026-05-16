@@ -136,51 +136,53 @@ require __DIR__ . '/../src/Routes/EmailTemplateRoutes.php';
 require __DIR__ . '/../src/Routes/EmailLogRoutes.php';
 \App\Routes\EmailLogRoutes::register($app);
 
-// Endpoint to retrieve database design
-$app->get('/db-design', function ($request, $response) use ($db) {
-    $design = [];
-    $tables = $db->query("SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")->fetchAll(PDO::FETCH_ASSOC);
+if ($config->get('security.allow_insecure_setup', false)) {
 
-    foreach ($tables as $table) {
-        $tableName = $table['name'];
-        $design[$tableName] = [
-            'create_statement' => $table['sql'],
-            'columns' => $db->query("PRAGMA table_info(\"$tableName\")")->fetchAll(PDO::FETCH_ASSOC)
-        ];
-    }
+    // Endpoint to retrieve database design
+    $app->get('/db-design', function ($request, $response) use ($db) {
+        $design = [];
+        $tables = $db->query("SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")->fetchAll(PDO::FETCH_ASSOC);
 
-    $response->getBody()->write(json_encode($design, JSON_PRETTY_PRINT));
-    return $response->withHeader('Content-Type', 'application/json');
-});
-
-// Endpoint to run database migrations
-$app->post('/run_migrations', function ($request, $response) {
-    try {
-        $projectRoot = dirname(__DIR__);
-        chdir($projectRoot);
-
-        // Run Phinx programmatically to bypass disabled exec()
-        $phinxApp = new \Phinx\Console\PhinxApplication();
-        $phinxApp->setAutoExit(false);
-        
-        $input = new \Symfony\Component\Console\Input\ArrayInput(['command' => 'migrate']);
-        $output = new \Symfony\Component\Console\Output\BufferedOutput();
-        
-        $returnVar = $phinxApp->run($input, $output);
-        $outputText = $output->fetch();
-        
-        $payload = ['success' => $returnVar === 0, 'output' => $outputText];
-        if ($returnVar !== 0) {
-            $payload['error'] = 'Migration failed. Output: ' . $outputText;
+        foreach ($tables as $table) {
+            $tableName = $table['name'];
+            $design[$tableName] = [
+                'create_statement' => $table['sql'],
+                'columns' => $db->query('PRAGMA table_info("' . str_replace('"', '""', $tableName) . '")')->fetchAll(PDO::FETCH_ASSOC),
+            ];
         }
 
-        $response->getBody()->write(json_encode($payload));
-        return $response->withHeader('Content-Type', 'application/json')->withStatus($returnVar === 0 ? 200 : 500);
-    } catch (\Exception $e) {
-        $response->getBody()->write(json_encode(['success' => false, 'error' => $e->getMessage()]));
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
-    }
-});
+        $response->getBody()->write(json_encode($design, JSON_PRETTY_PRINT));
+        return $response->withHeader('Content-Type', 'application/json');
+    });
+
+    // Endpoint to run database migrations
+    $app->post('/run_migrations', function ($request, $response) {
+        try {
+            $projectRoot = dirname(__DIR__);
+            chdir($projectRoot);
+
+            $phinxApp = new \Phinx\Console\PhinxApplication();
+            $phinxApp->setAutoExit(false);
+
+            $input = new \Symfony\Component\Console\Input\ArrayInput(['command' => 'migrate']);
+            $output = new \Symfony\Component\Console\Output\BufferedOutput();
+
+            $returnVar = $phinxApp->run($input, $output);
+            $outputText = $output->fetch();
+
+            $payload = ['success' => $returnVar === 0, 'output' => $outputText];
+            if ($returnVar !== 0) {
+                $payload['error'] = 'Migration failed. Output: ' . $outputText;
+            }
+
+            $response->getBody()->write(json_encode($payload));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus($returnVar === 0 ? 200 : 500);
+        } catch (\Exception $e) {
+            $response->getBody()->write(json_encode(['success' => false, 'error' => $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
+    });
+}
 
 // Run app
 $app->run();

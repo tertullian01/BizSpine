@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Routes;
 
 use App\Controllers\TaxController;
-use App\Middleware\AuthMiddleware;
 use Slim\App;
 
 class TaxRoutes
 {
     public static function register(App $app): void
     {
+        $staff = RouteSecurity::requireStaff();
         $app->group('/tax/rates', function ($group) {
             $group->get('', [TaxController::class, 'getAll']);
             $group->post('', [TaxController::class, 'create']);
@@ -20,6 +20,6 @@ class TaxRoutes
             $group->get('/{id:[0-9]+}', [TaxController::class, 'getById']);
             $group->put('/{id:[0-9]+}', [TaxController::class, 'update']);
             $group->delete('/{id:[0-9]+}', [TaxController::class, 'delete']);
-        })->add(AuthMiddleware::class);
+        })->add($staff);
     }
 }

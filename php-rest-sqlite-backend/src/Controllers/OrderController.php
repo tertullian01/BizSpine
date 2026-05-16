@@ -38,8 +38,40 @@ class OrderController extends ApiController
         $this->emailService = $emailService ?? new EmailService($this->db, new Logger(), $config);
     }
 
+    private function jwtRole(Request $request): string
+    {
+        $token = $request->getAttribute('token');
+        if ($token && isset($token->role)) {
+            return (string) $token->role;
+        }
+        return 'customer';
+    }
+
+    private function isStaff(Request $request): bool
+    {
+        return in_array($this->jwtRole($request), ['admin', 'employee'], true);
+    }
+
+    private function isOrderOwner(Request $request, object $order): bool
+    {
+        $uid = $request->getAttribute('user_id');
+        if (!$uid || !isset($order->user_id) || $order->user_id === null) {
+            return false;
+        }
+
+        return (string) $order->user_id === (string) $uid;
+    }
+
+    private function canViewOrder(Request $request, object $order): bool
+    {
+        return $this->isStaff($request) || $this->isOrderOwner($request, $order);
+    }
+
     public function getAll(Request $request, Response $response): Response
     {
+        if (!$this->isStaff($request)) {
+            return $this->error($response, 'Forbidden', 403);
+        }
         $pagination = $this->paginationService->getPaginationParams($request);
         $page = $pagination['page'];
         $limit = $pagination['limit'];
@@ -110,6 +142,21 @@ SQL;
     public function getById(Request $request, Response $response, array $args): Response
     {
         $id = (int) $args['id'];
+        $order = $this->loadOrderDetails($id);
+        if (!$order) {
+            return $this->error($response, 'Order not found', 404);
+        }
+
+        if (!$this->canViewOrder($request, $order)) {
+            return $this->error($response, 'Forbidden', 403);
+        }
+
+        return $this->success($response, $order);
+    }
+
+    /** Load order with line items and payments (no access control). */
+    private function loadOrderDetails(int $id): ?object
+    {
         $sql = <<<'SQL'
 SELECT 
     o.*,
@@ -123,7 +170,7 @@ SQL;
         $stmt->execute([':id' => $id]);
         $order = $stmt->fetchObject();
         if (!$order) {
-            return $this->error($response, 'Order not found', 404);
+            return null;
         }
 
         $order->items = $this->getOrderItems($order->id);
@@ -131,6 +178,17 @@ SQL;
         $order->shipping_carrier = $order->shipping_carrier ?? null;
         $order->tracking_number = $order->tracking_number ?? null;
         $order->tracking_url = $order->tracking_url ?? null;
+
+        return $order;
+    }
+
+    private function getOrderByIdForResponder(Request $request, Response $response, int $orderId): Response
+    {
+        $order = $this->loadOrderDetails($orderId);
+        if (!$order) {
+            return $this->error($response, 'Order not found', 404);
+        }
+
         return $this->success($response, $order);
     }
 
@@ -596,7 +654,7 @@ SQL;
                 }
             }
 
-            return $this->getById($request, $response->withStatus(201), ['id' => $orderId]);
+            return $this->getOrderByIdForResponder($request, $response->withStatus(201), (int) $orderId);
         } catch (\Exception $e) {
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
@@ -609,6 +667,9 @@ SQL;
     {
         $id = (int) $args['id'];
         $body = $request->getParsedBody();
+        if (!$this->isStaff($request)) {
+            return $this->error($response, 'Forbidden', 403);
+        }
         try {
             $this->db->beginTransaction();
             $checkStmt = $this->db->prepare('SELECT id, fulfillment_status, shipping_cost, order_number FROM orders WHERE id = :id');
@@ -880,6 +941,10 @@ SQL;
             return $this->error($response, $e->getFirstError(), 400);
         }
 
+        if (!$this->isStaff($request)) {
+            return $this->error($response, 'Forbidden', 403);
+        }
+
         try {
             $this->db->beginTransaction();
             $stmt = $this->db->prepare('SELECT id, order_number, total FROM orders WHERE id = :id');
@@ -928,15 +993,20 @@ SQL;
     public function cancel(Request $request, Response $response, array $args): Response
     {
         $id = (int) $args['id'];
+        $stmt = $this->db->prepare('SELECT fulfillment_status, user_id FROM orders WHERE id = :id');
+        $stmt->execute([':id' => $id]);
+        $order = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$order) {
+            return $this->error($response, 'Order not found', 404);
+        }
+
+        $orderForAcl = (object) ['user_id' => $order['user_id']];
+        if (!$this->isStaff($request) && !$this->isOrderOwner($request, $orderForAcl)) {
+            return $this->error($response, 'Forbidden', 403);
+        }
+
         try {
             $this->db->beginTransaction();
-            $stmt = $this->db->prepare('SELECT fulfillment_status FROM orders WHERE id = :id');
-            $stmt->execute([':id' => $id]);
-            $order = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$order) {
-                $this->db->rollBack();
-                return $this->error($response, 'Order not found', 404);
-            }
 
             if ($order['fulfillment_status'] === 'cancelled') {
                 $this->db->rollBack();

@@ -12,6 +12,8 @@ class ReviewRoutes
 {
     public static function register(App $app): void
     {
+        $staff = RouteSecurity::requireStaff();
+
         $app->get('/reviews', [ReviewController::class, 'getAll']);
         $app->get('/reviews/product/{id}', [ReviewController::class, 'getByProduct']);
 
@@ -21,8 +23,9 @@ class ReviewRoutes
             $group->post('', [ReviewController::class, 'create']);
             $group->put('/{id}', [ReviewController::class, 'update']);
             $group->delete('/{id}', [ReviewController::class, 'delete']);
-            $group->post('/{id}/publish', [ReviewController::class, 'publish']);
-            $group->post('/{id}/unpublish', [ReviewController::class, 'unpublish']);
         })->add(AuthMiddleware::class);
+
+        $app->post('/reviews/{id}/publish', [ReviewController::class, 'publish'])->add($staff);
+        $app->post('/reviews/{id}/unpublish', [ReviewController::class, 'unpublish'])->add($staff);
     }
 }

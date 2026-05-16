@@ -55,6 +55,9 @@ class DatabaseTestCase extends TestCase
             self::$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             self::$db->exec('PRAGMA foreign_keys = ON;');
 
+            // SQLite / Phinx edge cases in subprocesses: ensure critical columns exist
+            self::ensureSqliteTestColumns(self::$db);
+
             // Set the database connection for models
             BaseModel::setDatabase(self::$db);
 
@@ -67,5 +70,33 @@ class DatabaseTestCase extends TestCase
         foreach ($tables as $table) {
             self::$db->exec("DELETE FROM `$table`;");
         }
+    }
+
+    /**
+     * Defensive column adds for PHPUnit (separate-process runs, Phinx quirks).
+     */
+    private static function ensureSqliteTestColumns(PDO $db): void
+    {
+        self::addSqliteColumnIfMissing($db, 'income', 'transaction_id', 'TEXT');
+        self::addSqliteColumnIfMissing($db, 'inventory', 'price_override', 'REAL');
+    }
+
+    private static function addSqliteColumnIfMissing(PDO $db, string $table, string $column, string $sqlType): void
+    {
+        $escapedTable = str_replace('"', '""', $table);
+        $rows = $db->query('PRAGMA table_info("' . $escapedTable . '")');
+        if ($rows === false) {
+            return;
+        }
+        $cols = $rows->fetchAll(PDO::FETCH_ASSOC);
+        if ($cols === []) {
+            return;
+        }
+        $names = array_column($cols, 'name');
+        if (in_array($column, $names, true)) {
+            return;
+        }
+        $colEsc = str_replace('"', '""', $column);
+        $db->exec('ALTER TABLE "' . $escapedTable . '" ADD COLUMN "' . $colEsc . '" ' . $sqlType);
     }
 }

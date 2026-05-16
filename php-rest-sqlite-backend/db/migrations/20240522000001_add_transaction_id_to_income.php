@@ -11,7 +11,7 @@ final class AddTransactionIdToIncome extends AbstractMigration
         $table = $this->table('income');
         
         if (!$table->hasColumn('transaction_id')) {
-            $table->addColumn('transaction_id', 'string', ['null' => true, 'after' => 'payment_method'])
+            $table->addColumn('transaction_id', 'string', ['null' => true])
                   ->update();
         }
     }
