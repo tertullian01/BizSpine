@@ -243,8 +243,13 @@ The coverage report will be generated in the `coverage-report/` directory. Open 
 
 ## Database Management
 
-### Migrations (Command Line)
-Run Phinx migrations to update the database schema:
+### Running Migrations
+
+**Web Interface:**
+Navigate to `/setup.html` in your browser. If your database is already initialized, a dedicated **Update Database Schema** tool will allow you to safely run pending migrations without losing data.
+
+**Command Line (CLI):**
+Alternatively, run Phinx migrations from your terminal:
 ```bash
 ./vendor/bin/phinx migrate
 ```

@@ -105,6 +105,7 @@ inventory
 ├── quantity (INTEGER NOT NULL)
 ├── min_quantity (INTEGER)
 ├── max_quantity (INTEGER)
+├── price_override (REAL)
 ├── last_restocked (DATETIME)
 ├── created_at (DATETIME)
 └── updated_at (DATETIME)
@@ -399,6 +400,7 @@ return_items
 - `quantity` (required): Current stock quantity
 - `min_quantity`: Minimum stock threshold
 - `max_quantity`: Maximum stock capacity
+- `price_override`: Store-specific price override
 - `last_restocked`: Last restock timestamp
 
 ### Order Endpoints
@@ -419,6 +421,7 @@ return_items
 - Automatic order number generation
 - Support for discount codes and shipping costs
 - Line item tracking with product and store details
+- Store-specific pricing via inventory price overrides
 - Prevents cancellation of shipped/delivered orders
 
 **Order Fields:**

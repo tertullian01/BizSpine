@@ -224,9 +224,7 @@ SQL;
                     continue;
                 }
 
-                $unitPrice = isset($item['unit_price']) ? (float) $item['unit_price'] : (float) $product['cost'];
-                $itemSubtotal = $unitPrice * $quantity;
-                $stmt = $this->db->prepare('SELECT i.quantity, s.name as store_name FROM inventory i JOIN stores s ON i.store_id = s.id WHERE i.product_id = :product_id AND i.store_id = :store_id');
+                $stmt = $this->db->prepare('SELECT i.quantity, i.price_override, s.name as store_name FROM inventory i JOIN stores s ON i.store_id = s.id WHERE i.product_id = :product_id AND i.store_id = :store_id');
                 $stmt->execute([':product_id' => $productId, ':store_id' => $storeId]);
                 $inventory = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -255,6 +253,12 @@ SQL;
                     ];
                     continue;
                 }
+
+                $unitPrice = isset($item['unit_price']) ? (float) $item['unit_price'] : (float) $product['cost'];
+                if (!isset($item['unit_price']) && $inventory['price_override'] !== null) {
+                    $unitPrice = (float) $inventory['price_override'];
+                }
+                $itemSubtotal = $unitPrice * $quantity;
 
                 $inventoryTracker[$trackerKey] = $reservedQuantity + $quantity;
                 $subtotal += $itemSubtotal;
