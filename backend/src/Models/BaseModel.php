@@ -10,15 +10,55 @@ abstract class BaseModel implements JsonSerializable
     public static ?PDO $db = null;
     protected static string $tableName;
     public ?int $id = null;
+
     public function __construct(array $data = [])
     {
-        if ($data) {
-            foreach ($data as $key => $value) {
-                if (property_exists($this, $key) || !property_exists(get_class($this), $key)) {
-                    $this->{$key} = $value;
-                }
-            }
+        if ($data !== []) {
+            $this->fill($data);
         }
+    }
+
+    public static function fromRow(array $row): static
+    {
+        return new static($row);
+    }
+
+    protected function fill(array $data): void
+    {
+        $reflection = new \ReflectionClass($this);
+
+        foreach ($data as $key => $value) {
+            if (!$reflection->hasProperty($key)) {
+                continue;
+            }
+
+            $property = $reflection->getProperty($key);
+            if (!$property->isPublic()) {
+                continue;
+            }
+
+            $this->{$key} = $this->castAttributeValue($property, $value);
+        }
+    }
+
+    private function castAttributeValue(\ReflectionProperty $property, mixed $value): mixed
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $type = $property->getType();
+        if (!$type instanceof \ReflectionNamedType || !$type->isBuiltin()) {
+            return $value;
+        }
+
+        return match ($type->getName()) {
+            'int' => (int) $value,
+            'float' => (float) $value,
+            'bool' => filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? (bool) $value,
+            'string' => (string) $value,
+            default => $value,
+        };
     }
 
     public function jsonSerialize(): array

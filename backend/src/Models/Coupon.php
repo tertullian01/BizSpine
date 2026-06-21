@@ -21,6 +21,21 @@ class Coupon extends BaseModel
     public ?int $is_active = null;
     public ?string $created_at = null;
     public ?string $updated_at = null;
+
+    public function jsonSerialize(): array
+    {
+        $data = parent::jsonSerialize();
+
+        if (($data['min_purchase_amount'] ?? null) === null && isset($data['min_purchase'])) {
+            $data['min_purchase_amount'] = $data['min_purchase'];
+        }
+        if (($data['valid_until'] ?? null) === null && isset($data['expires_at'])) {
+            $data['valid_until'] = $data['expires_at'];
+        }
+
+        return $data;
+    }
+
     public function validate(float $subtotal, ?int $userId): array
     {
         if (!$this->id) {

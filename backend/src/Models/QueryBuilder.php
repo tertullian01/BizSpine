@@ -165,10 +165,9 @@ class QueryBuilder
         $params = $this->getWhereParams();
         $stmt = $this->modelClass::$db->prepare($sql);
         $stmt->execute($params);
-        $stmt->setFetchMode(PDO::FETCH_CLASS, $this->modelClass);
         $results = [];
-        while ($obj = $stmt->fetch()) {
-            $results[] = $obj;
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $results[] = new $this->modelClass($row);
         }
 
         return $results;

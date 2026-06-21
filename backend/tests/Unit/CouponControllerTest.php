@@ -51,6 +51,45 @@ SQL
         $this->userId = (int) self::$db->lastInsertId();
     }
 
+    public function testGetAllCouponsWithLegacyColumns()
+    {
+        self::$db->exec('DROP TABLE IF EXISTS coupons');
+        self::$db->exec(<<<'SQL'
+CREATE TABLE coupons (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT NOT NULL UNIQUE,
+  discount_type TEXT NOT NULL,
+  discount_value REAL NOT NULL,
+  min_purchase REAL DEFAULT 0,
+  max_uses INTEGER,
+  times_used INTEGER DEFAULT 0,
+  expires_at DATETIME,
+  is_active INTEGER DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+SQL
+        );
+        self::$db->exec(
+            "INSERT INTO coupons (code, discount_type, discount_value, min_purchase, expires_at, is_active)
+             VALUES ('LEGACY10', 'percentage', 10, 25, '2099-12-31 23:59:59', 1)"
+        );
+
+        $controller = new CouponController(self::$db);
+        $response = $controller->getAll(
+            $this->createRequest('GET', '/api/coupons'),
+            $this->createResponse()
+        );
+        $body = json_decode($response->getBody()->__toString(), true);
+
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertTrue($body['success']);
+        $this->assertCount(1, $body['data']);
+        $this->assertEquals('LEGACY10', $body['data'][0]['code']);
+        $this->assertEquals(25, $body['data'][0]['min_purchase_amount']);
+        $this->assertEquals('2099-12-31 23:59:59', $body['data'][0]['valid_until']);
+    }
+
     public function testCreateCoupon()
     {
         $controller = new CouponController(self::$db);

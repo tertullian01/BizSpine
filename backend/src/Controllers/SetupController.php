@@ -232,11 +232,13 @@ class SetupController extends ApiController
                 code TEXT UNIQUE NOT NULL,
                 discount_type TEXT NOT NULL DEFAULT 'percentage',
                 discount_value REAL NOT NULL,
-                min_purchase REAL DEFAULT 0,
+                min_purchase_amount REAL DEFAULT 0,
                 max_uses INTEGER,
                 times_used INTEGER DEFAULT 0,
-                expires_at DATETIME,
+                valid_from DATETIME,
+                valid_until DATETIME,
                 is_active INTEGER DEFAULT 1,
+                description TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
@@ -773,16 +775,16 @@ class SetupController extends ApiController
             $imported = 0;
             foreach ($coupons as $coupon) {
                 $stmt = $db->prepare("
-                    INSERT INTO coupons (code, discount_type, discount_value, min_purchase, max_uses, expires_at, is_active, created_at)
-                    VALUES (:code, :discount_type, :discount_value, :min_purchase, :max_uses, :expires_at, 1, datetime('now'))
+                    INSERT INTO coupons (code, discount_type, discount_value, min_purchase_amount, max_uses, valid_until, is_active, created_at)
+                    VALUES (:code, :discount_type, :discount_value, :min_purchase_amount, :max_uses, :valid_until, 1, datetime('now'))
                 ");
                 $stmt->execute([
                     ':code' => strtoupper($coupon['code']),
                     ':discount_type' => $coupon['discount_type'] ?? 'percentage',
                     ':discount_value' => $coupon['discount_value'] ?? 0,
-                    ':min_purchase' => $coupon['min_purchase'] ?? 0,
+                    ':min_purchase_amount' => $coupon['min_purchase_amount'] ?? $coupon['min_purchase'] ?? 0,
                     ':max_uses' => $coupon['max_uses'] ?? null,
-                    ':expires_at' => $coupon['expires_at'] ?? null
+                    ':valid_until' => $coupon['valid_until'] ?? $coupon['expires_at'] ?? null,
                 ]);
                 $imported++;
             }

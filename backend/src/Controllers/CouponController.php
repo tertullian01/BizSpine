@@ -4,6 +4,8 @@ namespace App\Controllers;
 
 use App\Services\Config;
 use App\Exceptions\ValidationException;
+use App\Models\Coupon;
+use App\Models\CouponUsage;
 use App\Services\Database;
 use App\Services\Validator;
 use PDO;
@@ -28,7 +30,10 @@ class CouponController extends ApiController
     public function getAll(Request $request, Response $response): Response
     {
         $stmt = $this->db->query('SELECT * FROM coupons ORDER BY created_at DESC');
-        $coupons = $stmt->fetchAll(PDO::FETCH_CLASS, 'App\Models\Coupon');
+        $coupons = array_map(
+            static fn(array $row) => Coupon::fromRow($row),
+            $stmt->fetchAll(PDO::FETCH_ASSOC)
+        );
         return $this->success($response, $coupons);
     }
 
@@ -37,12 +42,12 @@ class CouponController extends ApiController
         $id = (int) $args['id'];
         $stmt = $this->db->prepare('SELECT * FROM coupons WHERE id = :id');
         $stmt->execute([':id' => $id]);
-        $coupon = $stmt->fetchObject('App\Models\Coupon');
-        if (!$coupon) {
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
             return $this->error($response, 'Coupon not found', 404);
         }
 
-        return $this->success($response, $coupon);
+        return $this->success($response, Coupon::fromRow($row));
     }
 
     public function getByCode(Request $request, Response $response, array $args): Response
@@ -50,12 +55,12 @@ class CouponController extends ApiController
         $code = $args['code'];
         $stmt = $this->db->prepare('SELECT * FROM coupons WHERE UPPER(code) = :code');
         $stmt->execute([':code' => strtoupper($code)]);
-        $coupon = $stmt->fetchObject('App\Models\Coupon');
-        if (!$coupon) {
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
             return $this->error($response, "Coupon '{$code}' not found", 404);
         }
 
-        return $this->success($response, $coupon);
+        return $this->success($response, Coupon::fromRow($row));
     }
 
     public function create(Request $request, Response $response): Response
@@ -244,7 +249,10 @@ LEFT JOIN orders o ON cu.order_id = o.id
 ORDER BY cu.used_at DESC
 SQL;
         $stmt = $this->db->query($sql);
-        $usage = $stmt->fetchAll(PDO::FETCH_CLASS, 'App\Models\CouponUsage');
+        $usage = array_map(
+            static fn(array $row) => CouponUsage::fromRow($row),
+            $stmt->fetchAll(PDO::FETCH_ASSOC)
+        );
         return $this->success($response, $usage);
     }
 
@@ -257,12 +265,13 @@ SQL;
             return ['valid' => false, 'error' => 'Invalid or inactive coupon code'];
         }
 
-        // Check validity dates
+        // Check validity dates (valid_until or legacy expires_at)
         $now = date('Y-m-d H:i:s');
-        if ($coupon['valid_from'] && $now < $coupon['valid_from']) {
+        if (!empty($coupon['valid_from']) && $now < $coupon['valid_from']) {
             return ['valid' => false, 'error' => 'Coupon not yet valid'];
         }
-        if ($coupon['valid_until'] && $now > $coupon['valid_until']) {
+        $validUntil = $coupon['valid_until'] ?? $coupon['expires_at'] ?? null;
+        if ($validUntil && $now > $validUntil) {
             return ['valid' => false, 'error' => 'Coupon has expired'];
         }
 
@@ -271,9 +280,10 @@ SQL;
             return ['valid' => false, 'error' => 'Coupon usage limit reached'];
         }
 
-        // Check minimum purchase
-        if ($orderTotal < $coupon['min_purchase_amount']) {
-            return ['valid' => false, 'error' => "Minimum purchase of {$coupon['min_purchase_amount']} required"];
+        // Check minimum purchase (support legacy min_purchase column from old installs)
+        $minPurchase = (float) ($coupon['min_purchase_amount'] ?? $coupon['min_purchase'] ?? 0);
+        if ($orderTotal < $minPurchase) {
+            return ['valid' => false, 'error' => "Minimum purchase of {$minPurchase} required"];
         }
 
         // Calculate discount
