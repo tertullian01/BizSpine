@@ -17,6 +17,7 @@ Product of [Tech Diplomacy](https://techdiplomacy.dev/).
 - [Release build](#release-build)
 - [Shared hosting](#shared-hosting)
 - [Production hardening](#production-hardening)
+- [Troubleshooting](#troubleshooting)
 - [Tests](#tests)
 - [Demo data](#demo-data)
 - [Roadmap](#roadmap)
@@ -109,7 +110,9 @@ Schema is defined in [`backend/db/migrations/`](backend/db/migrations/). Legacy 
 
 ## API reference
 
-- **OpenAPI 3:** [`backend/public/openapi.yaml`](backend/public/openapi.yaml)
+- **OpenAPI 3:** [`backend/public/openapi.yaml`](backend/public/openapi.yaml) (canonical; served at `/openapi.yaml` and `/docs/`)
+- **Response envelope:** `{ "success": true, "data": ... }` or `{ "success": false, "error": "..." }`
+- **Current user:** `GET /auth/me` with `Authorization: Bearer <token>`
 - **Interactive docs:** serve `backend/public/` and open `/docs/` (see [`backend/public/docs/README.md`](backend/public/docs/README.md))
 - **Annotations:** some controllers include `@OA` tags; `composer test` includes contract checks
 
@@ -121,9 +124,9 @@ Protected routes expect `Authorization: Bearer <jwt>` from `POST /auth/login`.
 
 ## Security
 
-- JWT (HS256), bcrypt passwords, prepared statements
-- Role middleware for admin vs employee routes
-- CORS and security headers via middleware
+- JWT (HS256) via [`backend/src/Routes/RouteSecurity.php`](backend/src/Routes/RouteSecurity.php), bcrypt passwords, prepared statements
+- Role middleware (`PrivilegedRoleMiddleware`) for admin vs employee routes
+- CORS and security headers via middleware — CORS must be the outermost layer in Slim (see [backend README](backend/README.md#middleware))
 - `ALLOW_INSECURE_SETUP=false` on production hosts (disables setup/diagnostic routes)
 - See [Production hardening](#production-hardening)
 
@@ -167,12 +170,15 @@ End users: extract ZIP, open `/BizSpine/install.php`, delete `install.php` when 
 
 Prefer the [release ZIP](#release-build). For manual setup:
 
-1. Place `backend/` as `bizspine-backend/` **outside** `public_html`.
-2. Set `JWT_SECRET` in `backend/.env`; configure `cors.allowed_origins` in `protected/config/config.php`.
-3. Run migrations: `vendor/bin/phinx migrate -c phinx.php` or use `install.php` / `example_reset.php`.
-4. Copy [`deploy/BizSpine-api-index.php`](deploy/BizSpine-api-index.php) to `public_html/BizSpine/api/index.php` and point `$backendPublic` at your server path.
-5. Build frontend with `VITE_BASE_PATH=/BizSpine/` and `VITE_API_BASE_URL=https://yourdomain.com/BizSpine/api`, upload `frontend/dist/` to `public_html/BizSpine/`.
-6. Verify: `https://yourdomain.com/BizSpine/api/health` and the storefront URL.
+1. Place `backend/` as `bizspine-backend/` **outside** `public_html` (or your equivalent layout).
+2. Create `backend/.env` with a non-empty `JWT_SECRET` (copy from [`.env.example`](backend/.env.example)). The release ZIP **excludes** `.env` — the web installer creates it, or add it by hand.
+3. Configure CORS: set `cors.allowed_origins` to your **storefront** URL(s) in `protected/config/config.php` or `protected/config/install_local.php` (installer writes the latter). List `www` and non-`www` if both are used. The API subdomain is not an allowed origin — only the site that runs the browser UI.
+4. Run migrations: `vendor/bin/phinx migrate -c phinx.php` or use `install.php` / `example_reset.php`.
+5. Copy [`deploy/BizSpine-api-index.php`](deploy/BizSpine-api-index.php) to `public_html/BizSpine/api/index.php` and point `$backendPublic` at your server path — **or** map your API vhost to `backend/public/` if using a subdomain (e.g. `api.yourdomain.com`).
+6. Build frontend with `VITE_BASE_PATH=/BizSpine/` and `VITE_API_BASE_URL=https://yourdomain.com/BizSpine/api` (or `https://api.yourdomain.com` for a subdomain API), upload `frontend/dist/` to the storefront path.
+7. Verify: API health endpoint and the storefront URL; test cross-origin login if frontend and API are on different hosts.
+
+When updating an existing host, upload the **full** backend (`src/`, `vendor/`, `public/`, etc.), not only `public/index.php`. Partial uploads cause errors such as `Class "App\Routes\RouteSecurity" not found`.
 
 Example host paths (techdiplomacy.dev):
 
@@ -186,8 +192,8 @@ Example host paths (techdiplomacy.dev):
 
 In [`backend/public/index.php`](backend/public/index.php):
 
-- `display_errors` off; `log_errors` on
-- `$app->addErrorMiddleware(false, ...)` so clients do not see stack traces
+- Set `display_errors` off and `log_errors` on before going live (the repo default enables display for local debugging).
+- Error detail is controlled by `environment.debug` in config — `addErrorMiddleware` reads that flag so clients do not see stack traces when debug is off.
 
 In [`backend/.env`](backend/.env):
 
@@ -196,12 +202,38 @@ JWT_SECRET=<long-random-value>
 ALLOW_INSECURE_SETUP=false
 ```
 
-In [`backend/protected/config/config.php`](backend/protected/config/config.php):
+Do not leave `JWT_SECRET` blank. Changing it invalidates existing login tokens.
+
+In [`backend/protected/config/config.php`](backend/protected/config/config.php) (or `install_local.php`):
 
 - `environment.debug` → `false`
-- `cors.allowed_origins` → explicit origin(s), e.g. `['https://techdiplomacy.dev']`
+- `cors.allowed_origins` → explicit storefront origin(s), e.g. `['https://yourdomain.com', 'https://www.yourdomain.com']`
+
+Cross-origin API (storefront and API on different hosts): see [Troubleshooting](#troubleshooting) and [backend README — Configuration](backend/README.md#configuration).
 
 Writable: `protected/db/`, `uploads/`, `public/logs/`.
+
+<a id="troubleshooting"></a>
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|----------------|-----|
+| `Class "App\Routes\RouteSecurity" not found` | Partial backend deploy | Upload full `backend/src/` (and run `composer install` if `vendor/` is missing). |
+| `JWT_SECRET is not configured` | Missing or empty `.env` | Set non-empty `JWT_SECRET` in `backend/.env`. |
+| Login `net::ERR_FAILED` in browser (cross-origin) | CORS preflight failing | Add storefront origin to `cors.allowed_origins`; ensure OPTIONS on `/auth/login` returns 200 with CORS headers; keep `CorsMiddleware` registered **last** in `index.php`. |
+| `405 Method not allowed` on OPTIONS | Routing before CORS | See [backend README — Middleware](backend/README.md#middleware). |
+
+**Test CORS preflight** (replace origins/URL as needed):
+
+```bash
+curl -i -X OPTIONS "https://api.yourdomain.com/auth/login" \
+  -H "Origin: https://yourdomain.com" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: Content-Type"
+```
+
+Expect `HTTP/1.1 200` and `Access-Control-Allow-Origin: https://yourdomain.com` — not a PHP fatal error.
 
 <a id="tests"></a>
 

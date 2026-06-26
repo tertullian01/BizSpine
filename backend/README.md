@@ -6,7 +6,7 @@ Slim 4 REST API with SQLite for the BizSpine storefront and admin UI. Monorepo r
 
 ```bash
 composer install
-cp .env.example .env   # if present; set JWT_SECRET
+cp .env.example .env   # set JWT_SECRET to a long random string
 php -S localhost:8000 -t public
 ```
 
@@ -44,22 +44,35 @@ Auth: `POST /auth/login` → `Authorization: Bearer <token>` on protected routes
 
 ## Configuration
 
-**`.env`** (not committed):
+**`.env`** (not committed; see [`.env.example`](.env.example)):
 
 ```env
 JWT_SECRET=<random-secret>
 ALLOW_INSECURE_SETUP=false
 ```
 
-**`protected/config/config.php`** — database path, CORS origins, `environment.debug`, upload limits. Optional override: `protected/config/install_local.php`.
+An empty `JWT_SECRET=` line is treated as unset and the API will refuse to start. The release ZIP excludes `.env` — create it on the server or run the web installer.
 
-CORS example:
+**`protected/config/config.php`** — database path, CORS origins, `environment.debug`, upload limits. On installed hosts, prefer **`protected/config/install_local.php`** (written by the web installer) for storefront-specific CORS origins.
+
+CORS example (list every **storefront** origin that calls the API — not the API host itself):
 
 ```php
 'cors' => [
-    'allowed_origins' => ['https://techdiplomacy.dev'],
+    // Path-based API: https://yourdomain.com/BizSpine/api
+    'allowed_origins' => ['https://yourdomain.com'],
+    // Subdomain API: storefront at https://yourdomain.com, API at https://api.yourdomain.com
+    // 'allowed_origins' => ['https://yourdomain.com', 'https://www.yourdomain.com'],
 ],
 ```
+
+Cross-origin login (`POST /auth/login` from a separate frontend host) sends an **OPTIONS preflight** first. If the browser shows `net::ERR_FAILED`, check:
+
+1. `allowed_origins` includes the exact scheme + host of the page (including `www` if used).
+2. OPTIONS on `/auth/login` returns **200** with `Access-Control-Allow-Origin` — test with curl (see [root README troubleshooting](../README.md#troubleshooting)).
+3. [`public/index.php`](public/index.php) registers **`CorsMiddleware` last** so preflight is handled before routing (see [Middleware](#middleware) below).
+
+JWT signing and role-gated routes use [`src/Routes/RouteSecurity.php`](src/Routes/RouteSecurity.php).
 
 ## Database
 
@@ -82,16 +95,29 @@ composer test:coverage
 
 Details: [`public/docs/CODE_QUALITY.md`](public/docs/CODE_QUALITY.md).
 
+## Middleware
+
+Slim 4 runs middleware in **reverse registration order** — the **last** `$app->add(...)` runs **first** on each request.
+
+In [`public/index.php`](public/index.php), register layers innermost-first, with **CORS outermost (added last)**:
+
+```
+Request flow: CORS → Error → Routing → Security headers → Body parsing → File upload → Metrics → route
+```
+
+Do not register `RoutingMiddleware` after `CorsMiddleware` in a way that makes routing run before CORS. POST-only routes (e.g. `/auth/login`) reject OPTIONS with 405 and cross-origin login breaks in the browser.
+
 ## Production
 
 Before a public host:
 
-- `JWT_SECRET` in `.env`; `ALLOW_INSECURE_SETUP=false`
-- `environment.debug` → `false` in config
-- In `public/index.php`: `display_errors` off; `addErrorMiddleware(false, ...)`
+- `JWT_SECRET` in `.env` (non-empty); `ALLOW_INSECURE_SETUP=false`
+- `environment.debug` → `false` in config (controls Slim `addErrorMiddleware` display of error details)
+- In `public/index.php`: turn `display_errors` off; keep `log_errors` on
+- Deploy the **full** `backend/` tree when updating — not only `public/index.php` (see [root README](../README.md#shared-hosting))
 - Writable: `protected/db/`, `uploads/`, `public/logs/`
 
-Shared-hosting layout and release ZIP: see [root README](../README.md#shared-hosting).
+Shared-hosting layout, CORS, and troubleshooting: [root README](../README.md#shared-hosting).
 
 ## Modules
 

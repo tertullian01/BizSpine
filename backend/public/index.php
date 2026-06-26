@@ -6,6 +6,7 @@ use App\Services\Database;
 use App\Models\BaseModel;
 use App\Services\Config;
 use App\Services\Container;
+use App\Routes\RouteSecurity;
 
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
@@ -67,7 +68,7 @@ $container->bind(\App\Services\Metrics::class, fn($c) => new \App\Services\Metri
 $container->bind(\App\Services\EmailService::class, fn($c) => new \App\Services\EmailService($db, $c->get(\App\Services\Logger::class)));
 
 // Bind middleware
-$jwtSecret = \App\Routes\RouteSecurity::jwtSecret();
+$jwtSecret = RouteSecurity::jwtSecret();
 $container->bind(\App\Middleware\AuthMiddleware::class, fn($c) => new \App\Middleware\AuthMiddleware($jwtSecret));
 $container->bind(\App\Middleware\OptionalAuthMiddleware::class, fn($c) => new \App\Middleware\OptionalAuthMiddleware($jwtSecret));
 
@@ -101,18 +102,42 @@ $container->bind(\App\Controllers\SettingsController::class, fn($c) => new \App\
 ));
 $container->bind(\App\Controllers\EmailLogController::class, fn($c) => new \App\Controllers\EmailLogController($c->get(\App\Services\PaginationService::class)));
 $container->bind(\App\Controllers\EmailTemplateController::class, fn($c) => new \App\Controllers\EmailTemplateController($db));
-$container->bind(\App\Controllers\HealthController::class, fn($c) => new \App\Controllers\HealthController($config->getAll()));
+$container->bind(\App\Controllers\HealthController::class, fn($c) => new \App\Controllers\HealthController($c->get(Config::class)->getAll()));
 
-// Add Metrics Middleware (must be first to measure all requests)
+// Slim runs middleware in reverse registration order (last added = outermost / first on request).
+// Innermost first: metrics → body → upload → security headers → routing → error → CORS.
+
 $app->add(new \App\Middleware\MetricsMiddleware($container->get(\App\Services\Metrics::class)));
 
-// Add Routing Middleware
+$app->add(new \App\Middleware\FileUploadMiddleware(
+    $container->get(\App\Services\FileUploadService::class),
+    $container->get(\App\Services\Logger::class),
+    $config->get('file_upload_middleware', [])
+));
+
+$app->addBodyParsingMiddleware();
+
+$app->add(new \App\Middleware\SecurityHeadersMiddleware([
+    'X-Frame-Options' => 'DENY',
+    'X-Content-Type-Options' => 'nosniff',
+    'X-XSS-Protection' => '1; mode=block',
+    'Strict-Transport-Security' => 'max-age=31536000',
+]));
+
 $app->addRoutingMiddleware();
 
-// Add Error Middleware
-$errorMiddleware = $app->addErrorMiddleware(true, true, true);
+$errorMiddleware = $app->addErrorMiddleware(
+    $config->get('environment.debug', false),
+    true,
+    true,
+    $container->get(\App\Services\Logger::class)
+);
+$errorHandler = $errorMiddleware->getDefaultErrorHandler();
+if ($errorHandler instanceof \Slim\Handlers\ErrorHandler) {
+    $errorHandler->forceContentType('application/json');
+}
 
-// Add CORS Middleware
+// Outermost: must answer OPTIONS preflight before RoutingMiddleware (POST-only routes reject OPTIONS).
 $corsConfig = $config->get('cors', []);
 $allowedOrigins = $corsConfig['allowed_origins'] ?? [];
 
@@ -122,24 +147,6 @@ $app->add(new \App\Middleware\CorsMiddleware(
     allowedHeaders: $corsConfig['allowed_headers'] ?? ['Content-Type', 'Authorization', 'X-Requested-With'],
     allowCredentials: $corsConfig['allow_credentials'] ?? true
 ));
-
-// Add Security Headers Middleware
-$app->add(new \App\Middleware\SecurityHeadersMiddleware([
-    'X-Frame-Options' => 'DENY',
-    'X-Content-Type-Options' => 'nosniff',
-    'X-XSS-Protection' => '1; mode=block',
-    'Strict-Transport-Security' => 'max-age=31536000',
-]));
-
-// Add File Upload Middleware
-$app->add(new \App\Middleware\FileUploadMiddleware(
-    $container->get(\App\Services\FileUploadService::class),
-    $container->get(\App\Services\Logger::class),
-    $config->get('file_upload_middleware', [])
-));
-
-// Add Body Parsing Middleware (Must run before FileUploadMiddleware to ensure parsed body is available and not overwritten)
-$app->addBodyParsingMiddleware();
 
 // Load app routes
 require __DIR__ . '/../src/Routes/api.php';

@@ -1,7 +1,15 @@
 openapi: 3.0.3
 info:
   title: BizSpine API
-  description: BizSpine REST API (Slim 4, SQLite). JWT on protected routes. Product of Tech Diplomacy.
+  description: |
+    BizSpine REST API (Slim 4, SQLite). JWT on protected routes. Product of Tech Diplomacy.
+
+    **Response envelope:** Successful JSON responses use `{ "success": true, "data": { ... } }`.
+    Errors use `{ "success": false, "error": "message" }`.
+
+    **Cross-origin clients:** When the storefront and API are on different origins (e.g. `https://yourdomain.com`
+    and `https://api.yourdomain.com`), the server must allow the storefront origin in CORS config.
+    Browsers send an OPTIONS preflight before `POST /auth/login` with `Content-Type: application/json`.
   version: 1.0.0
   contact:
     name: Tech Diplomacy
@@ -27,6 +35,7 @@ paths:
       description: Check if the API is running and database is accessible
       tags:
         - Health
+      security: []
       responses:
         '200':
           description: API is healthy
@@ -46,6 +55,7 @@ paths:
       description: Create a new user account with email and password
       tags:
         - Authentication
+      security: []
       requestBody:
         required: true
         content:
@@ -78,9 +88,10 @@ paths:
   /auth/login:
     post:
       summary: User login
-      description: Authenticate user and return JWT token
+      description: Authenticate user and return JWT access token and role
       tags:
         - Authentication
+      security: []
       requestBody:
         required: true
         content:
@@ -97,6 +108,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoginResponse'
+              example:
+                success: true
+                data:
+                  access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  role: admin
+        '400':
+          description: Missing email or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Invalid credentials
           content:
@@ -118,7 +140,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
+                $ref: '#/components/schemas/SuccessMessageResponse'
 
   /auth/refresh:
     post:
@@ -134,7 +156,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
+                $ref: '#/components/schemas/RefreshTokenResponse'
 
   /auth/forgot-password:
     post:
@@ -142,6 +164,7 @@ paths:
       description: Send a password reset email to the user
       tags:
         - Authentication
+      security: []
       requestBody:
         required: true
         content:
@@ -156,7 +179,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
+                $ref: '#/components/schemas/SuccessMessageResponse'
         '400':
           description: Invalid input data
           content:
@@ -170,6 +193,7 @@ paths:
       description: Reset user password using reset token
       tags:
         - Authentication
+      security: []
       requestBody:
         required: true
         content:
@@ -185,7 +209,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
+                $ref: '#/components/schemas/SuccessMessageResponse'
         '400':
           description: Invalid or expired token
           content:
@@ -228,7 +252,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
+                $ref: '#/components/schemas/SuccessMessageResponse'
         '400':
           description: Invalid input or incorrect current password
           content:
@@ -237,6 +261,34 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/me:
+    get:
+      summary: Current user profile
+      description: Return the authenticated user's profile
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
           content:
             application/json:
               schema:
@@ -2527,20 +2579,42 @@ components:
     ErrorResponse:
       type: object
       properties:
+        success:
+          type: boolean
+          enum: [false]
         error:
           type: string
           description: Error message
       required:
+        - success
         - error
 
     MessageResponse:
       type: object
+      description: Legacy flat shape; most endpoints return SuccessMessageResponse instead
       properties:
         message:
           type: string
           description: Success message
       required:
         - message
+
+    SuccessMessageResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+          required:
+            - message
+      required:
+        - success
+        - data
 
     Pagination:
       type: object
@@ -2638,31 +2712,78 @@ components:
     AuthSuccessResponse:
       type: object
       properties:
-        message:
-          type: string
-          description: Success message
-        email:
-          type: string
-          format: email
-          description: Registered email address
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Success message
+            email:
+              type: string
+              format: email
+              description: Registered email address
+          required:
+            - message
+            - email
       required:
-        - message
-        - email
+        - success
+        - data
 
     LoginResponse:
       type: object
       properties:
-        access_token:
-          type: string
-          description: JWT access token
-        token_type:
-          type: string
-          default: Bearer
-        expires_in:
-          type: integer
-          description: Token expiration time in seconds
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            access_token:
+              type: string
+              description: JWT access token (send as Authorization Bearer)
+            role:
+              type: string
+              enum: [customer, employee, admin]
+              description: User role for the authenticated session
+          required:
+            - access_token
+            - role
       required:
-        - access_token
+        - success
+        - data
+
+    RefreshTokenResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            access_token:
+              type: string
+              description: New JWT access token
+          required:
+            - access_token
+      required:
+        - success
+        - data
+
+    UserProfileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          $ref: '#/components/schemas/User'
+      required:
+        - success
+        - data
 
     # User Schema
     User:
@@ -2702,6 +2823,9 @@ components:
           type: string
         facebook_link:
           type: string
+        is_email_verified:
+          type: integer
+          description: 1 if verified, 0 otherwise
         created_at:
           type: string
           format: date-time
