@@ -26,6 +26,7 @@ class UserRoutes
         $app->get('/clients', [UserController::class, 'getClients'])->add($staff);
         $app->get('/clients/{id}', [UserController::class, 'getClient'])->add($staff);
         $app->put('/clients/{id}', [UserController::class, 'updateClient'])->add($staff);
+        $app->delete('/clients/{id}', [UserController::class, 'deleteClient'])->add($staff);
         $app->put('/clients/{id}/password', [UserController::class, 'updateClientPassword'])->add($staff);
     }
 }

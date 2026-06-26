@@ -334,4 +334,25 @@ SQL;
 
         return $this->success($response, ['message' => 'Client password updated successfully']);
     }
+
+    public function deleteClient(Request $request, Response $response, array $args): Response
+    {
+        $id = (int) $args['id'];
+        $client = User::find($id);
+
+        if (!$client || $client->role !== 'customer') {
+            return $this->error($response, 'Client not found', 404);
+        }
+
+        try {
+            $client->delete();
+            return $response->withStatus(204);
+        } catch (\PDOException $e) {
+            if ($e->getCode() == '23000') {
+                return $this->error($response, 'Cannot delete client because they have associated records (e.g., orders).', 409);
+            }
+            // Log the full error for debugging
+            return $this->internalError($response);
+        }
+    }
 }
