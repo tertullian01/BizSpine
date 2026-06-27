@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\User;
 use App\Models\Order;
+use PDOException;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
@@ -182,12 +183,27 @@ SQL;
 
         $data = $request->getParsedBody();
         unset($data['id']);
+
+        if (array_key_exists('email', $data)) {
+            $duplicateResponse = $this->rejectDuplicateEmail($response, $data['email'], $id);
+            if ($duplicateResponse !== null) {
+                return $duplicateResponse;
+            }
+        }
+
         foreach ($data as $key => $value) {
             if (property_exists($user, $key)) {
                 $user->$key = $value;
             }
         }
-        $user->save();
+        try {
+            $user->save();
+        } catch (PDOException $e) {
+            if ($e->getCode() == '23000') {
+                return $this->error($response, 'User already exists', 409);
+            }
+            throw $e;
+        }
 
         // Return updated client data with order statistics
         $clientData = (array) $user;
@@ -241,6 +257,11 @@ SQL;
         unset($data['password']);
         unset($data['id']);
 
+        $duplicateResponse = $this->rejectDuplicateEmail($response, $data['email'] ?? null);
+        if ($duplicateResponse !== null) {
+            return $duplicateResponse;
+        }
+
         $user = new User($data);
 
         // Hash password if provided
@@ -248,7 +269,15 @@ SQL;
             $user->password_hash = password_hash($password, PASSWORD_DEFAULT);
         }
 
-        $user->save();
+        try {
+            $user->save();
+        } catch (PDOException $e) {
+            if ($e->getCode() == '23000') {
+                return $this->error($response, 'User already exists', 409);
+            }
+            throw $e;
+        }
+
         return $this->success($response, $user, 201);
     }
 
@@ -263,12 +292,27 @@ SQL;
 
         $data = $request->getParsedBody();
         unset($data['id']);
+
+        if (array_key_exists('email', $data)) {
+            $duplicateResponse = $this->rejectDuplicateEmail($response, $data['email'], $id);
+            if ($duplicateResponse !== null) {
+                return $duplicateResponse;
+            }
+        }
+
         foreach ($data as $key => $value) {
             if (property_exists($user, $key)) {
                 $user->$key = $value;
             }
         }
-        $user->save();
+        try {
+            $user->save();
+        } catch (PDOException $e) {
+            if ($e->getCode() == '23000') {
+                return $this->error($response, 'User already exists', 409);
+            }
+            throw $e;
+        }
 
         return $this->success($response, $user);
     }
@@ -354,5 +398,19 @@ SQL;
             // Log the full error for debugging
             return $this->internalError($response);
         }
+    }
+
+    private function rejectDuplicateEmail(Response $response, ?string $email, ?int $excludeUserId = null): ?Response
+    {
+        if ($email === null || trim($email) === '') {
+            return null;
+        }
+
+        $existing = User::findByEmail(trim($email));
+        if ($existing && ($excludeUserId === null || (int) $existing->id !== $excludeUserId)) {
+            return $this->error($response, 'User already exists', 409);
+        }
+
+        return null;
     }
 }

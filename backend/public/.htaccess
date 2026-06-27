@@ -1,5 +1,8 @@
 RewriteEngine On
 
+# Route site root and API paths through index.php (directory "/" is not rewritten by the rule below).
+RewriteRule ^$ index.php [L]
+
 # CORS is now handled by PHP in index.php
 
 # Let PHP/Slim handle OPTIONS requests instead of Apache

@@ -1126,4 +1126,24 @@ class SetupController extends ApiController
             return $this->error($response, 'Migration failed: ' . $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Run Phinx database migrations (schema updates shipped with the app).
+     */
+    public function runPhinxMigrations(Request $request, Response $response): Response
+    {
+        require_once dirname(__DIR__, 2) . '/tools/install_lib.php';
+        $backendRoot = dirname(__DIR__, 2);
+
+        try {
+            $output = bizspine_run_migrations($backendRoot);
+            return $this->success($response, ['output' => $output]);
+        } catch (\Throwable $e) {
+            $message = trim($e->getMessage());
+            if ($message === '') {
+                $message = 'Migration failed: ' . $e::class;
+            }
+            return $this->error($response, $message, 500);
+        }
+    }
 }

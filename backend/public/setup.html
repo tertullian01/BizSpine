@@ -491,10 +491,48 @@
     </div>
 
     <script>
-        const apiBase = window.location.origin;
+        const apiBase = (() => {
+            const path = window.location.pathname;
+            if (path.endsWith('/setup.html')) {
+                return window.location.origin + path.slice(0, -'/setup.html'.length).replace(/\/$/, '');
+            }
+            return window.location.origin;
+        })();
         let currentStep = 1;
         const totalSteps = 10;
         let dbInitialized = false;
+
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        function formatMigrationFailure(response, text, result) {
+            const parts = [`HTTP ${response.status}`];
+            if (result?.error) {
+                parts.push(result.error);
+            }
+            if (result?.message && result.message !== result.error) {
+                parts.push(result.message);
+            }
+            if (result?.data?.output) {
+                parts.push(result.data.output);
+            }
+            if (result?.output && result.output !== result.error) {
+                parts.push(result.output);
+            }
+            if (response.status === 404) {
+                parts.push(
+                    'The migration endpoint was not found. Deploy the latest backend, ensure setup.html is served from the API public folder (e.g. /api/setup.html), and set ALLOW_INSECURE_SETUP=true in .env while running setup.'
+                );
+            }
+            if (parts.length === 1) {
+                parts.push(text || 'Failed to apply migrations (no details returned by server).');
+            }
+            return parts.join('\n\n');
+        }
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
@@ -502,18 +540,39 @@
         });
 
         async function checkDatabase() {
+            const checkResult = document.getElementById('dbCheckResult');
+            const nextBtn = document.getElementById('nextBtn');
+
             try {
                 const response = await fetch(`${apiBase}/setup/check`);
-                const result = await response.json();
+                const text = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(text);
+                } catch (parseError) {
+                    throw new Error(
+                        `Server returned non-JSON (HTTP ${response.status}). ` +
+                        'Open setup.html from your API folder (e.g. /api/setup.html) and ensure ALLOW_INSECURE_SETUP=true in .env.'
+                    );
+                }
 
-                const checkResult = document.getElementById('dbCheckResult');
+                if (!response.ok) {
+                    const message = result.error || result.message || text || `HTTP ${response.status}`;
+                    throw new Error(message);
+                }
+
+                if (!result.success || !result.data) {
+                    throw new Error(
+                        result.error || result.message || 'Unexpected response from /setup/check.'
+                    );
+                }
 
                 if (result.data.initialized) {
                     dbInitialized = true;
                     checkResult.innerHTML = `
                         <div class="message warning">
                             <strong>Database Already Initialized</strong><br>
-                            ${result.data.message}<br><br>
+                            ${escapeHtml(result.data.message)}<br><br>
                             Setup cannot proceed. If you need to reset the database, please contact your system administrator.
                         </div>
                         <div style="margin-top: 30px; padding: 25px; border-radius: 8px; background: rgba(255,255,255,0.9); border: 2px dashed #667eea;">
@@ -523,17 +582,32 @@
                             <div id="migrationResult" style="margin-top: 15px;"></div>
                         </div>
                     `;
-                    document.getElementById('nextBtn').disabled = true;
+                    nextBtn.disabled = true;
                 } else {
                     checkResult.innerHTML = `
                         <div class="message success">
                             <strong>Ready for Setup</strong><br>
-                            ${result.data.message}
+                            ${escapeHtml(result.data.message)}
                         </div>
                     `;
+                    nextBtn.disabled = false;
                 }
             } catch (error) {
-                showMessage('Error checking database status: ' + error.message, 'error');
+                dbInitialized = false;
+                checkResult.innerHTML = `
+                    <div class="message error">
+                        <strong>Cannot reach setup API</strong><br>
+                        ${escapeHtml(error.message)}<br><br>
+                        <strong>Checklist:</strong>
+                        <ul style="margin: 10px 0 0 20px; font-size: 14px;">
+                            <li>Open this page as <code>${escapeHtml(apiBase)}/setup.html</code></li>
+                            <li>Test config: <a href="${escapeHtml(apiBase)}/system/status" target="_blank" rel="noopener">${escapeHtml(apiBase)}/system/status</a></li>
+                            <li>Test rewrite rules: <a href="${escapeHtml(apiBase)}/system/ping" target="_blank" rel="noopener">${escapeHtml(apiBase)}/system/ping</a> — should return <code>pong</code></li>
+                            <li>Upload latest <code>src/Routes/api.php</code> and <code>src/Routes/SetupRoutes.php</code></li>
+                        </ul>
+                    </div>
+                `;
+                nextBtn.disabled = true;
             }
         }
 
@@ -547,7 +621,7 @@
             resultDiv.innerHTML = '';
             
             try {
-                const response = await fetch(`${apiBase}/run_migrations`, {
+                const response = await fetch(`${apiBase}/setup/run_migrations`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -561,15 +635,14 @@
                     throw new Error(`Server returned an invalid HTML/text response instead of JSON (HTTP Status: ${response.status}). Check the browser's developer console for the raw response text.`);
                 }
                 
-                if (result.success) {
-                    resultDiv.innerHTML = `<div class="message success"><strong>Success!</strong><br><pre style="margin-top:10px; white-space: pre-wrap; font-family: monospace; font-size: 12px;">${result.output}</pre></div>`;
+                if (response.ok && result.success) {
+                    const output = result.data?.output ?? result.output ?? 'Migrations applied.';
+                    resultDiv.innerHTML = `<div class="message success"><strong>Success!</strong><br><pre style="margin-top:10px; white-space: pre-wrap; font-family: monospace; font-size: 12px;">${escapeHtml(output)}</pre></div>`;
                 } else {
-                    const errorMsg = result.error || 'Failed to apply migrations';
-                    const details = result.output && !errorMsg.includes(result.output) ? `\n\nPhinx Output:\n${result.output}` : '';
-                    throw new Error(errorMsg + details);
+                    throw new Error(formatMigrationFailure(response, text, result));
                 }
             } catch (error) {
-                resultDiv.innerHTML = `<div class="message error"><strong>Error:</strong><br><pre style="white-space: pre-wrap; font-family: inherit; margin-top: 10px;">${error.message}</pre></div>`;
+                resultDiv.innerHTML = `<div class="message error"><strong>Migration failed</strong><br><pre style="white-space: pre-wrap; font-family: monospace; font-size: 12px; margin-top: 10px;">${escapeHtml(error.message)}</pre><p style="margin-top: 10px; font-size: 13px; color: #666;">If this persists, run <code>vendor/bin/phinx migrate -c phinx.php</code> on the server for the full log.</p></div>`;
             } finally {
                 btn.disabled = false;
                 btn.textContent = originalText;

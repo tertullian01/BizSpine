@@ -47,6 +47,13 @@ class AuthController extends ApiController
 
         $email = trim($body['email']);
         $password = trim($body['password']);
+
+        $stmt = $this->db->prepare('SELECT id FROM users WHERE email = :e LIMIT 1');
+        $stmt->execute([':e' => $email]);
+        if ($stmt->fetch()) {
+            return $this->error($response, 'User already exists', 409);
+        }
+
         $hash = password_hash($password, PASSWORD_DEFAULT);
         $stmt = $this->db->prepare('INSERT INTO users (email, password_hash, created_at) VALUES (:e,:p,datetime("now"))');
         try {

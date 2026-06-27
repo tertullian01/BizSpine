@@ -24,9 +24,13 @@ class Config
 
     private function load(): void
     {
-        // Load .env file from the project root
-        $dotenv = Dotenv::createImmutable(__DIR__ . '/../../');
-        $dotenv->load();
+        $backendRoot = realpath(__DIR__ . '/../../') ?: dirname(__DIR__, 2);
+
+        // Load .env from backend root (same level as src/, api/, vendor/).
+        if (is_file($backendRoot . '/.env')) {
+            $dotenv = Dotenv::createImmutable($backendRoot);
+            $dotenv->safeLoad();
+        }
 
         // Load the base configuration file
         $configPath = __DIR__ . '/../../protected/config/config.php';
@@ -40,10 +44,16 @@ class Config
         $config['jwt']['secret'] = $_ENV['JWT_SECRET'] ?? $config['jwt']['secret'];
 
         $allowSetup = $_ENV['ALLOW_INSECURE_SETUP'] ?? getenv('ALLOW_INSECURE_SETUP');
-        $config['security']['allow_insecure_setup'] = filter_var(
-            $allowSetup !== false && $allowSetup !== null ? $allowSetup : 'false',
-            FILTER_VALIDATE_BOOLEAN
-        );
+        if ($allowSetup === false || $allowSetup === null || $allowSetup === '') {
+            // Keep value from config.php / install_local.php when .env omits the flag.
+            if (!array_key_exists('security', $config) || !array_key_exists('allow_insecure_setup', $config['security'])) {
+                $config['security']['allow_insecure_setup'] = false;
+            }
+        } else {
+            $config['security']['allow_insecure_setup'] = filter_var($allowSetup, FILTER_VALIDATE_BOOLEAN)
+                || $allowSetup === '1'
+                || $allowSetup === 1;
+        }
 
         $this->config = $config;
     }

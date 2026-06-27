@@ -54,6 +54,27 @@ class AuthControllerTest extends DatabaseTestCase
         $this->assertEquals(1, $stmt->fetchColumn());
     }
 
+    public function testRegisterWithDuplicateEmail()
+    {
+        $email = 'test@example.com';
+        $stmt = self::$db->prepare('INSERT INTO users (email, password_hash) VALUES (:e, :p)');
+        $stmt->execute([':e' => $email, ':p' => password_hash('password123', PASSWORD_DEFAULT)]);
+
+        $controller = new AuthController($this->config, $this->emailServiceMock);
+        $requestData = ['email' => $email, 'password' => 'password123'];
+        $request = $this->createRequestWithBody('POST', '/api/auth/register', $requestData);
+        $response = $this->createResponse();
+        $response = $controller->register($request, $response, []);
+
+        $body = json_decode($response->getBody()->__toString(), true);
+        $this->assertEquals(409, $response->getStatusCode());
+        $this->assertFalse($body['success']);
+        $this->assertEquals('User already exists', $body['error']);
+
+        $stmt = self::$db->query("SELECT COUNT(*) FROM users WHERE email = 'test@example.com'");
+        $this->assertEquals(1, $stmt->fetchColumn());
+    }
+
     public function testLoginWithValidCredentials()
     {
         // Insert a test user

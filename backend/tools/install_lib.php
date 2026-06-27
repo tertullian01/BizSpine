@@ -70,7 +70,15 @@ function bizspine_run_migrations(string $backendRoot): string
         'parser' => 'php',
     ]);
 
-    return trim($wrapper->getMigrate());
+    $output = trim($wrapper->getMigrate());
+    $exitCode = $wrapper->getExitCode();
+    if ($exitCode !== 0) {
+        throw new RuntimeException(
+            $output !== '' ? $output : 'Phinx migrate failed with exit code ' . $exitCode
+        );
+    }
+
+    return $output;
 }
 
 function bizspine_clear_all_data(PDO $pdo): void

@@ -172,33 +172,8 @@ if ($config->get('security.allow_insecure_setup', false)) {
         return $response->withHeader('Content-Type', 'application/json');
     });
 
-    // Endpoint to run database migrations
-    $app->post('/run_migrations', function ($request, $response) {
-        try {
-            $projectRoot = dirname(__DIR__);
-            chdir($projectRoot);
-
-            $phinxApp = new \Phinx\Console\PhinxApplication();
-            $phinxApp->setAutoExit(false);
-
-            $input = new \Symfony\Component\Console\Input\ArrayInput(['command' => 'migrate']);
-            $output = new \Symfony\Component\Console\Output\BufferedOutput();
-
-            $returnVar = $phinxApp->run($input, $output);
-            $outputText = $output->fetch();
-
-            $payload = ['success' => $returnVar === 0, 'output' => $outputText];
-            if ($returnVar !== 0) {
-                $payload['error'] = 'Migration failed. Output: ' . $outputText;
-            }
-
-            $response->getBody()->write(json_encode($payload));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus($returnVar === 0 ? 200 : 500);
-        } catch (\Exception $e) {
-            $response->getBody()->write(json_encode(['success' => false, 'error' => $e->getMessage()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
-        }
-    });
+    // Endpoint to run database migrations (legacy path; prefer POST /setup/run_migrations)
+    $app->post('/run_migrations', [SetupController::class, 'runPhinxMigrations']);
 }
 
 // Run app

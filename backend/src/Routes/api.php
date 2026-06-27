@@ -8,6 +8,7 @@ use Slim\App;
 /** @var App $app */
 
 $exposeDangerous = Config::getInstance()->get('security.allow_insecure_setup', false);
+$backendRoot = dirname(__DIR__, 2);
 
 // CORS test route
 $app->get('/cors-test', function ($request, $response) {
@@ -23,7 +24,28 @@ $app->get('/cors-test', function ($request, $response) {
     return $response->withHeader('Content-Type', 'application/json');
 });
 
-// Register all routes (setup/system only when ALLOW_INSECURE_SETUP=true — see README)
+// Always available: DB check + Phinx migrations for setup.html on existing installs.
+\App\Routes\SetupRoutes::registerMaintenance($app);
+
+$app->get('/system/status', function ($request, $response) use ($exposeDangerous, $backendRoot) {
+    $envPath = $backendRoot . '/.env';
+    $response->getBody()->write(json_encode([
+        'success' => true,
+        'data' => [
+            'app' => 'BizSpine API',
+            'setup_routes_enabled' => (bool) $exposeDangerous,
+            'maintenance_setup_routes' => true,
+            'env_file' => [
+                'path' => $envPath,
+                'exists' => is_file($envPath),
+            ],
+            'allow_insecure_setup_env' => $_ENV['ALLOW_INSECURE_SETUP'] ?? getenv('ALLOW_INSECURE_SETUP') ?: null,
+        ],
+    ], JSON_UNESCAPED_UNICODE));
+    return $response->withHeader('Content-Type', 'application/json');
+});
+
+// Full setup wizard (admin, imports) only when ALLOW_INSECURE_SETUP=true.
 if ($exposeDangerous) {
     \App\Routes\SetupRoutes::register($app);
 }
