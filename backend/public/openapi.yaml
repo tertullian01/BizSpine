@@ -420,10 +420,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /customers/{id}:
+  /clients/{id}:
     get:
-      summary: Get customer by ID
-      description: Retrieve detailed information about a specific customer including order stats
+      summary: Get client by ID
+      description: Retrieve detailed information about a specific client including order stats. Requires staff role (admin or employee).
       tags:
         - Users
       security:
@@ -434,10 +434,10 @@ paths:
           required: true
           schema:
             type: integer
-          description: Customer ID
+          description: Client ID
       responses:
         '200':
-          description: Customer details
+          description: Client details
           content:
             application/json:
               schema:
@@ -448,7 +448,156 @@ paths:
                   data:
                     $ref: '#/components/schemas/Client'
         '404':
-          description: Customer not found
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update client
+      description: Update a client's profile fields. Requires staff role (admin or employee).
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Client ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                display_name:
+                  type: string
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                mobile_number:
+                  type: string
+                whatsapp_number:
+                  type: string
+                street_line_1:
+                  type: string
+                street_line_2:
+                  type: string
+                city:
+                  type: string
+                state:
+                  type: string
+                postal_code:
+                  type: string
+                country:
+                  type: string
+      responses:
+        '200':
+          description: Updated client details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Client'
+        '404':
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete client
+      description: Delete a client account. Requires staff role (admin or employee).
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Client ID
+      responses:
+        '204':
+          description: Client deleted
+        '404':
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Client has associated records and cannot be deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /clients/{id}/password:
+    put:
+      summary: Update client password
+      description: Set a new password for a client account. Requires staff role (admin or employee).
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Client ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - password
+              properties:
+                password:
+                  type: string
+                  minLength: 8
+                  description: New password (minimum 8 characters)
+      responses:
+        '200':
+          description: Password updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+        '400':
+          description: Invalid password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Client not found
           content:
             application/json:
               schema:
