@@ -60,6 +60,11 @@ class Order extends BaseModel
             throw new \Exception('Order must contain at least one item');
         }
 
+        $skipInventory = false;
+        if (isset($body['skip_inventory'])) {
+            $skipInventory = filter_var($body['skip_inventory'], FILTER_VALIDATE_BOOLEAN);
+        }
+
         self::$db->beginTransaction();
         try {
             $orderNumber = 'ORD-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
@@ -94,17 +99,17 @@ class Order extends BaseModel
 
                 $inventory = Inventory::fetchOne('SELECT * FROM inventory WHERE product_id = :product_id AND store_id = :store_id', [':product_id' => $productId, ':store_id' => $storeId]);
                 if (!$inventory) {
-                    $unavailableItems[] = [
-                        'product_id' => $productId,
-                        'product_name' => $product->name,
-                        'requested_quantity' => $quantity,
-                        'available_quantity' => 0,
-                        'reason' => "Product '{$product->name}' (ID: $productId) is not available at the selected store"
-                    ];
-                    continue;
-                }
-
-                if ($inventory->quantity < $quantity) {
+                    if (!$skipInventory) {
+                        $unavailableItems[] = [
+                            'product_id' => $productId,
+                            'product_name' => $product->name,
+                            'requested_quantity' => $quantity,
+                            'available_quantity' => 0,
+                            'reason' => "Product '{$product->name}' (ID: $productId) is not available at the selected store"
+                        ];
+                        continue;
+                    }
+                } elseif (!$skipInventory && $inventory->quantity < $quantity) {
                     $unavailableItems[] = [
                         'product_id' => $productId,
                         'product_name' => $product->name,
@@ -115,8 +120,8 @@ class Order extends BaseModel
                     continue;
                 }
 
-                $unitPrice = (float) $product->cost;
-                if (property_exists($inventory, 'price_override') && $inventory->price_override !== null) {
+                $unitPrice = isset($item['unit_price']) ? (float) $item['unit_price'] : (float) $product->cost;
+                if (!isset($item['unit_price']) && $inventory && property_exists($inventory, 'price_override') && $inventory->price_override !== null) {
                     $unitPrice = (float) $inventory->price_override;
                 }
                 $itemSubtotal = $unitPrice * $quantity;
@@ -212,7 +217,9 @@ class Order extends BaseModel
                     'created_at' => date('Y-m-d H:i:s'),
                 ]);
                 $orderItem->save();
-                $item['inventory']->adjustQuantity(-$item['quantity']);
+                if (!$skipInventory && $item['inventory']) {
+                    $item['inventory']->adjustQuantity(-$item['quantity']);
+                }
             }
 
             if ($hasCoupon && $couponResult && $couponResult['valid']) {

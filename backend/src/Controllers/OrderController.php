@@ -232,6 +232,11 @@ SQL;
             $sendEmail = filter_var($body['sendEmail'], FILTER_VALIDATE_BOOLEAN);
         }
 
+        $skipInventory = false;
+        if (isset($body['skip_inventory'])) {
+            $skipInventory = filter_var($body['skip_inventory'], FILTER_VALIDATE_BOOLEAN);
+        }
+
         // Custom validation for order creation
         // Shipping address is required only if a shipping method is specified and it is NOT a pickup order.
         // If shipping_method is omitted (e.g. manual entry/POS), address is optional.
@@ -287,38 +292,40 @@ SQL;
                 $inventory = $stmt->fetch(PDO::FETCH_ASSOC);
 
                 if (!$inventory) {
-                    $unavailableItems[] = [
-                        'product_id' => $productId,
-                        'product_name' => $product['name'],
-                        'requested_quantity' => $quantity,
-                        'available_quantity' => 0,
-                        'reason' => "Product '{$product['name']}' (ID: $productId) is not available at Store ID $storeId"
-                    ];
-                    continue;
-                }
+                    if (!$skipInventory) {
+                        $unavailableItems[] = [
+                            'product_id' => $productId,
+                            'product_name' => $product['name'],
+                            'requested_quantity' => $quantity,
+                            'available_quantity' => 0,
+                            'reason' => "Product '{$product['name']}' (ID: $productId) is not available at Store ID $storeId"
+                        ];
+                        continue;
+                    }
+                } elseif (!$skipInventory) {
+                    $trackerKey = "p{$productId}_s{$storeId}";
+                    $reservedQuantity = $inventoryTracker[$trackerKey] ?? 0;
+                    $availableQuantity = (int)$inventory['quantity'] - $reservedQuantity;
 
-                $trackerKey = "p{$productId}_s{$storeId}";
-                $reservedQuantity = $inventoryTracker[$trackerKey] ?? 0;
-                $availableQuantity = (int)$inventory['quantity'] - $reservedQuantity;
+                    if ($availableQuantity < $quantity) {
+                        $unavailableItems[] = [
+                            'product_id' => $productId,
+                            'product_name' => $product['name'],
+                            'requested_quantity' => $quantity,
+                            'available_quantity' => $availableQuantity,
+                            'reason' => "Insufficient inventory for product '{$product['name']}' (ID: $productId) at {$inventory['store_name']}. Available: {$availableQuantity}, Requested: $quantity"
+                        ];
+                        continue;
+                    }
 
-                if ($availableQuantity < $quantity) {
-                    $unavailableItems[] = [
-                        'product_id' => $productId,
-                        'product_name' => $product['name'],
-                        'requested_quantity' => $quantity,
-                        'available_quantity' => $availableQuantity,
-                        'reason' => "Insufficient inventory for product '{$product['name']}' (ID: $productId) at {$inventory['store_name']}. Available: {$availableQuantity}, Requested: $quantity"
-                    ];
-                    continue;
+                    $inventoryTracker[$trackerKey] = $reservedQuantity + $quantity;
                 }
 
                 $unitPrice = isset($item['unit_price']) ? (float) $item['unit_price'] : (float) $product['cost'];
-                if (!isset($item['unit_price']) && $inventory['price_override'] !== null) {
+                if (!isset($item['unit_price']) && $inventory && $inventory['price_override'] !== null) {
                     $unitPrice = (float) $inventory['price_override'];
                 }
                 $itemSubtotal = $unitPrice * $quantity;
-
-                $inventoryTracker[$trackerKey] = $reservedQuantity + $quantity;
                 $subtotal += $itemSubtotal;
                 $validatedItems[] = [
                     'product_id' => $productId,
@@ -488,13 +495,15 @@ SQL;
                     ':unit_price' => $item['unit_price'],
                     ':subtotal' => $item['subtotal'],
                 ]);
-                $invSql = 'UPDATE inventory SET quantity = quantity - :quantity, updated_at = datetime("now") WHERE product_id = :product_id AND store_id = :store_id';
-                $invStmt = $this->db->prepare($invSql);
-                $invStmt->execute([
-                    ':quantity' => $item['quantity'],
-                    ':product_id' => $item['product_id'],
-                    ':store_id' => $item['store_id'],
-                ]);
+                if (!$skipInventory) {
+                    $invSql = 'UPDATE inventory SET quantity = quantity - :quantity, updated_at = datetime("now") WHERE product_id = :product_id AND store_id = :store_id';
+                    $invStmt = $this->db->prepare($invSql);
+                    $invStmt->execute([
+                        ':quantity' => $item['quantity'],
+                        ':product_id' => $item['product_id'],
+                        ':store_id' => $item['store_id'],
+                    ]);
+                }
             }
 
             if ($hasCoupon && $couponModel) {

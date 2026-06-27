@@ -106,6 +106,31 @@ SQL
         $this->assertEquals(98, $stmt->fetchColumn());
     }
 
+    public function testCreateOrderSkipInventory()
+    {
+        $controller = new OrderController(self::$db);
+        $request = $this->createRequestWithBody('POST', '/orders', [
+            'shipping_address' => '123 Test St, Test City',
+            'skip_inventory' => true,
+            'items' => [
+                [
+                    'product_id' => $this->productId,
+                    'store_id' => $this->storeId,
+                    'quantity' => 200
+                ]
+            ]
+        ]);
+        $request = $request->withAttribute('user_id', $this->userId);
+        $response = $this->createResponse();
+        $response = $controller->create($request, $response);
+        $body = (string) $response->getBody();
+        $data = json_decode($body, true);
+        $this->assertEquals(201, $response->getStatusCode());
+        $this->assertTrue($data['success']);
+        $stmt = self::$db->query("SELECT quantity FROM inventory WHERE product_id = {$this->productId}");
+        $this->assertEquals(100, $stmt->fetchColumn());
+    }
+
     public function testCreateOrderInsufficientInventory()
     {
         $controller = new OrderController(self::$db);

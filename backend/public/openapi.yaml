@@ -3559,6 +3559,10 @@ components:
           type: boolean
           description: Whether to send an order confirmation email
           default: false
+        skip_inventory:
+          type: boolean
+          description: When true, skip inventory validation and do not deduct stock (for historical orders)
+          default: false
         items:
           type: array
           items:
