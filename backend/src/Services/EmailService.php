@@ -10,12 +10,14 @@ class EmailService
 {
     private PDO $db;
     private ?Logger $logger;
+    private ?array $config;
     private ?array $settings = null;
 
-    public function __construct(PDO $db, ?Logger $logger = null)
+    public function __construct(PDO $db, ?Logger $logger = null, ?array $config = null)
     {
         $this->db = $db;
         $this->logger = $logger;
+        $this->config = $config;
     }
 
     private function getSettings(): array
@@ -134,8 +136,7 @@ class EmailService
 
     public function sendPasswordResetEmail(string $to, string $token): bool
     {
-        // In a real app, you would use a frontend URL from config
-        $resetLink = "http://localhost:3000/reset-password?token=" . $token;
+        $resetLink = $this->getPasswordResetUrl() . '?token=' . urlencode($token);
         $subject = "Password Reset Request";
         $body = "Click the following link to reset your password: <a href='{$resetLink}'>{$resetLink}</a>";
 
@@ -167,5 +168,21 @@ class EmailService
             $content = str_replace('{{' . $key . '}}', (string)$value, $content);
         }
         return $content;
+    }
+
+    private function getPasswordResetUrl(): string
+    {
+        $url = $this->config['app']['password_reset_url'] ?? null;
+        if (empty($url)) {
+            $url = Config::getInstance()->get('app.password_reset_url', '');
+        }
+
+        if ($url === '' || Config::isPlaceholderValue($url)) {
+            throw new \Exception(
+                'Password reset URL is not configured. Set STOREFRONT_URL or PASSWORD_RESET_URL in .env.'
+            );
+        }
+
+        return rtrim($url, '/');
     }
 }

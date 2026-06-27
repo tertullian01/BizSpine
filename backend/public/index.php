@@ -65,7 +65,7 @@ $container->bind(\App\Services\PaginationService::class, fn($c) => new \App\Serv
 $container->bind(\App\Services\Logger::class, fn($c) => new \App\Services\Logger());
 $container->bind(\App\Services\DatabasePool::class, fn($c) => new \App\Services\DatabasePool('sqlite:' . $dbPath, 5));
 $container->bind(\App\Services\Metrics::class, fn($c) => new \App\Services\Metrics($c->get(\App\Services\Logger::class)));
-$container->bind(\App\Services\EmailService::class, fn($c) => new \App\Services\EmailService($db, $c->get(\App\Services\Logger::class)));
+$container->bind(\App\Services\EmailService::class, fn($c) => new \App\Services\EmailService($db, $c->get(\App\Services\Logger::class), $config->getAll()));
 
 // Bind middleware
 $jwtSecret = RouteSecurity::jwtSecret();

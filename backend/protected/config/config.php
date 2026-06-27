@@ -10,6 +10,12 @@ $config = [
         'app_name' => 'PHP REST SQLite Backend',
         'debug' => true,
     ],
+    'app' => [
+        // Storefront base URL (scheme + host, no trailing slash). Set STOREFRONT_URL in .env or install_local.php.
+        'storefront_url' => '',
+        // Path on the storefront for password reset emails (?token=... is appended).
+        'password_reset_path' => '/reset.html',
+    ],
     'api' => [
         'version' => '1.0',
         'base_url' => '/api',
@@ -42,7 +48,8 @@ $config = [
         'allowed_fields' => [], // Empty array means all fields allowed
     ],
     'cors' => [
-        'allowed_origins' => [],
+        'allowed_origins' => [
+        ],
         'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
         'allowed_headers' => ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
         'allow_credentials' => true,
@@ -57,6 +64,12 @@ $localPath = __DIR__ . '/install_local.php';
 if (is_file($localPath)) {
     $local = require $localPath;
     if (is_array($local)) {
+        if (!empty($local['cors']['allowed_origins']) && !empty($config['cors']['allowed_origins'])) {
+            $local['cors']['allowed_origins'] = array_values(array_unique(array_merge(
+                $config['cors']['allowed_origins'],
+                $local['cors']['allowed_origins']
+            )));
+        }
         $config = array_replace_recursive($config, $local);
     }
 }

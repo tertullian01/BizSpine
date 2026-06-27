@@ -42,6 +42,20 @@ class Config
         // Override with environment-specific values if they exist
         $config['database']['database_path'] = $_ENV['DB_DATABASE'] ?? $config['database']['database_path'];
         $config['jwt']['secret'] = $_ENV['JWT_SECRET'] ?? $config['jwt']['secret'];
+        $config['app']['storefront_url'] = self::resolveStorefrontUrl($config);
+        $config['app']['password_reset_url'] = self::resolvePasswordResetUrl($config);
+
+        $origins = $config['cors']['allowed_origins'] ?? [];
+        $corsOrigins = $_ENV['CORS_ALLOWED_ORIGINS'] ?? getenv('CORS_ALLOWED_ORIGINS');
+        if ($corsOrigins !== false && $corsOrigins !== null && $corsOrigins !== ''
+            && !self::isPlaceholderValue((string) $corsOrigins)) {
+            $fromEnv = array_values(array_filter(array_map('trim', explode(',', (string) $corsOrigins))));
+            $origins = array_merge($origins, $fromEnv);
+        }
+        $config['cors']['allowed_origins'] = CorsOriginHelper::finalize(
+            $origins,
+            !empty($config['environment']['debug'])
+        );
 
         $allowSetup = $_ENV['ALLOW_INSECURE_SETUP'] ?? getenv('ALLOW_INSECURE_SETUP');
         if ($allowSetup === false || $allowSetup === null || $allowSetup === '') {
@@ -56,6 +70,51 @@ class Config
         }
 
         $this->config = $config;
+    }
+
+    public static function isPlaceholderValue(string $value): bool
+    {
+        return $value === ''
+            || str_contains($value, 'INSERT_')
+            || str_contains($value, 'COMMA_SEPARATED');
+    }
+
+    private static function resolveStorefrontUrl(array $config): string
+    {
+        $fromEnv = trim((string) ($_ENV['STOREFRONT_URL'] ?? ''));
+        if ($fromEnv !== '' && !self::isPlaceholderValue($fromEnv)) {
+            return rtrim($fromEnv, '/');
+        }
+
+        $fromConfig = trim((string) ($config['app']['storefront_url'] ?? ''));
+        if ($fromConfig !== '' && !self::isPlaceholderValue($fromConfig)) {
+            return rtrim($fromConfig, '/');
+        }
+
+        return '';
+    }
+
+    private static function resolvePasswordResetUrl(array $config): string
+    {
+        $fromEnv = trim((string) ($_ENV['PASSWORD_RESET_URL'] ?? ''));
+        if ($fromEnv !== '' && !self::isPlaceholderValue($fromEnv)) {
+            return rtrim($fromEnv, '/');
+        }
+
+        $storefrontUrl = self::resolveStorefrontUrl($config);
+        if ($storefrontUrl === '') {
+            return '';
+        }
+
+        $path = trim((string) ($_ENV['PASSWORD_RESET_PATH'] ?? ($config['app']['password_reset_path'] ?? '/reset.html')));
+        if ($path === '' || self::isPlaceholderValue($path)) {
+            $path = '/reset.html';
+        }
+        if (!str_starts_with($path, '/')) {
+            $path = '/' . $path;
+        }
+
+        return $storefrontUrl . $path;
     }
 
     public function get(string $key, $default = null)

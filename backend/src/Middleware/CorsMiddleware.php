@@ -78,14 +78,22 @@ class CorsMiddleware implements MiddlewareInterface
 
     private function isOriginAllowed(string $origin): ?string
     {
+        $origin = rtrim($origin, '/');
+
+        if ($origin === '') {
+            return null;
+        }
+
         // If wildcard is allowed, return the requesting origin
-        if (in_array('*', $this->allowedOrigins)) {
-            return $origin ?: '*';
+        if (in_array('*', $this->allowedOrigins, true)) {
+            return $origin;
         }
 
         // Check if the origin is in the allowed list
-        if (in_array($origin, $this->allowedOrigins)) {
-            return $origin;
+        foreach ($this->allowedOrigins as $allowed) {
+            if (strcasecmp(rtrim((string) $allowed, '/'), $origin) === 0) {
+                return $origin;
+            }
         }
 
         return null;

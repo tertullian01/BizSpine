@@ -27,7 +27,7 @@ class AuthController extends ApiController
         $dbPath = $config['db_path'] ?? $config['database']['database_path'] ?? null;
         $this->db = Database::get($dbPath);
         $this->validator = new Validator();
-        $this->emailService = $emailService ?? new EmailService($this->db);
+        $this->emailService = $emailService ?? new EmailService($this->db, null, $config);
     }
 
     public function register(Request $request, Response $response): Response

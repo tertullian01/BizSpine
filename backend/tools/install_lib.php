@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Services\CorsOriginHelper;
 use Phinx\Console\PhinxApplication;
 use Phinx\Wrapper\TextWrapper;
 
@@ -177,11 +178,14 @@ function bizspine_write_env_file(string $backendRoot, string $jwtSecret): void
 
 function bizspine_write_install_local_config(string $backendRoot, string $siteOrigin, string $storeName): void
 {
-    $origin = rtrim($siteOrigin, '/');
     $path = rtrim($backendRoot, '/\\') . '/protected/config/install_local.php';
     $export = var_export([
+        'app' => [
+            'storefront_url' => rtrim($siteOrigin, '/'),
+            'password_reset_path' => '/reset.html',
+        ],
         'cors' => [
-            'allowed_origins' => [$origin],
+            'allowed_origins' => CorsOriginHelper::expandWwwVariants([rtrim($siteOrigin, '/')]),
         ],
         'environment' => [
             'debug' => false,
