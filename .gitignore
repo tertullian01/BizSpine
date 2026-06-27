@@ -19,6 +19,10 @@ backend/coverage-report/
 *.sqlite
 release/
 
+# PHPUnit / local test artifacts
+backend/protected/database/testing.db
+backend/test_error_output.txt
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
