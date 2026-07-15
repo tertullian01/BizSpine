@@ -142,6 +142,43 @@ class TestimonialController extends ApiController
 
     /**
      * @OA\Get(
+     *     path="/testimonials/featured",
+     *     summary="Get featured testimonials",
+     *     tags={"Testimonials"},
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of featured testimonials",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/Testimonial")),
+     *                 @OA\Property(property="pagination", ref="#/components/schemas/Pagination")
+     *             )
+     *         )
+     *     )
+     * )
+     */
+    public function getFeatured(Request $request, Response $response): Response
+    {
+        $pagination = $this->paginationService->getPaginationParams($request);
+        $total = Testimonial::select()
+            ->where('published', '=', 1)
+            ->where('is_featured', '=', 1)
+            ->count();
+
+        $testimonials = Testimonial::select(['*'])
+            ->where('published', '=', 1)
+            ->where('is_featured', '=', 1)
+            ->orderBy('created_at', 'DESC')
+            ->limit($pagination['limit'], $pagination['offset'])
+            ->get();
+
+        $result = $this->paginationService->formatPaginatedResponse($testimonials, $total, $pagination['page'], $pagination['limit']);
+
+        return $this->success($response, $result);
+    }
+
+    /**
+     * @OA\Get(
      *     path="/testimonials/{id}",
      *     summary="Get testimonial by ID",
      *     @OA\Parameter(

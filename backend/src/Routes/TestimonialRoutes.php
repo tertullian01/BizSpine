@@ -14,6 +14,7 @@ class TestimonialRoutes
     {
         // Public endpoints - no authentication required
         $app->get('/testimonials/published', [TestimonialController::class, 'getPublished']);
+        $app->get('/testimonials/featured', [TestimonialController::class, 'getFeatured']);
         $app->post('/testimonials', [TestimonialController::class, 'create']);
 
         // Protected endpoints - authentication required
