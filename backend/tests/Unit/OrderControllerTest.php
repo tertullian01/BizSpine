@@ -154,6 +154,31 @@ SQL
         $this->assertStringContainsString('Insufficient inventory', $data['error']);
     }
 
+    public function testCreateOrderFailureIsLogged()
+    {
+        $logFile = tempnam(sys_get_temp_dir(), 'orders_log_');
+        $logger = new \App\Services\Logger('orders', $logFile);
+        $controller = new OrderController(self::$db, null, null, $logger);
+        $request = $this->createRequestWithBody('POST', '/orders', [
+            'shipping_address' => '123 Test St',
+            'items' => [
+                [
+                    'product_id' => $this->productId,
+                    'store_id' => $this->storeId,
+                    'quantity' => 200,
+                ],
+            ],
+        ]);
+        $request = $request->withAttribute('user_id', $this->userId);
+        $response = $controller->create($request, $this->createResponse());
+
+        $this->assertEquals(400, $response->getStatusCode());
+        $logContents = file_get_contents($logFile);
+        $this->assertStringContainsString('Order create failed: insufficient inventory', $logContents);
+        $this->assertStringContainsString('Insufficient inventory', $logContents);
+        @unlink($logFile);
+    }
+
     public function testGetMyOrders()
     {
         // Create an order first

@@ -22,9 +22,14 @@ class OrderController extends ApiController
     private Validator $validator;
     private PaginationService $paginationService;
     private ?EmailService $emailService;
+    private Logger $logger;
 
-    public function __construct(?PDO $db = null, ?PaginationService $paginationService = null, ?EmailService $emailService = null)
-    {
+    public function __construct(
+        ?PDO $db = null,
+        ?PaginationService $paginationService = null,
+        ?EmailService $emailService = null,
+        ?Logger $logger = null
+    ) {
         $config = Config::getInstance()->getAll();
 
         if ($db) {
@@ -35,7 +40,21 @@ class OrderController extends ApiController
         }
         $this->validator = new Validator();
         $this->paginationService = $paginationService ?? new PaginationService();
-        $this->emailService = $emailService ?? new EmailService($this->db, new Logger(), $config);
+        $this->logger = $logger ?? new Logger('orders', 'logs/orders.log');
+        $this->emailService = $emailService ?? new EmailService($this->db, $this->logger, $config);
+    }
+
+    /**
+     * @param array<string, mixed> $context
+     */
+    private function logOrderException(string $message, \Throwable $e, array $context = []): void
+    {
+        $this->logger->error($message, array_merge($context, [
+            'exception' => get_class($e),
+            'error' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+        ]));
     }
 
     private function jwtRole(Request $request): string
@@ -340,6 +359,10 @@ SQL;
 
             if (!empty($unavailableItems)) {
                 $this->db->rollBack();
+                $this->logger->warning('Order create failed: insufficient inventory', [
+                    'user_id' => $userId,
+                    'unavailable_items' => $unavailableItems,
+                ]);
                 $response->getBody()->write(json_encode([
                     'success' => false,
                     'error' => 'Insufficient inventory',
@@ -630,7 +653,11 @@ SQL;
                         try {
                             $this->emailService->sendTemplate($customerEmail, 'order_confirmation', $placeholders, $orderStoreId);
                         } catch (\Exception $e) {
-                            error_log('Failed to send customer order confirmation: ' . $e->getMessage());
+                            $this->logOrderException('Failed to send customer order confirmation', $e, [
+                                'order_id' => $orderId,
+                                'order_number' => $orderNumber,
+                                'customer_email' => $customerEmail,
+                            ]);
                         }
                     }
 
@@ -651,15 +678,21 @@ SQL;
                                     try {
                                         $this->emailService->sendTemplate($email, 'store_order_confirmation', $placeholders, $orderStoreId);
                                     } catch (\Exception $e) {
-                                        error_log('Failed to send store order confirmation to ' . $email . ': ' . $e->getMessage());
+                                        $this->logOrderException('Failed to send store order confirmation', $e, [
+                                            'order_id' => $orderId,
+                                            'order_number' => $orderNumber,
+                                            'store_email' => $email,
+                                        ]);
                                     }
                                 }
                             }
                         }
                     }
                 } catch (\Exception $e) {
-                    // Log error but do not fail the request
-                    error_log('Error preparing order emails: ' . $e->getMessage());
+                    $this->logOrderException('Error preparing order emails', $e, [
+                        'order_id' => $orderId ?? null,
+                        'order_number' => $orderNumber ?? null,
+                    ]);
                 }
             }
 
@@ -668,6 +701,13 @@ SQL;
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
+            $this->logger->warning('Order create failed', [
+                'exception' => get_class($e),
+                'error' => $e->getMessage(),
+                'user_id' => $request->getAttribute('user_id'),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
             return $this->error($response, $e->getMessage(), 400);
         }
     }
@@ -835,6 +875,7 @@ SQL;
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
+            $this->logOrderException('Order update failed', $e, ['order_id' => $id]);
             return $this->internalError($response);
         }
     }
@@ -934,7 +975,9 @@ SQL;
             $this->emailService->sendTemplate($customerEmail, $template, $placeholders, (int)$order['store_id']);
 
         } catch (\Exception $e) {
-            error_log('Failed to send order update email: ' . $e->getMessage());
+            $this->logOrderException('Failed to send order update email', $e, [
+                'order_id' => $orderId,
+            ]);
         }
     }
 
@@ -995,6 +1038,7 @@ SQL;
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
+            $this->logOrderException('Order payment failed', $e, ['order_id' => $id]);
             return $this->internalError($response);
         }
     }
@@ -1048,6 +1092,7 @@ SQL;
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
+            $this->logOrderException('Order cancel failed', $e, ['order_id' => $id]);
             return $this->internalError($response);
         }
     }
@@ -1092,6 +1137,7 @@ SQL;
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
+            $this->logOrderException('Order delete failed', $e, ['order_id' => $id]);
             return $this->internalError($response);
         }
     }

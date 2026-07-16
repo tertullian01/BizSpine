@@ -77,20 +77,37 @@ class TestimonialControllerTest extends DatabaseTestCase
 
     public function testGetPublishedTestimonials()
     {
-        // Insert published and unpublished testimonials
-        self::$db->exec("INSERT INTO testimonials (customer_name, customer_email, testimonial_text, published) VALUES ('John Doe', 'john@example.com', 'Published testimonial', 1)");
+        self::$db->exec("INSERT INTO testimonials (customer_name, customer_email, testimonial_text, rating, is_featured, published) VALUES ('John Doe', 'john@example.com', 'Published testimonial', 5, 1, 1)");
         self::$db->exec("INSERT INTO testimonials (customer_name, customer_email, testimonial_text, published) VALUES ('Jane Smith', 'jane@example.com', 'Unpublished testimonial', 0)");
         $controller = new TestimonialController();
-        $request = $this->createRequest('GET', '/testimonials');
+        $request = $this->createRequest('GET', '/testimonials/published');
         $response = $this->createResponse();
-        $response = $controller->getAll($request, $response);
+        $response = $controller->getPublished($request, $response);
         $body = (string) $response->getBody();
         $data = json_decode($body);
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertTrue($data->success);
         $this->assertCount(1, $data->data->data);
-        // Only published testimonial
         $this->assertEquals('Published testimonial', $data->data->data[0]->testimonial_text);
+        $this->assertEquals(5, $data->data->data[0]->rating);
+        $this->assertEquals(1, $data->data->data[0]->is_featured);
+    }
+
+    public function testGetFeaturedTestimonials()
+    {
+        self::$db->exec("INSERT INTO testimonials (customer_name, customer_email, testimonial_text, rating, is_featured, published) VALUES ('Featured User', 'featured@example.com', 'Featured review', 5, 1, 1)");
+        self::$db->exec("INSERT INTO testimonials (customer_name, customer_email, testimonial_text, rating, is_featured, published) VALUES ('Regular User', 'regular@example.com', 'Regular review', 4, 0, 1)");
+        self::$db->exec("INSERT INTO testimonials (customer_name, customer_email, testimonial_text, rating, is_featured, published) VALUES ('Draft User', 'draft@example.com', 'Draft review', 5, 1, 0)");
+        $controller = new TestimonialController();
+        $request = $this->createRequest('GET', '/testimonials/featured');
+        $response = $this->createResponse();
+        $response = $controller->getFeatured($request, $response);
+        $body = (string) $response->getBody();
+        $data = json_decode($body);
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertTrue($data->success);
+        $this->assertCount(1, $data->data->data);
+        $this->assertEquals('Featured review', $data->data->data[0]->testimonial_text);
     }
 
     public function testGetAllAdminTestimonials()

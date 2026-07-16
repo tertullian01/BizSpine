@@ -69,7 +69,7 @@ class TestimonialController extends ApiController
         $pagination = $this->paginationService->getPaginationParams($request);
         $total = Testimonial::select()->where('published', '=', 1)->count();
 
-        $testimonials = Testimonial::select(['id', 'customer_name', 'customer_email', 'testimonial_text', 'age_range', 'published', 'created_at'])
+        $testimonials = Testimonial::select(['id', 'customer_name', 'customer_email', 'testimonial_text', 'age_range', 'rating', 'is_featured', 'published', 'created_at'])
                                   ->where('published', '=', 1)
                                   ->orderBy('created_at', 'DESC')
                                   ->limit($pagination['limit'], $pagination['offset'])

@@ -80,9 +80,10 @@ $container->bind(\App\Controllers\BookkeepingController::class, fn($c) => new \A
 $container->bind(\App\Controllers\TestimonialController::class, fn($c) => new \App\Controllers\TestimonialController(null, null, $c->get(\App\Services\FileUploadService::class)));
 $container->bind(\App\Controllers\ProductController::class, fn($c) => new \App\Controllers\ProductController($db, $c->get(\App\Services\CacheableProductService::class), $c->get(\App\Services\Logger::class), $c->get(\App\Services\PaginationService::class)));
 $container->bind(\App\Controllers\OrderController::class, fn($c) => new \App\Controllers\OrderController(
-    $db, 
+    $db,
     $c->get(\App\Services\PaginationService::class),
-    $c->get(\App\Services\EmailService::class)
+    $c->get(\App\Services\EmailService::class),
+    $c->get(\App\Services\Logger::class)
 ));
 $container->bind(\App\Controllers\InventoryController::class, fn($c) => new \App\Controllers\InventoryController($db));
 $container->bind(\App\Controllers\ReviewController::class, fn($c) => new \App\Controllers\ReviewController($db));
