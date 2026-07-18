@@ -142,6 +142,43 @@ class TestimonialControllerTest extends DatabaseTestCase
         $this->assertEquals(1, $data->data->published);
     }
 
+    public function testUpdateSetsIsFeatured()
+    {
+        self::$db->exec("INSERT INTO testimonials (customer_name, customer_email, testimonial_text, published, is_featured) VALUES ('Dee', 'dee@example.com', 'Great products!!', 1, 0)");
+        $id = (int)self::$db->lastInsertId();
+        $controller = new TestimonialController(self::$db);
+        $request = $this->createRequestWithBody('PUT', "/testimonials/$id", [
+            'customer_name' => 'Dee',
+            'published' => true,
+            'is_featured' => true,
+            'testimonial_text' => 'Great products!!',
+        ]);
+        $response = $controller->update($request, $this->createResponse(), ['id' => $id]);
+        $data = json_decode((string) $response->getBody());
+
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertTrue($data->success);
+        $this->assertEquals(1, (int) $data->data->is_featured);
+
+        $stmt = self::$db->query("SELECT is_featured FROM testimonials WHERE id = $id");
+        $this->assertEquals(1, (int) $stmt->fetchColumn());
+    }
+
+    public function testUpdateClearsIsFeatured()
+    {
+        self::$db->exec("INSERT INTO testimonials (customer_name, customer_email, testimonial_text, published, is_featured) VALUES ('Dee', 'dee@example.com', 'Great products!!', 1, 1)");
+        $id = (int)self::$db->lastInsertId();
+        $controller = new TestimonialController(self::$db);
+        $request = $this->createRequestWithBody('PUT', "/testimonials/$id", [
+            'is_featured' => false,
+        ]);
+        $response = $controller->update($request, $this->createResponse(), ['id' => $id]);
+        $data = json_decode((string) $response->getBody());
+
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertEquals(0, (int) $data->data->is_featured);
+    }
+
     public function testUnpublishTestimonial()
     {
         self::$db->exec("INSERT INTO testimonials (customer_name, customer_email, testimonial_text, published) VALUES ('John Doe', 'john@example.com', 'Great!', 1)");

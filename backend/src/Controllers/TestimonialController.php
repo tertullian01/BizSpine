@@ -343,6 +343,11 @@ SQL;
             $params[':published'] = filter_var($body['published'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
         }
 
+        if (array_key_exists('is_featured', $body)) {
+            $updates[] = 'is_featured = :is_featured';
+            $params[':is_featured'] = filter_var($body['is_featured'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+        }
+
         if (empty($updates)) {
             throw new ValidationException('No valid fields to update');
         }
