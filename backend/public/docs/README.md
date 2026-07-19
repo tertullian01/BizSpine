@@ -51,7 +51,33 @@ Example login response:
 
 ## Modules
 
-Auth, products, stores, inventory, orders, reviews, testimonials, clients, users, employees, coupons, referrals, tax, returns, bookkeeping, categories, settings, email templates, email logs, health.
+Auth, products, stores, inventory, orders, reviews, testimonials, clients, users, employees, coupons, referrals, tax, returns, bookkeeping, categories, settings, email templates, email logs, health, system.
+
+### Testimonials (storefront)
+
+| Endpoint | Auth | Description |
+|----------|------|-------------|
+| `GET /testimonials/published` | No | Published reviews; includes `is_featured` and `rating` |
+| `GET /testimonials/featured` | No | Published reviews marked featured |
+| `POST /testimonials` | No | Submit a new testimonial (unpublished by default) |
+
+Admin management (`GET/PUT/DELETE /testimonials/...`, publish/unpublish) requires a Bearer token.
+
+### System
+
+| Endpoint | Auth | Description |
+|----------|------|-------------|
+| `GET /system/export` | Admin JWT | Download ZIP of all database tables as CSV |
+| `GET /system/ping` | No | Returns `pong` |
+| `GET /system/status` | No | App / setup status |
+
+Example export:
+
+```bash
+curl -L -H "Authorization: Bearer <admin-token>" \
+  -o database-export.zip \
+  http://localhost:8000/system/export
+```
 
 ## Development
 

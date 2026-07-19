@@ -10,7 +10,11 @@ info:
     **Cross-origin clients:** When the storefront and API are on different origins (e.g. `https://yourdomain.com`
     and `https://api.yourdomain.com`), the server must allow the storefront origin in CORS config.
     Browsers send an OPTIONS preflight before `POST /auth/login` with `Content-Type: application/json`.
-  version: 1.0.0
+
+    **Notable endpoints:**
+    - Public testimonials: `GET /testimonials/published`, `GET /testimonials/featured`
+    - Admin DB backup: `GET /system/export` (JWT + admin role) returns a ZIP of CSV files for all tables
+  version: 1.1.0
   contact:
     name: Tech Diplomacy
     url: https://techdiplomacy.dev/
@@ -1391,26 +1395,127 @@ paths:
           description: Tax rate deleted
 
   # Testimonials
-  /testimonials:
+  /testimonials/published:
     get:
       summary: Get published testimonials
-      description: Retrieve all published customer testimonials
+      description: |
+        Public endpoint. Returns published testimonials with pagination.
+        Includes `is_featured` and `rating` so storefronts can filter featured reviews client-side.
       tags:
         - Testimonials
+      security: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
       responses:
         '200':
-          description: List of published testimonials
+          description: Paginated list of published testimonials
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Testimonial'
-    post:
-      summary: Create testimonial
-      description: Submit a new customer testimonial
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Testimonial'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+
+  /testimonials/featured:
+    get:
+      summary: Get featured testimonials
+      description: |
+        Public endpoint (no authentication). Returns published testimonials where `is_featured` is true.
+        Safe for storefront homepages. Registered before `/testimonials/{id}` so `featured` is not treated as an ID.
       tags:
         - Testimonials
+      security: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Paginated list of featured published testimonials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Testimonial'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+
+  /testimonials:
+    get:
+      summary: Get published testimonials (authenticated)
+      description: Authenticated list of published testimonials (admin/dashboard use). Prefer `/testimonials/published` for anonymous storefronts.
+      tags:
+        - Testimonials
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list of published testimonials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Testimonial'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Create testimonial
+      description: Submit a new customer testimonial (public; unpublished by default)
+      tags:
+        - Testimonials
+      security: []
       requestBody:
         required: true
         content:
@@ -1423,7 +1528,324 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Testimonial'
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Testimonial'
+
+  /testimonials/admin:
+    get:
+      summary: Get all testimonials (admin)
+      description: Authenticated list of all testimonials including unpublished
+      tags:
+        - Testimonials
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list of all testimonials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Testimonial'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /testimonials/{id}:
+    get:
+      summary: Get testimonial by ID
+      tags:
+        - Testimonials
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Testimonial details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Testimonial'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update testimonial
+      description: |
+        Update testimonial fields. Supports `published` and `is_featured` (boolean; stored as 0/1).
+      tags:
+        - Testimonials
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestimonialUpdateRequest'
+            example:
+              customer_name: Dee
+              published: true
+              is_featured: true
+              testimonial_text: Great products!!
+      responses:
+        '200':
+          description: Testimonial updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Testimonial'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete testimonial
+      tags:
+        - Testimonials
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /testimonials/{id}/publish:
+    post:
+      summary: Publish a testimonial
+      tags:
+        - Testimonials
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Testimonial published
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Testimonial'
+
+  /testimonials/{id}/unpublish:
+    post:
+      summary: Unpublish a testimonial
+      tags:
+        - Testimonials
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Testimonial unpublished
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Testimonial'
+
+  /testimonials/{id}/upload-photo:
+    post:
+      summary: Upload testimonial photo
+      tags:
+        - Testimonials
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                photo:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Photo uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Testimonial'
+
+  # System
+  /system/export:
+    get:
+      summary: Export all database tables as CSV ZIP
+      description: |
+        **Admin only.** Exports every user table in the SQLite database to individual CSV files,
+        packs them into a ZIP archive, and returns the archive for download.
+
+        Requires `Authorization: Bearer <jwt>` for an admin user.
+
+        Binary / non-UTF-8 cell values are encoded as `base64:...` in the CSV so the files remain text-safe.
+      tags:
+        - System
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: ZIP archive of CSV files (one file per table)
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: 'attachment; filename="database-export-YYYY-mm-dd-HHMMSS.zip"'
+            X-Export-Table-Count:
+              schema:
+                type: integer
+              description: Number of tables included in the export
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Authenticated but not an admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Export failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /system/ping:
+    get:
+      summary: Simple ping
+      description: Returns plain text `pong` (useful for rewrite / routing checks)
+      tags:
+        - System
+      security: []
+      responses:
+        '200':
+          description: pong
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: pong
+
+  /system/status:
+    get:
+      summary: System status
+      description: Lightweight status including whether insecure setup routes are enabled
+      tags:
+        - System
+      security: []
+      responses:
+        '200':
+          description: Status payload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      app:
+                        type: string
+                      setup_routes_enabled:
+                        type: boolean
+                      maintenance_setup_routes:
+                        type: boolean
 
   # Reviews
   /reviews:
@@ -3838,19 +4260,29 @@ components:
         customer_email:
           type: string
           format: email
+          nullable: true
           description: Customer email
         testimonial_text:
           type: string
           description: Testimonial content
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Optional star rating
         age_range:
           type: string
           description: Customer age range
         image_url:
           type: string
+          nullable: true
           description: URL to customer image
         published:
           type: boolean
           description: Whether testimonial is published
+        is_featured:
+          type: boolean
+          description: Whether testimonial is featured on the storefront homepage
         created_at:
           type: string
           format: date-time
@@ -3858,6 +4290,7 @@ components:
         updated_at:
           type: string
           format: date-time
+          nullable: true
           description: Last update timestamp
       required:
         - id
@@ -3886,6 +4319,29 @@ components:
       required:
         - customer_name
         - testimonial_text
+
+    TestimonialUpdateRequest:
+      type: object
+      properties:
+        customer_name:
+          type: string
+        customer_email:
+          type: string
+          format: email
+          nullable: true
+        testimonial_text:
+          type: string
+        age_range:
+          type: string
+        image_url:
+          type: string
+          nullable: true
+        published:
+          type: boolean
+          description: Publish or unpublish the testimonial
+        is_featured:
+          type: boolean
+          description: Mark as featured for storefront homepage display
 
     # Review Schemas
     Review:
@@ -4603,7 +5059,7 @@ tags:
   - name: Tax
     description: Tax rate configuration
   - name: Testimonials
-    description: Customer testimonials
+    description: Customer testimonials (public published/featured; authenticated admin management)
   - name: Reviews
     description: Product reviews and ratings
   - name: Bookkeeping
@@ -4620,3 +5076,5 @@ tags:
     description: Application configuration settings
   - name: Email Templates
     description: Email template management
+  - name: System
+    description: System status, ping, and admin database export

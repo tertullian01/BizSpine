@@ -22,9 +22,11 @@ use OpenApi\Annotations as OA;
  *     @OA\Property(property="customer_name", type="string", example="Jane Doe"),
  *     @OA\Property(property="customer_email", type="string", example="jane@example.com"),
  *     @OA\Property(property="testimonial_text", type="string", example="Great product!"),
+ *     @OA\Property(property="rating", type="integer", example=5),
  *     @OA\Property(property="age_range", type="string", example="25-34"),
  *     @OA\Property(property="image_url", type="string", example="http://example.com/photo.jpg"),
  *     @OA\Property(property="published", type="boolean", example=true),
+ *     @OA\Property(property="is_featured", type="boolean", example=false),
  *     @OA\Property(property="created_at", type="string", format="date-time"),
  *     @OA\Property(property="updated_at", type="string", format="date-time")
  * )
@@ -54,6 +56,8 @@ class TestimonialController extends ApiController
      * @OA\Get(
      *     path="/testimonials/published",
      *     summary="Get published testimonials",
+     *     tags={"Testimonials"},
+     *     security={},
      *     @OA\Response(
      *         response=200,
      *         description="List of published testimonials",
@@ -144,7 +148,9 @@ class TestimonialController extends ApiController
      * @OA\Get(
      *     path="/testimonials/featured",
      *     summary="Get featured testimonials",
+     *     description="Public endpoint. Returns published testimonials with is_featured=true.",
      *     tags={"Testimonials"},
+     *     security={},
      *     @OA\Response(
      *         response=200,
      *         description="List of featured testimonials",
@@ -285,7 +291,8 @@ SQL;
      *             @OA\Property(property="customer_email", type="string"),
      *             @OA\Property(property="age_range", type="string"),
      *             @OA\Property(property="image_url", type="string"),
-     *             @OA\Property(property="published", type="boolean")
+     *             @OA\Property(property="published", type="boolean"),
+     *             @OA\Property(property="is_featured", type="boolean")
      *         )
      *     ),
      *     @OA\Response(response=200, description="Testimonial updated", @OA\JsonContent(ref="#/components/schemas/Testimonial"))

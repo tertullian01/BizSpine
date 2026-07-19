@@ -2,12 +2,14 @@
 
 namespace App\Controllers;
 
+use App\Services\DatabaseExportService;
 use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Exception;
 use Phinx\Console\PhinxApplication;
 use Phinx\Wrapper\TextWrapper;
+use RuntimeException;
 
 class SystemController extends ApiController
 {
@@ -16,6 +18,58 @@ class SystemController extends ApiController
     public function __construct(PDO $db)
     {
         $this->db = $db;
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/system/export",
+     *     summary="Export all database tables as CSV ZIP",
+     *     description="Admin only. Returns a ZIP archive containing one CSV file per table.",
+     *     tags={"System"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="ZIP archive of CSV files",
+     *         @OA\MediaType(
+     *             mediaType="application/zip",
+     *             @OA\Schema(type="string", format="binary")
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized"),
+     *     @OA\Response(response=403, description="Admin access required")
+     * )
+     */
+    public function exportDatabase(Request $request, Response $response): Response
+    {
+        $userId = $request->getAttribute('user_id');
+        if (!$userId) {
+            return $this->error($response, 'Unauthorized', 401);
+        }
+
+        $stmt = $this->db->prepare('SELECT role FROM users WHERE id = :id');
+        $stmt->execute([':id' => $userId]);
+        $role = $stmt->fetchColumn();
+
+        if ($role !== 'admin') {
+            return $this->error($response, 'Unauthorized. Admin access required.', 403);
+        }
+
+        try {
+            $export = (new DatabaseExportService($this->db))->exportToZip();
+        } catch (RuntimeException $e) {
+            return $this->error($response, $e->getMessage(), 500);
+        } catch (Exception $e) {
+            return $this->internalError($response);
+        }
+
+        $response->getBody()->write($export['contents']);
+
+        return $response
+            ->withHeader('Content-Type', 'application/zip')
+            ->withHeader('Content-Disposition', 'attachment; filename="' . $export['filename'] . '"')
+            ->withHeader('Content-Length', (string) strlen($export['contents']))
+            ->withHeader('X-Export-Table-Count', (string) $export['table_count'])
+            ->withStatus(200);
     }
 
     public function importData(Request $request, Response $response): Response

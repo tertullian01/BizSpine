@@ -65,8 +65,9 @@ if ($exposeDangerous) {
 \App\Routes\UserRoutes::register($app);
 \App\Routes\EmployeeRoutes::register($app);
 \App\Routes\HealthRoutes::register($app);
+\App\Routes\SystemRoutes::register($app);
 if ($exposeDangerous) {
-    \App\Routes\SystemRoutes::register($app);
+    \App\Routes\SystemRoutes::registerDangerous($app);
 }
 \App\Routes\CategoryRoutes::register($app);
 \App\Routes\SettingsRoutes::register($app);

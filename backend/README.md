@@ -42,6 +42,19 @@ backend/
 
 Auth: `POST /auth/login` → `Authorization: Bearer <token>` on protected routes.
 
+### Key endpoints
+
+| Method | Path | Auth | Notes |
+|--------|------|------|--------|
+| GET | `/testimonials/published` | No | Published testimonials (`is_featured`, `rating` included) |
+| GET | `/testimonials/featured` | No | Published + featured only |
+| PUT | `/testimonials/{id}` | Yes | Supports `published` and `is_featured` |
+| GET | `/system/export` | Yes (admin) | ZIP of all tables as CSV |
+| GET | `/system/ping` | No | Returns `pong` |
+| GET | `/system/status` | No | Setup / env status |
+
+Order create/update failures and email send errors are written via `App\Services\Logger` (typically `public/logs/api.log`).
+
 ## Configuration
 
 **`.env`** (not committed; see [`.env.example`](.env.example)):
@@ -116,12 +129,13 @@ Before a public host:
 - In `public/index.php`: turn `display_errors` off; keep `log_errors` on
 - Deploy the **full** `backend/` tree when updating — not only `public/index.php` (see [root README](../README.md#shared-hosting))
 - Writable: `protected/db/`, `uploads/`, `public/logs/`
+- Order-process failures are logged under `public/logs/` (API logger)
 
 Shared-hosting layout, CORS, and troubleshooting: [root README](../README.md#shared-hosting).
 
 ## Modules
 
-Auth, products, stores, inventory, orders, reviews, testimonials, clients, users, employees, coupons, referrals, tax, returns, bookkeeping, categories, settings, email templates, email logs, health, contact.
+Auth, products, stores, inventory, orders, reviews, testimonials, clients, users, employees, coupons, referrals, tax, returns, bookkeeping, categories, settings, email templates, email logs, health, contact, system (database CSV export).
 
 ## License
 

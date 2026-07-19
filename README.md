@@ -116,9 +116,16 @@ Schema is defined in [`backend/db/migrations/`](backend/db/migrations/). Legacy 
 - **Interactive docs:** serve `backend/public/` and open `/docs/` (see [`backend/public/docs/README.md`](backend/public/docs/README.md))
 - **Annotations:** some controllers include `@OA` tags; `composer test` includes contract checks
 
-Main areas: auth, products, stores, inventory, orders, reviews, testimonials, clients, users, employees, coupons, referrals, tax, returns, bookkeeping, categories, settings, email templates/logs, health.
+Main areas: auth, products, stores, inventory, orders, reviews, testimonials, clients, users, employees, coupons, referrals, tax, returns, bookkeeping, categories, settings, email templates/logs, health, system (export).
 
 Protected routes expect `Authorization: Bearer <jwt>` from `POST /auth/login`.
+
+**Testimonials (public storefront):**
+- `GET /testimonials/published` — published reviews (includes `is_featured`, `rating`)
+- `GET /testimonials/featured` — published + featured only (no auth)
+
+**System (admin):**
+- `GET /system/export` — download ZIP of all DB tables as CSV (admin JWT required)
 
 <a id="security"></a>
 
@@ -127,7 +134,7 @@ Protected routes expect `Authorization: Bearer <jwt>` from `POST /auth/login`.
 - JWT (HS256) via [`backend/src/Routes/RouteSecurity.php`](backend/src/Routes/RouteSecurity.php), bcrypt passwords, prepared statements
 - Role middleware (`PrivilegedRoleMiddleware`) for admin vs employee routes
 - CORS and security headers via middleware — CORS must be the outermost layer in Slim (see [backend README](backend/README.md#middleware))
-- `ALLOW_INSECURE_SETUP=false` on production hosts (disables setup/diagnostic routes)
+- `ALLOW_INSECURE_SETUP=false` on production hosts (disables setup/diagnostic routes such as `/system/import` and `/system/migrate`; admin `GET /system/export` remains available behind JWT)
 - See [Production hardening](#production-hardening)
 
 <a id="release-build"></a>
